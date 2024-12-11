@@ -1,4 +1,36 @@
-pub fn infinity(n: usize) -> Vec<i32> {
+fn is_prime(n: i64) -> bool {
+    let max = (n as f64).sqrt() as i64 + 1;
+
+    for i in 2..max {
+        println!("testing {} against {} (max {})", n, i, max);
+        if n % i == 0 { return false; }
+    }
+
+    n > 1
+}
+
+pub fn primes(n: usize) -> Vec<i64> {
+    let mut ret = Vec::with_capacity(n);
+
+    if n == 0 { return ret; }
+
+    let mut curr = 2;
+    let mut count = 0;
+
+    loop {
+        if is_prime(curr) {
+            ret.push(curr);
+            count += 1;
+            if count >= n { break; }
+        }
+
+        curr += 1;
+    }
+
+    ret
+}
+
+pub fn infinity(n: usize) -> Vec<i64> {
     let mut ret = Vec::with_capacity(n);
 
     if n > 0 {
@@ -19,7 +51,14 @@ pub fn infinity(n: usize) -> Vec<i32> {
 #[cfg(test)]
 #[allow(unused_imports)]
 mod tests {
-    use crate::imports::infinity;
+    use crate::imports::*;
+
+    #[test]
+    fn test_primes() {
+        assert_eq!(primes(0), vec![]);
+        assert_eq!(primes(4), vec![2,3,5,7]);
+        assert_eq!(primes(32), vec![2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113,127,131]);
+    }
 
     #[test]
     fn test_infinity() {
