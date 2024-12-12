@@ -25,7 +25,7 @@ impl<T: Clone + Copy> CollectionMethods<T> for Sequence<T> {
 #[cfg(test)]
 mod tests {
     use crate::collections::CollectionMethods;
-    use crate::sequence::Sequence;
+    use crate::sequence::sequence::Sequence;
 
     #[test]
     fn filter() {
