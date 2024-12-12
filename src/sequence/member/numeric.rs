@@ -5,11 +5,13 @@ pub struct NumericMember<T: Clone + Copy + Num> {
     value: T,
 }
 
-impl<T: Clone + Copy + Num> SequenceMember<T> for NumericMember<T> {
-    fn new(value: T) -> Box<Self> {
+impl<T: Clone + Copy + Num> NumericMember<T> {
+    pub fn new(value: T) -> Box<Self> {
         Box::new(Self { value })
     }
+}
 
+impl<T: Clone + Copy + Num> SequenceMember<T> for NumericMember<T> {
     fn pitches(&self) -> Vec<T> {
         vec![self.value]
     }

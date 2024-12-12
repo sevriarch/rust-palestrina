@@ -1,5 +1,5 @@
 pub trait SequenceMember<PitchType: Clone + Copy> {
-    fn new(value: PitchType) -> Box<Self>;
+    //fn new(value: PitchType) -> Box<Self>;
     fn pitches(&self) -> Vec<PitchType>;
     fn num_pitches(&self) -> usize;
     fn single_pitch(&self) -> Result<PitchType, &str>;
