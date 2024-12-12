@@ -2,3 +2,4 @@
 pub mod collections;
 pub mod imports;
 pub mod sequence;
+pub mod sequencemember;

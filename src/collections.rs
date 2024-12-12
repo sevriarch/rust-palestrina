@@ -22,6 +22,8 @@ pub trait CollectionMethods<T: Clone + Copy> {
 
         self.construct(newcontents)
     }
+
+    //fn retrograde(&self) -> Box<Self> { }
 }
 
 /*
@@ -47,7 +49,7 @@ mod tests {
 
     impl CollectionMethods<i32> for TestColl {
         fn new(contents: Vec<i32>) -> Self {
-            Self{ contents }
+            Self { contents }
         }
 
         fn clone_contents(&self) -> Vec<i32> {
@@ -55,7 +57,7 @@ mod tests {
         }
 
         fn construct(&self, contents: Vec<i32>) -> Box<Self> {
-            Box::new(Self{ contents })
+            Box::new(Self { contents })
         }
     }
 

@@ -8,7 +8,7 @@ pub struct Sequence<T: Clone + Copy> {
 
 impl<T: Clone + Copy> CollectionMethods<T> for Sequence<T> {
     fn new(contents: Vec<T>) -> Self {
-        Self{ contents }
+        Self { contents }
     }
 
     fn construct(&self, contents: Vec<T>) -> Box<Self> {
