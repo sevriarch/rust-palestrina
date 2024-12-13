@@ -1,14 +1,22 @@
 // Traits common to all Sequences
-use crate::collections::CollectionMethods;
+use crate::collections::traits::Collection;
 
 #[derive(Clone)]
 pub struct Sequence<T: Clone + Copy> {
     contents: Vec<T>,
 }
 
-impl<T: Clone + Copy> CollectionMethods<T> for Sequence<T> {
+impl<T: Clone + Copy> Collection<T> for Sequence<T> {
     fn new(contents: Vec<T>) -> Self {
         Self { contents }
+    }
+
+    fn cts(&self) -> Vec<T> {
+        self.contents.clone()
+    }
+
+    fn length(&self) -> usize {
+        self.contents.len()
     }
 
     fn construct(&self, contents: Vec<T>) -> Box<Self> {
@@ -24,7 +32,7 @@ impl<T: Clone + Copy> CollectionMethods<T> for Sequence<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::collections::CollectionMethods;
+    use crate::collections::traits::Collection;
     use crate::sequence::sequence::Sequence;
 
     #[test]

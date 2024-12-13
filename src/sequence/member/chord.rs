@@ -1,5 +1,5 @@
-use crate::sequence::member::traits::SequenceMember; // fix
 use crate::sequence::member::numeric::NumericMember;
+use crate::sequence::member::traits::SequenceMember; // fix
 use num_traits::Num;
 
 pub struct ChordMember<T: Clone + Copy + Num> {
@@ -59,7 +59,9 @@ impl<T: Clone + Copy + Num> SequenceMember<T> for ChordMember<T> {
     }
 
     fn map_pitches(&self, f: fn(val: T) -> T) -> Result<Box<Self>, &str> {
-        Ok(ChordMember::new(self.value.clone().into_iter().map(f).collect()))
+        Ok(ChordMember::new(
+            self.value.clone().into_iter().map(f).collect(),
+        ))
     }
 
     fn set_pitches(&self, p: Vec<T>) -> Result<Box<Self>, &str> {
@@ -97,7 +99,7 @@ mod tests {
 
     #[test]
     fn pitches() {
-        assert_eq!(ChordMember::new(vec![5,7]).pitches(), vec![5,7]);
+        assert_eq!(ChordMember::new(vec![5, 7]).pitches(), vec![5, 7]);
     }
 
     #[test]
