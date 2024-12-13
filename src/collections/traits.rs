@@ -221,6 +221,12 @@ pub trait Collection<T: Clone + Copy> {
 
         Ok(ret)
     }
+
+    fn partition(&self, f: fn(T) -> bool) -> Result<(Box<Self>, Box<Self>), &str> {
+        let (p1, p2): (Vec<T>, Vec<T>) = self.cts().into_iter().partition(|v| f(*v));
+
+        Ok((self.construct(p1), self.construct(p2)))
+    }
 }
 
 /*
@@ -454,6 +460,15 @@ mod tests {
         assert_eq!(ret[2].contents, vec![0, 2, 3, 4, 5]);
         assert_eq!(ret[3].contents, vec![6]);
         assert_eq!(ret[4].contents, vec![]);
+    }
+
+    #[test]
+    fn partition() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+
+        let (p1, p2) = coll.partition(|i| i % 2 == 0).unwrap();
+        assert_eq!(p1.contents, vec![0, 2, 4, 6]);
+        assert_eq!(p2.contents, vec![3, 5]);
     }
 
     /*
