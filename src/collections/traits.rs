@@ -57,26 +57,26 @@ pub trait Collection<T: Clone + Copy> {
         Ok(self.clone_contents()[ix])
     }
 
-    fn find_first_index(&self, f: fn(mem: T) -> bool) -> Result<usize, &str> {
+    fn find_first_index(&self, f: fn(mem: T) -> bool) -> Option<usize> {
         for (i, item) in self.cts().iter().enumerate().take(self.length()) {
             if f(*item) {
-                return Ok(i);
+                return Some(i);
             }
         }
 
-        Err("no matching index")
+        None
     }
 
-    fn find_last_index(&self, f: fn(mem: T) -> bool) -> Result<usize, &str> {
+    fn find_last_index(&self, f: fn(mem: T) -> bool) -> Option<usize> {
         let len = self.length();
 
         for (i, item) in self.cts().iter().rev().enumerate().take(len) {
             if f(*item) {
-                return Ok(len - i - 1);
+                return Some(len - i - 1);
             }
         }
 
-        Err("no matching index")
+        None
     }
 
     fn find_indices(&self, f: fn(mem: T) -> bool) -> Vec<usize> {
@@ -109,7 +109,7 @@ pub trait Collection<T: Clone + Copy> {
 
     fn keep_right(&self, num: usize) -> Result<Box<Self>, &str> {
         let len = self.length();
-        let first = if num > len { 0 } else { len - num };
+        let first = len.saturating_sub(num);
 
         Ok(self.construct(self.cts()[first..].to_vec()))
     }
@@ -157,7 +157,7 @@ pub trait Collection<T: Clone + Copy> {
 
     fn drop_right(&self, num: usize) -> Result<Box<Self>, &str> {
         let len = self.length();
-        let last = if num > len { 0 } else { len - num };
+        let last = len.saturating_sub(num);
 
         Ok(self.construct(self.cts()[..last].to_vec()))
     }
@@ -203,12 +203,6 @@ pub trait Collection<T: Clone + Copy> {
         self.construct(newcontents)
     }
 
-    fn map(&self, f: fn(T) -> T) -> Box<Self> {
-        let newcontents = self.clone_contents().into_iter().map(f).collect();
-
-        self.construct(newcontents)
-    }
-
     fn insert_before(&self, indices: Vec<i32>, values: Vec<T>) -> Result<Box<Self>, &str> {
         let ix = self.indices(indices)?;
         let mut cts = self.cts();
@@ -241,6 +235,102 @@ pub trait Collection<T: Clone + Copy> {
 
         for i in ix.into_iter().rev() {
             cts.splice(i..i + 1, values.clone());
+        }
+
+        Ok(self.construct(cts))
+    }
+
+    fn replace_first(&self, finder: fn(T) -> bool, val: T) -> Result<Box<Self>, &str> {
+        let mut cts = self.clone_contents();
+
+        if let Some(i) = self.find_first_index(finder) {
+            cts[i] = val;
+        }
+
+        Ok(self.construct(cts))
+    }
+
+    fn replace_last(&self, finder: fn(T) -> bool, val: T) -> Result<Box<Self>, &str> {
+        let mut cts = self.clone_contents();
+
+        if let Some(i) = self.find_last_index(finder) {
+            cts[i] = val;
+        }
+
+        Ok(self.construct(cts))
+    }
+
+    fn map(&self, f: fn(T) -> T) -> Box<Self> {
+        let newcontents = self.clone_contents().into_iter().map(f).collect();
+
+        self.construct(newcontents)
+    }
+
+    fn map_indices(&self, indices: Vec<i32>, f: fn(T) -> T) -> Result<Box<Self>, &str> {
+        let mut ix = self.indices(indices)?;
+
+        ix.sort_unstable();
+        ix.dedup();
+
+        let mut cts = self.cts();
+
+        for i in ix.into_iter() {
+            cts[i] = f(cts[i]);
+        }
+
+        Ok(self.construct(cts))
+    }
+
+    fn map_first(&self, finder: fn(T) -> bool, f: fn(T) -> T) -> Result<Box<Self>, &str> {
+        let mut cts = self.clone_contents();
+
+        if let Some(i) = self.find_first_index(finder) {
+            cts[i] = f(cts[i]);
+        }
+
+        Ok(self.construct(cts))
+    }
+
+    fn map_last(&self, finder: fn(T) -> bool, f: fn(T) -> T) -> Result<Box<Self>, &str> {
+        let mut cts = self.clone_contents();
+
+        if let Some(i) = self.find_last_index(finder) {
+            cts[i] = f(cts[i]);
+        }
+
+        Ok(self.construct(cts))
+    }
+
+    fn flat_map_indices(&self, indices: Vec<i32>, f: fn(T) -> Vec<T>) -> Result<Box<Self>, &str> {
+        let mut ix = self.indices(indices)?;
+
+        ix.sort_unstable();
+        ix.dedup();
+
+        let mut cts = self.cts();
+
+        for i in ix.into_iter().rev() {
+            cts.splice(i..i + 1, f(cts[i]));
+        }
+
+        Ok(self.construct(cts))
+    }
+
+    fn flat_map_first(&self, finder: fn(T) -> bool, f: fn(T) -> Vec<T>) -> Result<Box<Self>, &str> {
+        let mut cts = self.clone_contents();
+
+        if let Some(i) = self.find_first_index(finder) {
+            cts.splice(i..i + 1, f(cts[i]));
+        }
+
+        Ok(self.construct(cts))
+    }
+
+    fn flat_map_last(&self, finder: fn(T) -> bool, f: fn(T) -> Vec<T>) -> Result<Box<Self>, &str> {
+        let mut cts = self.clone_contents();
+
+        if let Some(i) = self.find_last_index(finder) {
+            cts.splice(i..i + 1, f(cts[i]));
         }
 
         Ok(self.construct(cts))
@@ -370,16 +460,16 @@ mod tests {
     fn find_first_index() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
-        assert_eq!(coll.find_first_index(|v| v % 2 == 1), Ok(2));
-        assert!(coll.find_first_index(|v| v > 6).is_err())
+        assert_eq!(coll.find_first_index(|v| v % 2 == 1), Some(2));
+        assert!(coll.find_first_index(|v| v > 6).is_none())
     }
 
     #[test]
     fn find_last_index() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
-        assert_eq!(coll.find_last_index(|v| v % 2 == 1), Ok(4));
-        assert!(coll.find_last_index(|v| v > 6).is_err())
+        assert_eq!(coll.find_last_index(|v| v % 2 == 1), Some(4));
+        assert!(coll.find_last_index(|v| v > 6).is_none())
     }
 
     #[test]
@@ -532,6 +622,88 @@ mod tests {
         let new = coll.replace_indices(vec![1, -5, 4, -1], vec![7, 8]);
 
         assert_contents_eq!(new, vec![0, 7, 8, 3, 4, 7, 8, 7, 8]);
+    }
+
+    #[test]
+    fn replace_first() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+
+        let new = coll.replace_first(|v| v > 10, 10);
+        assert_contents_eq!(new, vec![0, 2, 3, 4, 5, 6]);
+
+        let new = coll.replace_first(|v| v % 2 == 1, 10);
+        assert_contents_eq!(new, vec![0, 2, 10, 4, 5, 6]);
+    }
+
+    #[test]
+    fn replace_last() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+
+        let new = coll.replace_last(|v| v > 10, 10);
+        assert_contents_eq!(new, vec![0, 2, 3, 4, 5, 6]);
+
+        let new = coll.replace_last(|v| v % 2 == 1, 10);
+        assert_contents_eq!(new, vec![0, 2, 3, 4, 10, 6]);
+    }
+
+    #[test]
+    fn map_indices() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+        let new = coll.map_indices(vec![1, -5, 4, -1], |v| v + 5);
+
+        assert_contents_eq!(new, vec![0, 7, 3, 4, 10, 11]);
+    }
+
+    #[test]
+    fn map_first() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+
+        let new = coll.map_first(|v| v > 10, |v| v + 10);
+        assert_contents_eq!(new, vec![0, 2, 3, 4, 5, 6]);
+
+        let new = coll.map_first(|v| v % 2 == 1, |v| v + 10);
+        assert_contents_eq!(new, vec![0, 2, 13, 4, 5, 6]);
+    }
+
+    #[test]
+    fn map_last() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+
+        let new = coll.map_last(|v| v > 10, |v| v + 10);
+        assert_contents_eq!(new, vec![0, 2, 3, 4, 5, 6]);
+
+        let new = coll.map_last(|v| v % 2 == 1, |v| v + 10);
+        assert_contents_eq!(new, vec![0, 2, 3, 4, 15, 6]);
+    }
+
+    #[test]
+    fn flat_map_indices() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+        let new = coll.flat_map_indices(vec![1, -5, 4, -1], |v| vec![v, v * 2, v * v]);
+
+        assert_contents_eq!(new, vec![0, 2, 4, 4, 3, 4, 5, 10, 25, 6, 12, 36]);
+    }
+
+    #[test]
+    fn flat_map_first() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+
+        let new = coll.flat_map_first(|v| v > 10, |v| vec![v + 10, v, v - 10]);
+        assert_contents_eq!(new, vec![0, 2, 3, 4, 5, 6]);
+
+        let new = coll.flat_map_first(|v| v % 2 == 1, |v| vec![v + 10, v, v - 10]);
+        assert_contents_eq!(new, vec![0, 2, 13, 3, -7, 4, 5, 6]);
+    }
+
+    #[test]
+    fn flat_map_last() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+
+        let new = coll.flat_map_last(|v| v > 10, |v| vec![v + 10, v, v - 10]);
+        assert_contents_eq!(new, vec![0, 2, 3, 4, 5, 6]);
+
+        let new = coll.flat_map_last(|v| v % 2 == 1, |v| vec![v + 10, v, v - 10]);
+        assert_contents_eq!(new, vec![0, 2, 3, 4, 15, 5, -5, 6]);
     }
 
     #[test]

@@ -33,7 +33,7 @@ impl<T: Clone + Copy> Collection<T> for Sequence<T> {
 #[cfg(test)]
 mod tests {
     use crate::collections::traits::Collection;
-    use crate::sequence::sequence::Sequence;
+    use crate::sequence::traits::Sequence;
 
     #[test]
     fn filter() {

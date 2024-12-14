@@ -68,23 +68,23 @@ impl<T: Clone + Copy + Num> SequenceMember<T> for ChordMember<T> {
         Ok(ChordMember::new(p))
     }
 
-    fn invert(&self, p: T) -> Result<Box<Self>, &str> {
+    fn invert(&self, _p: T) -> Result<Box<Self>, &str> {
         todo!()
     }
 
-    fn transpose(&self, p: T) -> Result<Box<Self>, &str> {
+    fn transpose(&self, _p: T) -> Result<Box<Self>, &str> {
         todo!()
     }
 
-    fn augment(&self, p: T) -> Result<Box<Self>, &str> {
+    fn augment(&self, _p: T) -> Result<Box<Self>, &str> {
         todo!()
     }
 
-    fn diminish(&self, p: T) -> Result<Box<Self>, &str> {
+    fn diminish(&self, _p: T) -> Result<Box<Self>, &str> {
         todo!()
     }
 
-    fn modulus(&self, p: T) -> Result<Box<Self>, &str> {
+    fn modulus(&self, _p: T) -> Result<Box<Self>, &str> {
         todo!()
     }
 }

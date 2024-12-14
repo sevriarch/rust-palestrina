@@ -1,2 +1,2 @@
 pub mod member;
-pub mod sequence;
+pub mod traits;
