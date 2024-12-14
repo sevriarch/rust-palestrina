@@ -40,8 +40,8 @@ pub trait Collection<T: Clone + Copy> {
         }
     }
 
-    fn indices(&self, indices: Vec<i32>) -> Result<Vec<usize>, &str> {
-        indices.into_iter().map(|i| self.index(i)).collect()
+    fn indices(&self, indices: &[i32]) -> Result<Vec<usize>, &str> {
+        indices.iter().map(|i| self.index(*i)).collect()
     }
 
     fn indices_inclusive(&self, indices: Vec<i32>) -> Result<Vec<usize>, &str> {
@@ -114,7 +114,7 @@ pub trait Collection<T: Clone + Copy> {
         Ok(self.construct(self.cts()[first..].to_vec()))
     }
 
-    fn keep_indices(&self, indices: Vec<i32>) -> Result<Box<Self>, &str> {
+    fn keep_indices(&self, indices: &[i32]) -> Result<Box<Self>, &str> {
         let ix = self.indices(indices)?;
         let contents = self.cts();
 
@@ -162,7 +162,7 @@ pub trait Collection<T: Clone + Copy> {
         Ok(self.construct(self.cts()[..last].to_vec()))
     }
 
-    fn drop_indices(&self, indices: Vec<i32>) -> Result<Box<Self>, &str> {
+    fn drop_indices(&self, indices: &[i32]) -> Result<Box<Self>, &str> {
         let ix = self.indices(indices)?;
         let contents = self.cts();
 
@@ -203,29 +203,29 @@ pub trait Collection<T: Clone + Copy> {
         self.construct(newcontents)
     }
 
-    fn insert_before(&self, indices: Vec<i32>, values: Vec<T>) -> Result<Box<Self>, &str> {
+    fn insert_before(&self, indices: &[i32], values: &[T]) -> Result<Box<Self>, &str> {
         let ix = self.indices(indices)?;
         let mut cts = self.cts();
 
         for i in ix.into_iter().rev() {
-            cts.splice(i..i, values.clone());
+            cts.splice(i..i, values.to_vec());
         }
 
         Ok(self.construct(cts))
     }
 
-    fn insert_after(&self, indices: Vec<i32>, values: Vec<T>) -> Result<Box<Self>, &str> {
+    fn insert_after(&self, indices: &[i32], values: &[T]) -> Result<Box<Self>, &str> {
         let ix = self.indices(indices)?;
         let mut cts = self.cts();
 
         for i in ix.into_iter().rev() {
-            cts.splice(i + 1..i + 1, values.clone());
+            cts.splice(i + 1..i + 1, values.to_vec());
         }
 
         Ok(self.construct(cts))
     }
 
-    fn replace_indices(&self, indices: Vec<i32>, values: Vec<T>) -> Result<Box<Self>, &str> {
+    fn replace_indices(&self, indices: &[i32], values: &[T]) -> Result<Box<Self>, &str> {
         let mut ix = self.indices(indices)?;
 
         ix.sort_unstable();
@@ -234,7 +234,7 @@ pub trait Collection<T: Clone + Copy> {
         let mut cts = self.cts();
 
         for i in ix.into_iter().rev() {
-            cts.splice(i..i + 1, values.clone());
+            cts.splice(i..i + 1, values.to_vec());
         }
 
         Ok(self.construct(cts))
@@ -266,7 +266,7 @@ pub trait Collection<T: Clone + Copy> {
         self.construct(newcontents)
     }
 
-    fn map_indices(&self, indices: Vec<i32>, f: fn(T) -> T) -> Result<Box<Self>, &str> {
+    fn map_indices(&self, indices: &[i32], f: fn(T) -> T) -> Result<Box<Self>, &str> {
         let mut ix = self.indices(indices)?;
 
         ix.sort_unstable();
@@ -301,7 +301,7 @@ pub trait Collection<T: Clone + Copy> {
         Ok(self.construct(cts))
     }
 
-    fn flat_map_indices(&self, indices: Vec<i32>, f: fn(T) -> Vec<T>) -> Result<Box<Self>, &str> {
+    fn flat_map_indices(&self, indices: &[i32], f: fn(T) -> Vec<T>) -> Result<Box<Self>, &str> {
         let mut ix = self.indices(indices)?;
 
         ix.sort_unstable();
@@ -516,11 +516,11 @@ mod tests {
     fn keep_indices() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
-        assert!(coll.keep_indices(vec![0, 8]).is_err());
-        assert_contents_eq!(coll.keep_indices(vec![]), vec![]);
-        assert_contents_eq!(coll.keep_indices(vec![1, -1]), vec![2, 6]);
+        assert!(coll.keep_indices(&[0, 8]).is_err());
+        assert_contents_eq!(coll.keep_indices(&[]), vec![]);
+        assert_contents_eq!(coll.keep_indices(&[1, -1]), vec![2, 6]);
         assert_contents_eq!(
-            coll.keep_indices(vec![0, 2, 3, -3, -1, 4, 5]),
+            coll.keep_indices(&[0, 2, 3, -3, -1, 4, 5]),
             vec![0, 3, 4, 4, 6, 5, 6]
         );
     }
@@ -570,9 +570,9 @@ mod tests {
     fn drop_indices() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
-        assert!(coll.drop_indices(vec![0, 8]).is_err());
-        assert_contents_eq!(coll.drop_indices(vec![]), vec![0, 2, 3, 4, 5, 6]);
-        assert_contents_eq!(coll.drop_indices(vec![1, -1]), vec![0, 3, 4, 5]);
+        assert!(coll.drop_indices(&[0, 8]).is_err());
+        assert_contents_eq!(coll.drop_indices(&[]), vec![0, 2, 3, 4, 5, 6]);
+        assert_contents_eq!(coll.drop_indices(&[1, -1]), vec![0, 3, 4, 5]);
     }
 
     #[test]
@@ -603,7 +603,7 @@ mod tests {
     #[test]
     fn insert_before() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
-        let new = coll.insert_before(vec![1, -5, 4, -1], vec![7, 8]);
+        let new = coll.insert_before(&[1, -5, 4, -1], &[7, 8]);
 
         assert_contents_eq!(new, vec![0, 7, 8, 7, 8, 2, 3, 4, 7, 8, 5, 7, 8, 6]);
     }
@@ -611,7 +611,7 @@ mod tests {
     #[test]
     fn insert_after() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
-        let new = coll.insert_after(vec![1, -5, 4, -1], vec![7, 8]);
+        let new = coll.insert_after(&[1, -5, 4, -1], &[7, 8]);
 
         assert_contents_eq!(new, vec![0, 2, 7, 8, 7, 8, 3, 4, 5, 7, 8, 6, 7, 8]);
     }
@@ -619,7 +619,7 @@ mod tests {
     #[test]
     fn replace_indices() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
-        let new = coll.replace_indices(vec![1, -5, 4, -1], vec![7, 8]);
+        let new = coll.replace_indices(&[1, -5, 4, -1], &[7, 8]);
 
         assert_contents_eq!(new, vec![0, 7, 8, 3, 4, 7, 8, 7, 8]);
     }
@@ -649,7 +649,7 @@ mod tests {
     #[test]
     fn map_indices() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
-        let new = coll.map_indices(vec![1, -5, 4, -1], |v| v + 5);
+        let new = coll.map_indices(&[1, -5, 4, -1], |v| v + 5);
 
         assert_contents_eq!(new, vec![0, 7, 3, 4, 10, 11]);
     }
@@ -679,7 +679,7 @@ mod tests {
     #[test]
     fn flat_map_indices() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
-        let new = coll.flat_map_indices(vec![1, -5, 4, -1], |v| vec![v, v * 2, v * v]);
+        let new = coll.flat_map_indices(&[1, -5, 4, -1], |v| vec![v, v * 2, v * v]);
 
         assert_contents_eq!(new, vec![0, 2, 4, 4, 3, 4, 5, 10, 25, 6, 12, 36]);
     }
