@@ -220,6 +220,33 @@ pub trait Collection<T: Clone + Copy> {
         Ok(self.construct(cts))
     }
 
+    fn insert_after(&self, indices: Vec<i32>, values: Vec<T>) -> Result<Box<Self>, &str> {
+        let ix = self.indices(indices)?;
+        let mut cts = self.cts();
+
+        for i in ix.into_iter().rev() {
+            cts.splice(i + 1..i + 1, values.clone());
+        }
+
+        Ok(self.construct(cts))
+    }
+
+    fn replace_indices(&self, indices: Vec<i32>, values: Vec<T>) -> Result<Box<Self>, &str> {
+        let mut ix = self.indices(indices)?;
+
+        ix.sort_unstable();
+        ix.dedup();
+
+        let mut cts = self.cts();
+
+        for i in ix.into_iter().rev() {
+            cts.splice(i..i + 1, values.clone());
+        }
+
+        Ok(self.construct(cts))
+    }
+
+    // TODO: is this needed?
     fn split_contents_at(&self, indices: Vec<i32>) -> Result<Vec<Vec<T>>, &str> {
         let ix = self.indices_inclusive(indices)?;
 
@@ -450,6 +477,15 @@ mod tests {
     }
 
     #[test]
+    fn drop_indices() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+
+        assert!(coll.drop_indices(vec![0, 8]).is_err());
+        assert_contents_eq!(coll.drop_indices(vec![]), vec![0, 2, 3, 4, 5, 6]);
+        assert_contents_eq!(coll.drop_indices(vec![1, -1]), vec![0, 3, 4, 5]);
+    }
+
+    #[test]
     fn drop_nth() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
@@ -483,12 +519,19 @@ mod tests {
     }
 
     #[test]
-    fn drop_indices() {
+    fn insert_after() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+        let new = coll.insert_after(vec![1, -5, 4, -1], vec![7, 8]);
 
-        assert!(coll.drop_indices(vec![0, 8]).is_err());
-        assert_contents_eq!(coll.drop_indices(vec![]), vec![0, 2, 3, 4, 5, 6]);
-        assert_contents_eq!(coll.drop_indices(vec![1, -1]), vec![0, 3, 4, 5]);
+        assert_contents_eq!(new, vec![0, 2, 7, 8, 7, 8, 3, 4, 5, 7, 8, 6, 7, 8]);
+    }
+
+    #[test]
+    fn replace_indices() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+        let new = coll.replace_indices(vec![1, -5, 4, -1], vec![7, 8]);
+
+        assert_contents_eq!(new, vec![0, 7, 8, 3, 4, 7, 8, 7, 8]);
     }
 
     #[test]
