@@ -336,6 +336,62 @@ pub trait Collection<T: Clone + Copy> {
         Ok(self.construct(cts))
     }
 
+    fn append(&self, coll: &Self) -> Result<Box<Self>, &str> {
+        let mut cts = self.clone_contents();
+        cts.append(&mut coll.clone_contents());
+
+        Ok(self.construct(cts))
+    }
+
+    fn append_items(&self, items: &[T]) -> Result<Box<Self>, &str> {
+        let mut cts = self.clone_contents();
+        cts.append(&mut items.to_vec());
+
+        Ok(self.construct(cts))
+    }
+
+    fn prepend(&self, coll: &Self) -> Result<Box<Self>, &str> {
+        let mut cts = coll.clone_contents();
+        cts.append(&mut self.clone_contents());
+
+        Ok(self.construct(cts))
+    }
+
+    fn prepend_items(&self, items: &[T]) -> Result<Box<Self>, &str> {
+        let mut cts = items.to_vec();
+        cts.append(&mut self.clone_contents());
+
+        Ok(self.construct(cts))
+    }
+
+    fn retrograde(&self) -> Result<Box<Self>, &str> {
+        let mut cts = self.clone_contents();
+        cts.reverse();
+
+        Ok(self.construct(cts))
+    }
+
+    fn swap(&self, (i1, i2): (i32, i32)) -> Result<Box<Self>, &str> {
+        let ix1 = self.index(i1)?;
+        let ix2 = self.index(i2)?;
+        let mut cts = self.clone_contents();
+        cts.swap(ix1, ix2);
+
+        Ok(self.construct(cts))
+    }
+
+    fn swap_many(&self, tup: &[(i32, i32)]) -> Result<Box<Self>, &str> {
+        let mut cts = self.cts();
+
+        for (i1, i2) in tup.iter() {
+            let ix1 = self.index(*i1)?;
+            let ix2 = self.index(*i2)?;
+            cts.swap(ix1, ix2);
+        }
+
+        Ok(self.construct(cts))
+    }
+
     // TODO: is this needed?
     fn split_contents_at(&self, indices: Vec<i32>) -> Result<Vec<Vec<T>>, &str> {
         let ix = self.indices_inclusive(indices)?;
@@ -392,6 +448,12 @@ pub trait Collection<T: Clone + Copy> {
             .map(|(k, v)| (k, self.construct(v.to_vec())))
             .collect())
     }
+
+    fn pipe<TPipe>(&self, f: fn(&Self) -> TPipe) -> TPipe {
+        f(self)
+    }
+
+    //tap(),each()
 }
 
 /*
@@ -707,6 +769,61 @@ mod tests {
     }
 
     #[test]
+    fn append() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+        let app = TestColl::new(vec![9, 11, 13 ]);
+
+        assert_contents_eq!(coll.append(&app), vec![0, 2, 3, 4, 5, 6, 9, 11, 13]);
+    }
+
+    #[test]
+    fn append_items() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+
+        assert_contents_eq!(coll.append_items(&[9, 11, 13]), vec![0, 2, 3, 4, 5, 6, 9, 11, 13]);
+    }
+
+    #[test]
+    fn prepend() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+        let app = TestColl::new(vec![9, 11, 13 ]);
+
+        assert_contents_eq!(coll.prepend(&app), vec![9, 11, 13, 0, 2, 3, 4, 5, 6]);
+    }
+
+    #[test]
+    fn prepend_items() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+
+        assert_contents_eq!(coll.prepend_items(&[9, 11, 13]), vec![9, 11, 13, 0, 2, 3, 4, 5, 6]);
+    }
+
+    #[test]
+    fn retrograde() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+
+        assert_contents_eq!(coll.retrograde(), vec![6, 5, 4, 3, 2, 0]);
+    }
+
+    #[test]
+    fn swap() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+
+        assert!(coll.swap((0, 6)).is_err());
+        assert!(coll.swap((-7, 0)).is_err());
+        assert_contents_eq!(coll.swap((0, -1)), vec![6, 2, 3, 4, 5, 0]);
+    }
+
+    #[test]
+    fn swap_many() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+
+        assert!(coll.swap_many(&[(0, 6)]).is_err());
+        assert!(coll.swap_many(&[(1, 2), (-7, 0)]).is_err());
+        assert_contents_eq!(coll.swap_many(&[(1, -3),(2, -1),(0, 1)]), vec![4, 0, 6, 2, 5, 3]);
+    }
+
+    #[test]
     fn split_at() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
@@ -751,6 +868,13 @@ mod tests {
         assert_eq!(map.get(&0).unwrap().contents, vec![0, 3, 6]);
         assert_eq!(map.get(&1).unwrap().contents, vec![4]);
         assert_eq!(map.get(&2).unwrap().contents, vec![2, 5]);
+    }
+
+    #[test]
+    fn pipe() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+
+        assert_eq!(coll.pipe(|c| c.length()), 6);
     }
 
     /*
