@@ -1,5 +1,9 @@
 // Traits common to all collections within Palestrina
 
+use std::collections::hash_map::HashMap;
+use std::fmt::Debug;
+use std::hash::Hash;
+
 pub trait Collection<T: Clone + Copy> {
     fn new(contents: Vec<T>) -> Self;
 
@@ -158,6 +162,18 @@ pub trait Collection<T: Clone + Copy> {
         Ok(self.construct(self.cts()[..last].to_vec()))
     }
 
+    fn drop_indices(&self, indices: Vec<i32>) -> Result<Box<Self>, &str> {
+        let ix = self.indices(indices)?;
+        let contents = self.cts();
+
+        Ok(self.construct(
+            (0..self.length())
+                .filter(|i| !ix.contains(i))
+                .map(|i| contents[i])
+                .collect(),
+        ))
+    }
+
     fn drop_nth(&self, n: usize) -> Result<Box<Self>, &str> {
         if n == 0 {
             Err("cannot keep every 0th member")
@@ -171,18 +187,6 @@ pub trait Collection<T: Clone + Copy> {
                     .collect(),
             ))
         }
-    }
-
-    fn drop_indices(&self, indices: Vec<i32>) -> Result<Box<Self>, &str> {
-        let ix = self.indices(indices)?;
-        let contents = self.cts();
-
-        Ok(self.construct(
-            (0..self.length())
-                .filter(|i| !ix.contains(i))
-                .map(|i| contents[i])
-                .collect(),
-        ))
     }
 
     fn empty(&self) -> Box<Self> {
@@ -203,6 +207,34 @@ pub trait Collection<T: Clone + Copy> {
         let newcontents = self.clone_contents().into_iter().map(f).collect();
 
         self.construct(newcontents)
+    }
+
+    fn insert_before(&self, indices: Vec<i32>, values: Vec<T>) -> Result<Box<Self>, &str> {
+        let ix = self.indices(indices)?;
+        let mut cts = self.cts();
+
+        for i in ix.into_iter().rev() {
+            cts.splice(i..i, values.clone());
+        }
+
+        Ok(self.construct(cts))
+    }
+
+    fn split_contents_at(&self, indices: Vec<i32>) -> Result<Vec<Vec<T>>, &str> {
+        let ix = self.indices_inclusive(indices)?;
+
+        let cts = self.cts();
+        let mut last: usize = 0;
+        let mut ret: Vec<Vec<T>> = vec![];
+
+        for i in ix {
+            ret.push(cts[last..i].to_vec());
+            last = i;
+        }
+
+        ret.push(cts[last..].to_vec());
+
+        Ok(ret)
     }
 
     fn split_at(&self, indices: Vec<i32>) -> Result<Vec<Box<Self>>, &str> {
@@ -226,6 +258,22 @@ pub trait Collection<T: Clone + Copy> {
         let (p1, p2): (Vec<T>, Vec<T>) = self.cts().into_iter().partition(|v| f(*v));
 
         Ok((self.construct(p1), self.construct(p2)))
+    }
+
+    fn group_by<KeyType: Hash + Eq + PartialEq + Debug>(
+        &self,
+        f: fn(T) -> KeyType,
+    ) -> Result<HashMap<KeyType, Box<Self>>, &str> {
+        let mut rets = HashMap::<KeyType, Vec<T>>::new();
+
+        for m in self.cts() {
+            rets.entry(f(m)).or_default().push(m);
+        }
+
+        Ok(rets
+            .into_iter()
+            .map(|(k, v)| (k, self.construct(v.to_vec())))
+            .collect())
     }
 }
 
@@ -427,6 +475,14 @@ mod tests {
     }
 
     #[test]
+    fn insert_before() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+        let new = coll.insert_before(vec![1, -5, 4, -1], vec![7, 8]);
+
+        assert_contents_eq!(new, vec![0, 7, 8, 7, 8, 2, 3, 4, 7, 8, 5, 7, 8, 6]);
+    }
+
+    #[test]
     fn drop_indices() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
@@ -469,6 +525,17 @@ mod tests {
         let (p1, p2) = coll.partition(|i| i % 2 == 0).unwrap();
         assert_eq!(p1.contents, vec![0, 2, 4, 6]);
         assert_eq!(p2.contents, vec![3, 5]);
+    }
+
+    #[test]
+    fn group_by() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+
+        let map = coll.group_by(|i| i % 3).unwrap();
+        assert_eq!(map.len(), 3);
+        assert_eq!(map.get(&0).unwrap().contents, vec![0, 3, 6]);
+        assert_eq!(map.get(&1).unwrap().contents, vec![4]);
+        assert_eq!(map.get(&2).unwrap().contents, vec![2, 5]);
     }
 
     /*
