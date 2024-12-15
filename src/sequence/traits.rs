@@ -1,12 +1,13 @@
 // Traits common to all Sequences
 use crate::collections::traits::Collection;
+use std::fmt::Debug;
 
 #[derive(Clone)]
-pub struct Sequence<T: Clone + Copy> {
+pub struct Sequence<T: Clone + Copy + Debug> {
     contents: Vec<T>,
 }
 
-impl<T: Clone + Copy> Collection<T> for Sequence<T> {
+impl<T: Clone + Copy + Debug> Collection<T> for Sequence<T> {
     fn new(contents: Vec<T>) -> Self {
         Self { contents }
     }
@@ -23,10 +24,6 @@ impl<T: Clone + Copy> Collection<T> for Sequence<T> {
         let mut newseq = self.clone();
         newseq.contents = contents;
         Box::new(newseq)
-    }
-
-    fn clone_contents(&self) -> Vec<T> {
-        self.contents.clone()
     }
 }
 

@@ -4,12 +4,11 @@ use std::collections::hash_map::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-pub trait Collection<T: Clone + Copy> {
+pub trait Collection<T: Clone + Copy + Debug> {
     fn new(contents: Vec<T>) -> Self;
 
     fn cts(&self) -> Vec<T>;
     fn length(&self) -> usize;
-    fn clone_contents(&self) -> Vec<T>;
     fn construct(&self, contents: Vec<T>) -> Box<Self>;
 
     fn index(&self, i: i32) -> Result<usize, &str> {
@@ -54,7 +53,7 @@ pub trait Collection<T: Clone + Copy> {
     fn val_at(&self, index: i32) -> Result<T, &str> {
         let ix = self.index(index)?;
 
-        Ok(self.clone_contents()[ix])
+        Ok(self.cts()[ix])
     }
 
     fn find_first_index(&self, f: fn(mem: T) -> bool) -> Option<usize> {
@@ -194,11 +193,7 @@ pub trait Collection<T: Clone + Copy> {
     }
 
     fn filter(&self, f: fn(T) -> bool) -> Box<Self> {
-        let newcontents = self
-            .clone_contents()
-            .into_iter()
-            .filter(|m| f(*m))
-            .collect();
+        let newcontents = self.cts().into_iter().filter(|m| f(*m)).collect();
 
         self.construct(newcontents)
     }
@@ -241,7 +236,7 @@ pub trait Collection<T: Clone + Copy> {
     }
 
     fn replace_first(&self, finder: fn(T) -> bool, val: T) -> Result<Box<Self>, &str> {
-        let mut cts = self.clone_contents();
+        let mut cts = self.cts();
 
         if let Some(i) = self.find_first_index(finder) {
             cts[i] = val;
@@ -251,7 +246,7 @@ pub trait Collection<T: Clone + Copy> {
     }
 
     fn replace_last(&self, finder: fn(T) -> bool, val: T) -> Result<Box<Self>, &str> {
-        let mut cts = self.clone_contents();
+        let mut cts = self.cts();
 
         if let Some(i) = self.find_last_index(finder) {
             cts[i] = val;
@@ -261,7 +256,7 @@ pub trait Collection<T: Clone + Copy> {
     }
 
     fn map(&self, f: fn(T) -> T) -> Box<Self> {
-        let newcontents = self.clone_contents().into_iter().map(f).collect();
+        let newcontents = self.cts().into_iter().map(f).collect();
 
         self.construct(newcontents)
     }
@@ -282,7 +277,7 @@ pub trait Collection<T: Clone + Copy> {
     }
 
     fn map_first(&self, finder: fn(T) -> bool, f: fn(T) -> T) -> Result<Box<Self>, &str> {
-        let mut cts = self.clone_contents();
+        let mut cts = self.cts();
 
         if let Some(i) = self.find_first_index(finder) {
             cts[i] = f(cts[i]);
@@ -292,7 +287,7 @@ pub trait Collection<T: Clone + Copy> {
     }
 
     fn map_last(&self, finder: fn(T) -> bool, f: fn(T) -> T) -> Result<Box<Self>, &str> {
-        let mut cts = self.clone_contents();
+        let mut cts = self.cts();
 
         if let Some(i) = self.find_last_index(finder) {
             cts[i] = f(cts[i]);
@@ -317,7 +312,7 @@ pub trait Collection<T: Clone + Copy> {
     }
 
     fn flat_map_first(&self, finder: fn(T) -> bool, f: fn(T) -> Vec<T>) -> Result<Box<Self>, &str> {
-        let mut cts = self.clone_contents();
+        let mut cts = self.cts();
 
         if let Some(i) = self.find_first_index(finder) {
             cts.splice(i..i + 1, f(cts[i]));
@@ -327,7 +322,7 @@ pub trait Collection<T: Clone + Copy> {
     }
 
     fn flat_map_last(&self, finder: fn(T) -> bool, f: fn(T) -> Vec<T>) -> Result<Box<Self>, &str> {
-        let mut cts = self.clone_contents();
+        let mut cts = self.cts();
 
         if let Some(i) = self.find_last_index(finder) {
             cts.splice(i..i + 1, f(cts[i]));
@@ -337,35 +332,35 @@ pub trait Collection<T: Clone + Copy> {
     }
 
     fn append(&self, coll: &Self) -> Result<Box<Self>, &str> {
-        let mut cts = self.clone_contents();
-        cts.append(&mut coll.clone_contents());
+        let mut cts = self.cts();
+        cts.append(&mut coll.cts());
 
         Ok(self.construct(cts))
     }
 
     fn append_items(&self, items: &[T]) -> Result<Box<Self>, &str> {
-        let mut cts = self.clone_contents();
+        let mut cts = self.cts();
         cts.append(&mut items.to_vec());
 
         Ok(self.construct(cts))
     }
 
     fn prepend(&self, coll: &Self) -> Result<Box<Self>, &str> {
-        let mut cts = coll.clone_contents();
-        cts.append(&mut self.clone_contents());
+        let mut cts = coll.cts();
+        cts.append(&mut self.cts());
 
         Ok(self.construct(cts))
     }
 
     fn prepend_items(&self, items: &[T]) -> Result<Box<Self>, &str> {
         let mut cts = items.to_vec();
-        cts.append(&mut self.clone_contents());
+        cts.append(&mut self.cts());
 
         Ok(self.construct(cts))
     }
 
     fn retrograde(&self) -> Result<Box<Self>, &str> {
-        let mut cts = self.clone_contents();
+        let mut cts = self.cts();
         cts.reverse();
 
         Ok(self.construct(cts))
@@ -374,7 +369,7 @@ pub trait Collection<T: Clone + Copy> {
     fn swap(&self, (i1, i2): (i32, i32)) -> Result<Box<Self>, &str> {
         let ix1 = self.index(i1)?;
         let ix2 = self.index(i2)?;
-        let mut cts = self.clone_contents();
+        let mut cts = self.cts();
         cts.swap(ix1, ix2);
 
         Ok(self.construct(cts))
@@ -494,10 +489,6 @@ mod tests {
         }
 
         fn cts(&self) -> Vec<i32> {
-            self.contents.clone()
-        }
-
-        fn clone_contents(&self) -> Vec<i32> {
             self.contents.clone()
         }
 
@@ -771,7 +762,7 @@ mod tests {
     #[test]
     fn append() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
-        let app = TestColl::new(vec![9, 11, 13 ]);
+        let app = TestColl::new(vec![9, 11, 13]);
 
         assert_contents_eq!(coll.append(&app), vec![0, 2, 3, 4, 5, 6, 9, 11, 13]);
     }
@@ -780,13 +771,16 @@ mod tests {
     fn append_items() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
-        assert_contents_eq!(coll.append_items(&[9, 11, 13]), vec![0, 2, 3, 4, 5, 6, 9, 11, 13]);
+        assert_contents_eq!(
+            coll.append_items(&[9, 11, 13]),
+            vec![0, 2, 3, 4, 5, 6, 9, 11, 13]
+        );
     }
 
     #[test]
     fn prepend() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
-        let app = TestColl::new(vec![9, 11, 13 ]);
+        let app = TestColl::new(vec![9, 11, 13]);
 
         assert_contents_eq!(coll.prepend(&app), vec![9, 11, 13, 0, 2, 3, 4, 5, 6]);
     }
@@ -795,7 +789,10 @@ mod tests {
     fn prepend_items() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
-        assert_contents_eq!(coll.prepend_items(&[9, 11, 13]), vec![9, 11, 13, 0, 2, 3, 4, 5, 6]);
+        assert_contents_eq!(
+            coll.prepend_items(&[9, 11, 13]),
+            vec![9, 11, 13, 0, 2, 3, 4, 5, 6]
+        );
     }
 
     #[test]
@@ -820,7 +817,10 @@ mod tests {
 
         assert!(coll.swap_many(&[(0, 6)]).is_err());
         assert!(coll.swap_many(&[(1, 2), (-7, 0)]).is_err());
-        assert_contents_eq!(coll.swap_many(&[(1, -3),(2, -1),(0, 1)]), vec![4, 0, 6, 2, 5, 3]);
+        assert_contents_eq!(
+            coll.swap_many(&[(1, -3), (2, -1), (0, 1)]),
+            vec![4, 0, 6, 2, 5, 3]
+        );
     }
 
     #[test]

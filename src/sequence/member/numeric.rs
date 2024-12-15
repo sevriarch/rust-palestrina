@@ -28,16 +28,16 @@ impl<T: Clone + Copy + Num> SequenceMember<T> for NumericMember<T> {
         false
     }
 
-    fn max(&self) -> Result<T, &str> {
-        Ok(self.value)
+    fn max(&self) -> Option<T> {
+        Some(self.value)
     }
 
-    fn min(&self) -> Result<T, &str> {
-        Ok(self.value)
+    fn min(&self) -> Option<T> {
+        Some(self.value)
     }
 
-    fn mean(&self) -> Result<T, &str> {
-        Ok(self.value)
+    fn mean(&self) -> Option<T> {
+        Some(self.value)
     }
 
     fn equals(&self, cmp: Self) -> bool {

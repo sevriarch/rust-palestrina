@@ -4,9 +4,9 @@ pub trait SequenceMember<PitchType: Clone + Copy> {
     fn num_pitches(&self) -> usize;
     fn single_pitch(&self) -> Result<PitchType, &str>;
     fn is_silent(&self) -> bool;
-    fn max(&self) -> Result<PitchType, &str>;
-    fn min(&self) -> Result<PitchType, &str>;
-    fn mean(&self) -> Result<PitchType, &str>;
+    fn max(&self) -> Option<PitchType>;
+    fn min(&self) -> Option<PitchType>;
+    fn mean(&self) -> Option<PitchType>;
     fn equals(&self, cmp: Self) -> bool;
     fn map_pitches(&self, f: fn(p: PitchType) -> PitchType) -> Result<Box<Self>, &str>;
     fn set_pitches(&self, p: Vec<PitchType>) -> Result<Box<Self>, &str>;
