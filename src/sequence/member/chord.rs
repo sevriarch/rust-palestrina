@@ -79,24 +79,34 @@ impl<T: Clone + Copy + Num + Zero + Ord + From<i32>> SequenceMember<T> for Chord
         Ok(ChordMember::new(p))
     }
 
-    fn invert(&self, _p: T) -> Result<Box<Self>, &str> {
-        todo!()
+    fn invert(&self, p: T) -> Result<Box<Self>, &str> {
+        Ok(ChordMember::new(
+            self.value.clone().into_iter().map(|v| p + p - v).collect(),
+        ))
     }
 
-    fn transpose(&self, _p: T) -> Result<Box<Self>, &str> {
-        todo!()
+    fn transpose(&self, p: T) -> Result<Box<Self>, &str> {
+        Ok(ChordMember::new(
+            self.value.clone().into_iter().map(|v| p + v).collect(),
+        ))
     }
 
-    fn augment(&self, _p: T) -> Result<Box<Self>, &str> {
-        todo!()
+    fn augment(&self, p: T) -> Result<Box<Self>, &str> {
+        Ok(ChordMember::new(
+            self.value.clone().into_iter().map(|v| p * v).collect(),
+        ))
     }
 
-    fn diminish(&self, _p: T) -> Result<Box<Self>, &str> {
-        todo!()
+    fn diminish(&self, p: T) -> Result<Box<Self>, &str> {
+        Ok(ChordMember::new(
+            self.value.clone().into_iter().map(|v| v / p).collect(),
+        ))
     }
 
-    fn modulus(&self, _p: T) -> Result<Box<Self>, &str> {
-        todo!()
+    fn modulus(&self, p: T) -> Result<Box<Self>, &str> {
+        Ok(ChordMember::new(
+            self.value.clone().into_iter().map(|v| v % p).collect(),
+        ))
     }
 }
 
@@ -163,11 +173,9 @@ mod tests {
         assert_eq!(ChordMember::from(*NumericMember::new(7)).pitches(), vec![7]);
     }
 
-    /*
     #[test]
     fn invert() {
-        assert_eq!(ChordMember::new(ve11).invert(8).unwrap().value, 5);
-        assert_f64_near!(ChordMember::new(7.6).invert(1.8).unwrap().value, -4.0);
+        assert_eq!(ChordMember::new(vec![2]).invert(8).unwrap().value, vec![5]);
+        //assert_f64_near!(ChordMember::new(vec![7.6,6.8]).invert(1.8).unwrap().value, vec![-4.0,-3.2]);//fails bc Ordd trait no wwork for f32
     }
-    */
 }
