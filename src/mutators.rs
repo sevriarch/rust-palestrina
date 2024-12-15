@@ -1,21 +1,21 @@
 use num_traits::Num;
 use std::cmp::PartialOrd;
 
-pub fn invert<'a, T: Copy + Num>(pitch: &'a T) -> Result<Box<dyn Fn(T) -> T + 'a>, &str> {
+pub fn invert<'a, T: Copy + Num>(pitch: &'a T) -> Result<Box<dyn Fn(T) -> T + 'a>, &'a str> {
     Ok(Box::new(move |v| *pitch + *pitch - v))
 }
 
-pub fn transpose<'a, T: Copy + Num>(pitch: &'a T) -> Result<Box<dyn Fn(T) -> T + 'a>, &str> {
+pub fn transpose<'a, T: Copy + Num>(pitch: &'a T) -> Result<Box<dyn Fn(T) -> T + 'a>, &'a str> {
     Ok(Box::new(move |v| *pitch + v))
 }
 
-pub fn augment<'a, T: Copy + Num>(mult: &'a T) -> Result<Box<dyn Fn(T) -> T + 'a>, &str> {
+pub fn augment<'a, T: Copy + Num>(mult: &'a T) -> Result<Box<dyn Fn(T) -> T + 'a>, &'a str> {
     Ok(Box::new(move |v| *mult * v))
 }
 
 pub fn diminish<'a, T: Copy + Num + From<i8>>(
     div: &'a T,
-) -> Result<Box<dyn Fn(T) -> T + 'a>, &str> {
+) -> Result<Box<dyn Fn(T) -> T + 'a>, &'a str> {
     match *div == T::from(0) {
         true => Err("cannot divide by zero"),
         false => Ok(Box::new(move |v| v / *div)),
@@ -24,7 +24,7 @@ pub fn diminish<'a, T: Copy + Num + From<i8>>(
 
 pub fn modulus<'a, T: Copy + Num + PartialOrd + From<i8>>(
     m: &'a T,
-) -> Result<Box<dyn Fn(T) -> T + 'a>, &str> {
+) -> Result<Box<dyn Fn(T) -> T + 'a>, &'a str> {
     if *m == T::from(0) {
         return Err("cannot modulus by zero");
     }
@@ -65,14 +65,14 @@ mod tests {
 
     #[test]
     fn test_invert() {
-        assert_eq!(invert(&5).unwrap()(12), -7);
-        assert_eq!(invert(&1.6).unwrap()(4.2), -1.0);
+        assert_eq!(invert(&5).unwrap()(12), -2);
+        assert_f32_near!(invert(&1.6).unwrap()(4.2), -1.0);
     }
 
     #[test]
     fn test_transpose() {
-        assert_eq!(invert(&5).unwrap()(12), 17);
-        assert_eq!(invert(&1.6).unwrap()(4.2), 5.8);
+        assert_eq!(transpose(&5).unwrap()(12), 17);
+        assert_f32_near!(transpose(&1.6).unwrap()(4.2), 5.8);
     }
 
     #[test]

@@ -175,7 +175,7 @@ mod tests {
 
     #[test]
     fn invert() {
-        assert_eq!(ChordMember::new(vec![2]).invert(8).unwrap().value, vec![5]);
-        //assert_f64_near!(ChordMember::new(vec![7.6,6.8]).invert(1.8).unwrap().value, vec![-4.0,-3.2]);//fails bc Ordd trait no wwork for f32
+        assert_eq!(ChordMember::new(vec![2]).invert(8).unwrap().value, vec![14]);
+        //assert_f64_near!(ChordMember::new(vec![7.6,6.8]).invert(1.8).unwrap().value, vec![-4.0,-3.2]);//fails bc Ord trait no work for f32
     }
 }
