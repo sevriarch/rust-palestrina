@@ -7,14 +7,14 @@ pub struct ChordMember<T: Clone + Copy + Num + Zero + PartialOrd + From<i32>> {
     value: Vec<T>,
 }
 
-impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i32>> ChordMember<T> {
+impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i8> + From<i32>> ChordMember<T> {
     pub fn new(mut value: Vec<T>) -> Box<Self> {
         value.sort_by(|a, b| a.partial_cmp(b).unwrap());
         Box::new(Self { value })
     }
 }
 
-impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i32>> From<NumericMember<T>>
+impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i8> + From<i32>> From<NumericMember<T>>
     for ChordMember<T>
 {
     fn from(src: NumericMember<T>) -> Self {
@@ -22,7 +22,9 @@ impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i32>> From<NumericMember<T
     }
 }
 
-impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i32>> SequenceMember<T> for ChordMember<T> {
+impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i8> + From<i32>> SequenceMember<T>
+    for ChordMember<T>
+{
     fn pitches(&self) -> Vec<T> {
         self.value.clone()
     }

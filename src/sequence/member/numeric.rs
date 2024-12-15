@@ -3,11 +3,11 @@ use crate::sequence::member::chord::ChordMember;
 use crate::sequence::member::traits::SequenceMember;
 use num_traits::{Num, Zero};
 
-pub struct NumericMember<T: Clone + Copy + Num + PartialOrd + From<i32>> {
+pub struct NumericMember<T: Clone + Copy + Num + PartialOrd + From<i8> + From<i32>> {
     value: T,
 }
 
-impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i32>> NumericMember<T> {
+impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i8> + From<i32>> NumericMember<T> {
     pub fn new(value: T) -> Box<Self> {
         Box::new(Self { value })
     }
@@ -15,7 +15,7 @@ impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i32>> NumericMember<T> {
 
 macro_rules! impl_try_from {
     ($source:ty) => {
-        impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i32>> TryFrom<$source>
+        impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i8> + From<i32>> TryFrom<$source>
             for NumericMember<T>
         {
             type Error = String;
@@ -32,7 +32,9 @@ macro_rules! impl_try_from {
 
 impl_try_from!(ChordMember<T>);
 
-impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i32>> SequenceMember<T> for NumericMember<T> {
+impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i8> + From<i32>> SequenceMember<T>
+    for NumericMember<T>
+{
     fn pitches(&self) -> Vec<T> {
         vec![self.value]
     }
@@ -93,16 +95,17 @@ impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i32>> SequenceMember<T> fo
     }
 
     fn diminish(&self, p: T) -> Result<Box<Self>, &str> {
-        Ok(NumericMember::new(self.value / p))
+        let f = mutators::diminish(&p)?;
+        Ok(NumericMember::new(f(self.value)))
     }
 
     fn modulus(&self, p: T) -> Result<Box<Self>, &str> {
-        Ok(NumericMember::new(self.value % p))
+        let f = mutators::modulus(&p)?;
+        Ok(NumericMember::new(f(self.value)))
     }
 
     fn trim(&self, a: Option<T>, b: Option<T>) -> Result<Box<Self>, &str> {
         let f = mutators::trim(a.as_ref(), b.as_ref())?;
-
         Ok(NumericMember::new(f(self.value)))
     }
 }
@@ -132,8 +135,115 @@ mod tests {
     }
 
     #[test]
+    fn num_pitches() {
+        assert_eq!(NumericMember::new(5).num_pitches(), 1);
+    }
+
+    #[test]
+    fn single_pitch() {
+        assert_eq!(NumericMember::new(5).single_pitch(), Ok(5));
+    }
+
+    #[test]
+    fn is_silent() {
+        assert!(!NumericMember::new(5).is_silent());
+    }
+
+    #[test]
+    fn max() {
+        assert_eq!(NumericMember::new(5).max(), Some(5));
+    }
+
+    #[test]
+    fn min() {
+        assert_eq!(NumericMember::new(5).min(), Some(5));
+    }
+
+    #[test]
+    fn mean() {
+        assert_eq!(NumericMember::new(5).mean(), Some(5));
+    }
+
+    #[test]
+    fn silence() {
+        assert!(NumericMember::new(5).silence().is_err());
+    }
+
+    #[test]
+    fn map_pitches() {
+        assert_eq!(
+            NumericMember::new(5).map_pitches(|p| p + 10).unwrap().value,
+            15
+        );
+        assert_f64_near!(
+            NumericMember::new(5.6)
+                .map_pitches(|p| p * 2.5)
+                .unwrap()
+                .value,
+            14.0
+        );
+    }
+
+    #[test]
+    fn set_pitches() {
+        assert!(NumericMember::new(5).set_pitches(vec![]).is_err());
+        assert!(NumericMember::new(5).set_pitches(vec![7, 8]).is_err());
+        assert_eq!(NumericMember::new(5).set_pitches(vec![6]).unwrap().value, 6);
+    }
+
+    #[test]
     fn invert() {
         assert_eq!(NumericMember::new(11).invert(8).unwrap().value, 5);
         assert_f64_near!(NumericMember::new(7.6).invert(1.8).unwrap().value, -4.0);
+    }
+
+    #[test]
+    fn transpose() {
+        assert_eq!(NumericMember::new(11).transpose(8).unwrap().value, 19);
+        assert_f64_near!(NumericMember::new(7.6).transpose(1.8).unwrap().value, 9.4);
+    }
+
+    #[test]
+    fn augment() {
+        assert_eq!(NumericMember::new(11).augment(8).unwrap().value, 88);
+        assert_f64_near!(NumericMember::new(7.6).augment(1.8).unwrap().value, 13.68);
+    }
+
+    #[test]
+    fn diminish() {
+        assert!(NumericMember::new(11).diminish(0).is_err());
+        assert_eq!(NumericMember::new(11).diminish(8).unwrap().value, 1);
+        assert_f64_near!(
+            NumericMember::new(7.6).diminish(1.8).unwrap().value,
+            4.2222222222222
+        );
+    }
+
+    #[test]
+    fn modulus() {
+        assert!(NumericMember::new(11).modulus(0).is_err());
+        assert_eq!(NumericMember::new(11).modulus(8).unwrap().value, 3);
+        // this particularly fails default assertion number of steps
+        assert_f64_near!(NumericMember::new(7.6).modulus(1.8).unwrap().value, 0.4, 10);
+        assert_f64_near!(NumericMember::new(-7.6).modulus(1.8).unwrap().value, 1.4);
+    }
+
+    #[test]
+    fn trim() {
+        assert_eq!(
+            NumericMember::new(11)
+                .trim(Some(10), Some(20))
+                .unwrap()
+                .value,
+            11
+        );
+        assert_eq!(
+            NumericMember::new(11).trim(Some(15), None).unwrap().value,
+            15
+        );
+        assert_eq!(
+            NumericMember::new(11).trim(None, Some(10)).unwrap().value,
+            10
+        );
     }
 }

@@ -13,18 +13,18 @@ pub fn augment<'a, T: Copy + Num>(mult: &'a T) -> Result<Box<dyn Fn(T) -> T + 'a
     Ok(Box::new(move |v| *mult * v))
 }
 
-pub fn diminish<'a, T: Copy + Num + From<i8>>(
+pub fn diminish<'a, 'b, T: Copy + Num + From<i8>>(
     div: &'a T,
-) -> Result<Box<dyn Fn(T) -> T + 'a>, &'a str> {
+) -> Result<Box<dyn Fn(T) -> T + 'a>, &'b str> {
     match *div == T::from(0) {
         true => Err("cannot divide by zero"),
         false => Ok(Box::new(move |v| v / *div)),
     }
 }
 
-pub fn modulus<'a, T: Copy + Num + PartialOrd + From<i8>>(
+pub fn modulus<'a, 'b, T: Copy + Num + PartialOrd + From<i8>>(
     m: &'a T,
-) -> Result<Box<dyn Fn(T) -> T + 'a>, &'a str> {
+) -> Result<Box<dyn Fn(T) -> T + 'a>, &'b str> {
     if *m == T::from(0) {
         return Err("cannot modulus by zero");
     }
@@ -64,25 +64,6 @@ pub fn trim<'a, 'b, T: Num + Copy + PartialOrd>(
         (None, None) => Ok(Box::new(|v| v)),
     }
 }
-/*
-pub fn trim<'a, T: Num + Copy + PartialOrd>(
-    a: &'a Option<T>,
-    b: &'a Option<T>,
-) -> Result<Box<dyn Fn(T) -> T + 'a>, &'a str> {
-    match (a, b) {
-        (Some(min), Some(max)) => {
-            if min > max {
-                return Err("trim(): minimum value cannot by higher than maximum value");
-            }
-
-            Ok(Box::new(|v| if v > *max { *max } else if v < *min { *min } else { v }))
-        }
-        (Some(min), None) => Ok(Box::new(|v| if v < *min { *min } else { v })),
-        (None, Some(max)) => Ok(Box::new(|v| if v > *max { *max } else { v })),
-        (None, None) => Ok(Box::new(|v| v)),
-    }
-}
-*/
 
 #[cfg(test)]
 mod tests {
@@ -124,7 +105,6 @@ mod tests {
         assert_f32_near!(modulus(&1.6).unwrap()(4.2), 1.0);
     }
 
-    /*
     #[test]
     fn test_trim() {
         assert!(trim(Some(&10), Some(&5)).is_err());
@@ -155,5 +135,4 @@ mod tests {
         assert_eq!(bothf(5.5), 5.5);
         assert_eq!(bothf(15.5), 10.5);
     }
-    */
 }
