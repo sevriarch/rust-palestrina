@@ -1,26 +1,28 @@
+use crate::mutators;
 use crate::sequence::member::numeric::NumericMember;
-use crate::sequence::member::traits::SequenceMember; // fix
+use crate::sequence::member::traits::SequenceMember;
 use num_traits::{Num, Zero};
-use std::cmp::Ord;
 
-pub struct ChordMember<T: Clone + Copy + Num + Zero + Ord + From<i32>> {
+pub struct ChordMember<T: Clone + Copy + Num + Zero + PartialOrd + From<i32>> {
     value: Vec<T>,
 }
 
-impl<T: Clone + Copy + Num + Zero + Ord + From<i32>> ChordMember<T> {
-    fn new(mut value: Vec<T>) -> Box<Self> {
-        value.sort();
+impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i32>> ChordMember<T> {
+    pub fn new(mut value: Vec<T>) -> Box<Self> {
+        value.sort_by(|a, b| a.partial_cmp(b).unwrap());
         Box::new(Self { value })
     }
 }
 
-impl<T: Clone + Copy + Num + Zero + Ord + From<i32>> From<NumericMember<T>> for ChordMember<T> {
+impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i32>> From<NumericMember<T>>
+    for ChordMember<T>
+{
     fn from(src: NumericMember<T>) -> Self {
         *ChordMember::new(src.pitches())
     }
 }
 
-impl<T: Clone + Copy + Num + Zero + Ord + From<i32>> SequenceMember<T> for ChordMember<T> {
+impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i32>> SequenceMember<T> for ChordMember<T> {
     fn pitches(&self) -> Vec<T> {
         self.value.clone()
     }
@@ -41,11 +43,17 @@ impl<T: Clone + Copy + Num + Zero + Ord + From<i32>> SequenceMember<T> for Chord
     }
 
     fn max(&self) -> Option<T> {
-        self.value.iter().max().copied()
+        self.value
+            .iter()
+            .cloned()
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
     }
 
     fn min(&self) -> Option<T> {
-        self.value.iter().min().copied()
+        self.value
+            .iter()
+            .cloned()
+            .min_by(|a, b| a.partial_cmp(b).unwrap())
     }
 
     fn mean(&self) -> Option<T> {
@@ -108,6 +116,14 @@ impl<T: Clone + Copy + Num + Zero + Ord + From<i32>> SequenceMember<T> for Chord
             self.value.clone().into_iter().map(|v| v % p).collect(),
         ))
     }
+
+    fn trim(&self, a: Option<T>, b: Option<T>) -> Result<Box<Self>, &str> {
+        let f = mutators::trim(a.as_ref(), b.as_ref())?;
+
+        Ok(ChordMember::new(
+            self.value.clone().into_iter().map(f).collect(),
+        ))
+    }
 }
 
 #[cfg(test)]
@@ -116,11 +132,12 @@ mod tests {
     use crate::sequence::member::numeric::NumericMember;
     use crate::sequence::member::traits::SequenceMember;
 
-    //use assert_float_eq::assert_f64_near;
+    use assert_float_eq::assert_f64_near;
 
     #[test]
     fn pitches() {
         assert_eq!(ChordMember::new(vec![5, 7]).pitches(), vec![5, 7]);
+        assert_eq!(ChordMember::new(vec![7, 5]).pitches(), vec![5, 7]);
     }
 
     #[test]
@@ -176,6 +193,9 @@ mod tests {
     #[test]
     fn invert() {
         assert_eq!(ChordMember::new(vec![2]).invert(8).unwrap().value, vec![14]);
-        //assert_f64_near!(ChordMember::new(vec![7.6,6.8]).invert(1.8).unwrap().value, vec![-4.0,-3.2]);//fails bc Ord trait no work for f32
+
+        let inv = ChordMember::new(vec![7.6, 6.8]).invert(1.8).unwrap().value;
+        assert_f64_near!(inv[0], -4.0);
+        assert_f64_near!(inv[1], -3.2);
     }
 }

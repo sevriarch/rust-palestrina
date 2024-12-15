@@ -17,5 +17,6 @@ pub trait SequenceMember<PitchType: Clone + Copy> {
     fn diminish(&self, p: PitchType) -> Result<Box<Self>, &str>;
     fn modulus(&self, p: PitchType) -> Result<Box<Self>, &str>;
 
+    fn trim(&self, a: Option<PitchType>, b: Option<PitchType>) -> Result<Box<Self>, &str>;
     // plus trim(),bounce(),scale(),gamut()
 }

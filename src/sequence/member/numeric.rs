@@ -1,17 +1,38 @@
-use crate::sequence::member::traits::SequenceMember; // fix
-use num_traits::Num;
+use crate::mutators;
+use crate::sequence::member::chord::ChordMember;
+use crate::sequence::member::traits::SequenceMember;
+use num_traits::{Num, Zero};
 
-pub struct NumericMember<T: Clone + Copy + Num> {
+pub struct NumericMember<T: Clone + Copy + Num + PartialOrd + From<i32>> {
     value: T,
 }
 
-impl<T: Clone + Copy + Num> NumericMember<T> {
+impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i32>> NumericMember<T> {
     pub fn new(value: T) -> Box<Self> {
         Box::new(Self { value })
     }
 }
 
-impl<T: Clone + Copy + Num> SequenceMember<T> for NumericMember<T> {
+macro_rules! impl_try_from {
+    ($source:ty) => {
+        impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i32>> TryFrom<$source>
+            for NumericMember<T>
+        {
+            type Error = String;
+
+            fn try_from(src: $source) -> Result<Self, Self::Error> {
+                match src.single_pitch() {
+                    Ok(pitch) => Ok(*NumericMember::new(pitch)),
+                    Err(x) => Err(x.to_string()),
+                }
+            }
+        }
+    };
+}
+
+impl_try_from!(ChordMember<T>);
+
+impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i32>> SequenceMember<T> for NumericMember<T> {
     fn pitches(&self) -> Vec<T> {
         vec![self.value]
     }
@@ -78,14 +99,32 @@ impl<T: Clone + Copy + Num> SequenceMember<T> for NumericMember<T> {
     fn modulus(&self, p: T) -> Result<Box<Self>, &str> {
         Ok(NumericMember::new(self.value % p))
     }
+
+    fn trim(&self, a: Option<T>, b: Option<T>) -> Result<Box<Self>, &str> {
+        let f = mutators::trim(a.as_ref(), b.as_ref())?;
+
+        Ok(NumericMember::new(f(self.value)))
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::sequence::member::numeric::ChordMember;
     use crate::sequence::member::numeric::NumericMember;
     use crate::sequence::member::numeric::SequenceMember;
 
     use assert_float_eq::assert_f64_near;
+
+    #[test]
+    fn from() {
+        let ch = ChordMember::new(vec![5]);
+        let nu = NumericMember::try_from(*ch).unwrap();
+
+        assert_eq!(nu.value, 5);
+
+        let ch = ChordMember::<i32>::new(vec![]);
+        assert!(NumericMember::try_from(*ch).is_err());
+    }
 
     #[test]
     fn pitches() {
