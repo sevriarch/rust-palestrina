@@ -1,2 +1,2 @@
 pub mod member;
-pub mod traits;
+pub mod numeric;

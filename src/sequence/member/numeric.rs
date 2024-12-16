@@ -3,11 +3,16 @@ use crate::sequence::member::chord::ChordMember;
 use crate::sequence::member::traits::SequenceMember;
 use num_traits::{Num, Zero};
 
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct NumericMember<T: Clone + Copy + Num + PartialOrd + From<i8> + From<i32>> {
     value: T,
 }
 
 impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i8> + From<i32>> NumericMember<T> {
+    pub fn from(value: T) -> Box<Self> {
+        Box::new(Self { value })
+    }
+
     pub fn new(value: T) -> Box<Self> {
         Box::new(Self { value })
     }
@@ -120,6 +125,11 @@ mod tests {
 
     #[test]
     fn from() {
+        assert_eq!(NumericMember::from(66), NumericMember::new(66));
+    }
+
+    #[test]
+    fn try_from() {
         let ch = ChordMember::new(vec![5]);
         let nu = NumericMember::try_from(*ch).unwrap();
 
