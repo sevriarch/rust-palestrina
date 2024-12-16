@@ -225,7 +225,8 @@ mod tests {
         assert_eq!(NumericMember::new(11).diminish(8).unwrap().value, 1);
         assert_f64_near!(
             NumericMember::new(7.6).diminish(1.8).unwrap().value,
-            4.2222222222222
+            #[allow(clippy::excessive_precision)]
+            4.2222222222222222222
         );
     }
 
