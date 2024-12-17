@@ -89,12 +89,29 @@ where
             .filter(|i| f(&cts[*i..*i + len]))
             .collect()
     }
+
+    pub fn find_if_reverse_window(
+        &self,
+        len: usize,
+        step: usize,
+        f: fn(&[T]) -> bool,
+    ) -> Vec<usize> {
+        let cts = self.cts();
+        let maxposs = self.length() - len;
+
+        (0..=self.length() - len)
+            .step_by(step)
+            .map(|i| maxposs - i)
+            .filter(|i| f(&cts[*i..*i + len]))
+            .collect()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::collections::numeric::NumericSeq;
     use crate::collections::traits::Collection;
+
     #[test]
     fn find_if_window() {
         assert_eq!(
@@ -111,6 +128,25 @@ mod tests {
             NumericSeq::new(vec![1, 1, 2, 3, 3, 3, 4, 4, 5, 5])
                 .find_if_window(1, 2, |s| s[0] % 2 == 0),
             vec![2, 6]
+        );
+    }
+
+    #[test]
+    fn find_if_reverse_window() {
+        assert_eq!(
+            NumericSeq::new(vec![1, 1, 2, 3, 3, 3, 4, 4, 5, 5])
+                .find_if_reverse_window(2, 1, |s| s[0] == s[1]),
+            vec![8, 6, 4, 3, 0]
+        );
+        assert_eq!(
+            NumericSeq::new(vec![1, 1, 2, 3, 3, 3, 4, 4, 5, 5])
+                .find_if_reverse_window(2, 2, |s| s[0] == s[1]),
+            vec![8, 6, 4, 0]
+        );
+        assert_eq!(
+            NumericSeq::new(vec![1, 1, 2, 3, 3, 3, 4, 4, 5, 5])
+                .find_if_reverse_window(1, 2, |s| s[0] % 2 == 0),
+            vec![7]
         );
     }
 }
