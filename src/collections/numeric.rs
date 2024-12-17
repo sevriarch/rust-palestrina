@@ -1,10 +1,9 @@
 use crate::collections::traits::Collection;
-use crate::mutators;
 
-use num_traits::{Bounded, Num};
+use num_traits::{Bounded, Num, PrimInt};
 use std::fmt::{Debug, Display};
 use std::iter::Sum;
-use std::ops::Add;
+use std::ops::{Add, SubAssign};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct NumericSeq<T> {
@@ -259,9 +258,100 @@ where
     }
 }
 
+// This will likely move elsewhere
+pub struct Scale<T>
+where
+    T: Num,
+{
+    notes: Vec<T>,
+    octave: T,
+}
+
+impl<T: Num + From<i8>> Scale<T> {
+    pub fn with_octave(mut self, o: T) -> Self {
+        self.octave = o;
+        self
+    }
+
+    pub fn with_name(mut self, name: &str) -> Result<Self, String> {
+        let notes = match name {
+            "chromatic" => vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+            "octatonic12" => vec![0, 1, 3, 4, 6, 7, 9, 10],
+            "octatonic21" => vec![0, 2, 3, 5, 6, 8, 9, 11],
+            "wholetone" => vec![0, 2, 4, 6, 8, 10],
+            "major" => vec![0, 2, 4, 5, 7, 9, 11],
+            "minor" => vec![0, 2, 3, 5, 7, 8, 10],
+            "ionian" => vec![0, 2, 4, 5, 7, 9, 11],
+            "dorian" => vec![0, 2, 3, 5, 7, 9, 10],
+            "phrygian" => vec![0, 1, 3, 5, 7, 8, 10],
+            "lydian" => vec![0, 2, 4, 6, 7, 9, 11],
+            "mixolydian" => vec![0, 2, 4, 5, 7, 9, 10],
+            "aeolian" => vec![0, 2, 3, 5, 7, 8, 10],
+            "locrian" => vec![0, 1, 3, 5, 6, 8, 10],
+            "pentatonic" => vec![0, 2, 4, 7, 9],
+            "pentatonicc" => vec![0, 2, 4, 7, 9],
+            "pentatonicd" => vec![0, 2, 5, 7, 10],
+            "pentatonice" => vec![0, 3, 5, 8, 10],
+            "pentatonicg" => vec![0, 2, 5, 7, 9],
+            "pentatonica" => vec![0, 3, 5, 7, 10],
+            _ => vec![],
+        };
+
+        if notes.is_empty() {
+            Err(format!("{} is not a valid scale", name))
+        } else {
+            self.notes = notes.into_iter().map(T::from).collect();
+            Ok(self)
+        }
+    }
+}
+
+// Methods that require integer values
+impl<T> NumericSeq<T>
+where
+    T: PrimInt
+        + From<i32>
+        + TryFrom<usize>
+        + TryInto<usize>
+        + Debug
+        + Display
+        + Num
+        + Sum
+        + SubAssign
+        + num_traits::Euclid,
+{
+    pub fn scale(mut self, scale: Scale<T>, zeroval: T) -> Result<Self, String> {
+        let notes = scale.notes;
+        let len: T = notes
+            .len()
+            .try_into()
+            .map_err(|_| "scale length too long")?;
+
+        for v in self.contents.iter_mut() {
+            let mut octaves = *v / len;
+            let ix = v.rem_euclid(&len);
+            if !ix.is_zero() && *v < T::zero() {
+                octaves -= T::one();
+            }
+
+            // This error should never happen
+            let ix: usize = ix
+                .try_into()
+                .map_err(|_| format!("overflowing index {} {}", *v, octaves))?;
+
+            println!("v={}, ix={}, octaves={}", *v, ix, octaves);
+
+            *v = zeroval + notes[ix] + octaves * scale.octave
+        }
+
+        Ok(self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::collections::numeric::NumericSeq;
+    use crate::collections::numeric::Scale;
     use crate::collections::traits::Collection;
 
     use assert_float_eq::assert_f64_near;
@@ -557,6 +647,37 @@ mod tests {
                 .bounce_max(5.0)
                 .unwrap(),
             NumericSeq::new(vec![1.7, 3.4, 3.7])
+        );
+    }
+
+    #[test]
+    fn scale() {
+        let chromatic = Scale {
+            notes: vec![5_i64],
+            octave: 12,
+        }
+        .with_name("chromatic")
+        .unwrap();
+        let lydian = Scale {
+            notes: vec![],
+            octave: 12,
+        }
+        .with_name("lydian")
+        .unwrap();
+
+        let v64: Vec<i64> = (-20..20).collect();
+
+        assert_eq!(
+            NumericSeq::new(v64.clone()).scale(chromatic, 60).unwrap(),
+            NumericSeq::new((40..80).collect::<Vec<i64>>())
+        );
+
+        assert_eq!(
+            NumericSeq::new(v64).scale(lydian, 60).unwrap(),
+            NumericSeq::new(vec![
+                26, 28, 30, 31, 33, 35, 36, 38, 40, 42, 43, 45, 47, 48, 50, 52, 54, 55, 57, 59, 60,
+                62, 64, 66, 67, 69, 71, 72, 74, 76, 78, 79, 81, 83, 84, 86, 88, 90, 91, 93
+            ])
         );
     }
 }
