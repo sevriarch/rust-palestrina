@@ -2,6 +2,7 @@ use num_traits::{Euclid, Num};
 use std::cmp::PartialOrd;
 use std::ops::SubAssign;
 
+#[derive(Clone, Debug)]
 pub struct Scale<T>
 where
     T: Num,
@@ -9,6 +10,19 @@ where
     notes: Vec<T>,
     length: T,
     octave: T,
+}
+
+impl<
+        T: Copy + Num + From<i8> + TryInto<usize> + TryFrom<usize> + Euclid + PartialOrd + SubAssign,
+    > Default for Scale<T>
+{
+    fn default() -> Self {
+        Self {
+            notes: vec![],
+            length: T::zero(),
+            octave: T::from(12),
+        }
+    }
 }
 
 impl<
