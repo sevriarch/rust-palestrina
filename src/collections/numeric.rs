@@ -295,6 +295,60 @@ where
             }
         }))
     }
+
+    pub fn filter_in_position(self, f: fn(T) -> bool, default: T) -> Result<Self, String> {
+        Ok(self.iter_pitches(|v| {
+            if !f(*v) {
+                *v = default;
+            }
+        }))
+    }
+
+    fn collect_windows(&self, len: usize, step: usize) -> Vec<Vec<T>> {
+        let max = self.length() - len;
+        let cts = self.cts();
+
+        (0..=max)
+            .step_by(step)
+            .map(move |i| cts[i..i + len].to_vec())
+            .collect()
+    }
+
+    pub fn flat_map_windows(
+        mut self,
+        len: usize,
+        step: usize,
+        f: fn(Vec<T>) -> Vec<T>,
+    ) -> Result<Self, String> {
+        let cts = self
+            .collect_windows(len, step)
+            .into_iter()
+            .flat_map(f)
+            .collect();
+
+        self.contents = cts;
+        Ok(self)
+    }
+
+    pub fn filter_windows(
+        mut self,
+        len: usize,
+        step: usize,
+        f: fn(Vec<T>) -> bool,
+    ) -> Result<Self, String> {
+        let cts: Vec<Vec<T>> = self
+            .collect_windows(len, step)
+            .into_iter()
+            .filter(|v| f(v.clone()))
+            .collect();
+
+        println!("cts = {:?}", cts);
+
+        let ret = cts.into_iter().flatten().collect();
+
+        self.contents = ret;
+        Ok(self)
+    }
 }
 
 // Methods that require integer values
@@ -315,32 +369,6 @@ where
     pub fn scale(self, scale: Scale<T>, zeroval: T) -> Result<Self, String> {
         Ok(self.map_pitches(scale.fit_to_scale(&zeroval)))
     }
-    /*
-    pub fn scale(mut self, scale: Scale<T>, zeroval: T) -> Result<Self, String> {
-        let notes = scale.notes;
-        let len: T = notes
-            .len()
-            .try_into()
-            .map_err(|_| "scale length too long")?;
-
-        for v in self.contents.iter_mut() {
-            let mut octaves = *v / len;
-            let ix = v.rem_euclid(&len);
-            if !ix.is_zero() && *v < T::zero() {
-                octaves -= T::one();
-            }
-
-            // This error should never happen
-            let ix: usize = ix
-                .try_into()
-                .map_err(|_| format!("overflowing index {} {}", *v, octaves))?;
-
-            *v = zeroval + notes[ix] + octaves * scale.octave
-        }
-
-        Ok(self)
-    }
-    */
 }
 
 #[cfg(test)]
@@ -683,6 +711,56 @@ mod tests {
         assert_eq!(
             NumericSeq::new(vec![-1, 0, 1]).scale(lydian, 20).unwrap(),
             NumericSeq::new(vec![19, 20, 22])
-        )
+        );
+    }
+
+    #[test]
+    fn filter_in_position() {
+        assert_eq!(
+            NumericSeq::new(vec![1, 2, 3, 4, 5])
+                .filter_in_position(|v| v % 2 == 0, 8)
+                .unwrap(),
+            NumericSeq::new(vec![8, 2, 8, 4, 8])
+        );
+    }
+
+    #[test]
+    fn flat_map_windows() {
+        assert_eq!(
+            NumericSeq::new(vec![1, 2, 3, 4, 5])
+                .flat_map_windows(2, 1, |mut w| {
+                    w.reverse();
+                    w
+                })
+                .unwrap(),
+            NumericSeq::new(vec![2, 1, 3, 2, 4, 3, 5, 4])
+        );
+
+        assert_eq!(
+            NumericSeq::new(vec![1, 2, 3, 4, 5])
+                .flat_map_windows(3, 2, |mut w| {
+                    w.reverse();
+                    w
+                })
+                .unwrap(),
+            NumericSeq::new(vec![3, 2, 1, 5, 4, 3])
+        );
+    }
+
+    #[test]
+    fn filter_windows() {
+        assert_eq!(
+            NumericSeq::new(vec![1, 2, 3, 4, 5])
+                .filter_windows(2, 1, |w| w[0] > 1)
+                .unwrap(),
+            NumericSeq::new(vec![2, 3, 3, 4, 4, 5])
+        );
+
+        assert_eq!(
+            NumericSeq::new(vec![1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1])
+                .filter_windows(3, 2, |w| w[0] > 2)
+                .unwrap(),
+            NumericSeq::new(vec![3, 4, 5, 5, 6, 5, 5, 4, 3, 3, 2, 1])
+        );
     }
 }
