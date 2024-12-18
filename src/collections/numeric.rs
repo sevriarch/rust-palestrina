@@ -1,6 +1,7 @@
 use crate::collections::traits::Collection;
 
 use num_traits::{Bounded, Num, PrimInt};
+use std::convert::TryFrom;
 use std::fmt::{Debug, Display};
 use std::iter::Sum;
 use std::ops::{Add, SubAssign};
@@ -8,6 +9,43 @@ use std::ops::{Add, SubAssign};
 #[derive(Clone, Debug, PartialEq)]
 pub struct NumericSeq<T> {
     contents: Vec<T>,
+}
+
+#[derive(Debug)]
+pub enum NumSeqError {
+    InvalidValues,
+}
+
+impl<T> TryFrom<Vec<T>> for NumericSeq<T>
+where
+    T: Copy + Num + Debug + PartialOrd,
+{
+    type Error = NumSeqError;
+
+    fn try_from(what: Vec<T>) -> Result<Self, Self::Error> {
+        Ok(Self { contents: what })
+    }
+}
+
+impl<T> TryFrom<Vec<Vec<T>>> for NumericSeq<T>
+where
+    T: Copy + Num + Debug + PartialOrd,
+{
+    type Error = NumSeqError;
+
+    fn try_from(what: Vec<Vec<T>>) -> Result<Self, Self::Error> {
+        let len = what.len();
+        let cts: Vec<T> = what
+            .into_iter()
+            .filter_map(|v| if v.len() == 1 { Some(v[0]) } else { None })
+            .collect();
+
+        if cts.len() != len {
+            Err(NumSeqError::InvalidValues)
+        } else {
+            Ok(Self { contents: cts })
+        }
+    }
 }
 
 impl<T: Clone + Copy + Num + Debug + Display + PartialOrd + Bounded> Collection<T>
@@ -355,6 +393,21 @@ mod tests {
     use crate::collections::traits::Collection;
 
     use assert_float_eq::assert_f64_near;
+
+    #[test]
+    fn try_from() {
+        assert_eq!(
+            NumericSeq::try_from(vec![1, 2, 3]).unwrap(),
+            NumericSeq::new(vec![1, 2, 3])
+        );
+        assert_eq!(
+            NumericSeq::try_from(vec![vec![1], vec![2], vec![3]]).unwrap(),
+            NumericSeq::new(vec![1, 2, 3])
+        );
+
+        assert!(NumericSeq::try_from(vec![Vec::<i32>::new()]).is_err());
+        assert!(NumericSeq::try_from(vec![vec![1, 2, 3]]).is_err());
+    }
 
     #[test]
     fn to_pitches() {
