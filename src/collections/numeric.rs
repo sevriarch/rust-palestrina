@@ -377,8 +377,6 @@ where
                 .try_into()
                 .map_err(|_| format!("overflowing index {} {}", *v, octaves))?;
 
-            println!("v={}, ix={}, octaves={}", *v, ix, octaves);
-
             *v = zeroval + notes[ix] + octaves * scale.octave
         }
 
