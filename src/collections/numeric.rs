@@ -369,6 +369,17 @@ where
     pub fn scale(self, scale: Scale<T>, zeroval: T) -> Result<Self, String> {
         Ok(self.map_pitches(scale.fit_to_scale(&zeroval)))
     }
+
+    // equality methods: equals isSubsetOf isSupersetOf isTransformationOf isTranspositionOf isInversionOf isRetrogradeOf
+    // isRetrogradeInversionOf hasPeriodicity[Of]
+
+    // window replacement methods: replaceIfWindow replaceIfReverseWindow
+
+    // setSlice loop repeat dupe dedupe shuffle pad padTo padRight padRightTo withPitch withPitches withPitchesAt
+    // mapPitches/filterPitches???
+
+    // sort chop partitionInPosition groupByInPosition untwine twine combine flatcombine combineMin combineMax combineOr combineAnd
+    // mapWith filterWith exchangeValuesIf
 }
 
 #[cfg(test)]
