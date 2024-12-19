@@ -24,6 +24,11 @@ macro_rules! default_methods {
             self
         }
 
+        fn map(mut self, f: fn($type) -> $type) -> Self {
+            self.contents = self.contents.into_iter().map(f).collect();
+            self
+        }
+
         fn replace_contents<F: FnOnce(Vec<$type>) -> Vec<$type>>(mut self, f: F) -> Self {
             self.contents = f(self.contents);
             self
@@ -40,6 +45,7 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
 
     fn mutate_contents<F: FnOnce(&mut Vec<T>)>(self, f: F) -> Self;
     fn replace_contents<F: FnOnce(Vec<T>) -> Vec<T>>(self, f: F) -> Self;
+    fn map(self, f: fn(T) -> T) -> Self;
 
     fn cts(&self) -> Vec<T>;
     fn length(&self) -> usize;
@@ -187,49 +193,52 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
         }))
     }
 
-    fn drop(&self, num: usize) -> Result<Box<Self>, &str> {
+    fn drop(self, num: usize) -> Result<Self, String> {
         let len = self.length();
         let first = if num > len { len } else { num };
 
-        Ok(self.construct(self.cts()[first..].to_vec()))
+        Ok(self.mutate_contents(|c| {
+            c.drain(..first);
+        }))
     }
 
-    fn drop_right(&self, num: usize) -> Result<Box<Self>, &str> {
+    fn drop_right(self, num: usize) -> Result<Self, String> {
         let len = self.length();
         let last = len.saturating_sub(num);
 
-        Ok(self.construct(self.cts()[..last].to_vec()))
+        Ok(self.mutate_contents(|c| {
+            c.truncate(last);
+        }))
     }
 
-    fn drop_indices(&self, indices: &[i32]) -> Result<Box<Self>, &str> {
-        let ix = self.indices(indices)?;
-        let contents = self.cts();
+    fn drop_indices(self, indices: &[i32]) -> Result<Self, String> {
+        let mut ix = self.indices(indices)?;
+        ix.sort_unstable_by(|a, b| b.cmp(a));
+        ix.dedup();
 
-        Ok(self.construct(
-            (0..self.length())
-                .filter(|i| !ix.contains(i))
-                .map(|i| contents[i])
-                .collect(),
-        ))
+        Ok(self.mutate_contents(|c| {
+            for i in ix.iter() {
+                println!("removing index {}", *i);
+                c.remove(*i);
+            }
+        }))
     }
 
-    fn drop_nth(&self, n: usize) -> Result<Box<Self>, &str> {
+    fn drop_nth(self, n: usize) -> Result<Self, String> {
         if n == 0 {
-            Err("cannot keep every 0th member")
+            Err("cannot keep every 0th member".to_string())
         } else {
-            Ok(self.construct(
-                self.cts()
-                    .into_iter()
+            Ok(self.replace_contents(|c| {
+                c.iter()
                     .enumerate()
-                    .filter(|&(i, _)| i % n != 0)
-                    .map(|(_, v)| v)
-                    .collect(),
-            ))
+                    .filter_map(|(i, v)| if i % n == 0 { None } else { Some(*v) })
+                    .collect()
+            }))
         }
     }
 
-    fn empty(&self) -> Box<Self> {
-        self.construct(vec![])
+    fn empty(self) -> Result<Self, String> {
+        Ok(self.mutate_contents(|c| c.truncate(0)))
     }
 
     fn filter(&self, f: fn(T) -> bool) -> Box<Self> {
@@ -293,12 +302,6 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
         } else {
             Ok(self)
         }
-    }
-
-    fn map(&self, f: fn(T) -> T) -> Box<Self> {
-        let newcontents = self.cts().into_iter().map(f).collect();
-
-        self.construct(newcontents)
     }
 
     fn map_indices(&self, indices: &[i32], f: fn(T) -> T) -> Result<Box<Self>, &str> {
@@ -524,6 +527,14 @@ mod tests {
     }
 
     #[test]
+    fn map() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+        let new = coll.map(|v| v * v);
+
+        assert_eq!(new.contents, vec![0, 4, 9, 16, 25, 36]);
+    }
+
+    #[test]
     fn index() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
@@ -651,7 +662,7 @@ mod tests {
 
         assert!(coll.clone().drop_indices(&[0, 8]).is_err());
         assert_contents_eq!(coll.clone().drop_indices(&[]), vec![0, 2, 3, 4, 5, 6]);
-        assert_contents_eq!(coll.clone().drop_indices(&[1, -1]), vec![0, 3, 4, 5]);
+        assert_contents_eq!(coll.clone().drop_indices(&[1, 5, 1, -1]), vec![0, 3, 4, 5]);
     }
 
     #[test]
@@ -664,19 +675,19 @@ mod tests {
     }
 
     #[test]
+    fn empty() {
+        assert_eq!(
+            TestColl::new(vec![2, 3, 4]).empty().unwrap(),
+            TestColl::new(vec![])
+        );
+    }
+
+    #[test]
     fn filter() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
         let new = coll.filter(|v| v % 2 == 0);
 
         assert_eq!(new.contents, vec![0, 2, 4, 6]);
-    }
-
-    #[test]
-    fn map() {
-        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
-        let new = coll.map(|v| v * v);
-
-        assert_eq!(new.contents, vec![0, 4, 9, 16, 25, 36]);
     }
 
     #[test]
