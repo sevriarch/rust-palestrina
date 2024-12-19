@@ -57,7 +57,7 @@ impl<T: Clone + Copy + Num + Debug + Display + PartialOrd + Bounded> Collection<
     }
 
     fn cts(&self) -> Vec<T> {
-        self.contents.clone()
+        self.contents.clone() // TODO: replace with &self.contents; rewrite related things
     }
 
     fn length(&self) -> usize {
