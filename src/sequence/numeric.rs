@@ -1,5 +1,6 @@
 // Traits common to all Sequences
 use crate::collections::traits::Collection;
+use crate::default_methods;
 use crate::sequence::member::numeric::NumericMember;
 use num_traits::Num;
 use std::fmt::Debug;
@@ -27,23 +28,7 @@ impl<T: Clone + Copy + Debug + Num + PartialOrd + From<i8> + From<i32>> NumericS
 impl<T: Clone + Copy + Debug + Num + PartialOrd + From<i8> + From<i32>> Collection<NumericMember<T>>
     for NumericSequence<T>
 {
-    fn new(contents: Vec<NumericMember<T>>) -> Self {
-        Self { contents }
-    }
-
-    fn cts(&self) -> Vec<NumericMember<T>> {
-        self.contents.clone()
-    }
-
-    fn length(&self) -> usize {
-        self.contents.len()
-    }
-
-    fn construct(&self, contents: Vec<NumericMember<T>>) -> Box<Self> {
-        let mut newseq = self.clone();
-        newseq.contents = contents;
-        Box::new(newseq)
-    }
+    default_methods!(NumericMember<T>);
 }
 
 #[cfg(test)]

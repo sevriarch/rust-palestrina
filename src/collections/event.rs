@@ -1,4 +1,5 @@
 use crate::collections::traits::Collection;
+use crate::default_methods;
 use std::fmt::Debug;
 
 pub trait Timing {
@@ -35,20 +36,20 @@ impl EventTiming {
 }
 
 #[derive(Copy, Clone, Debug)]
-enum MetaEventValue {
-    String,
-    i32,
+enum MetaEventValue<'a> {
+    StringValue(&'a str),
+    NumValue(i32),
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct MetaEvent<'a> {
     kind: &'a str,
-    value: MetaEventValue,
+    value: MetaEventValue<'a>,
     timing: EventTiming,
 }
 
 impl<'a> MetaEvent<'a> {
-    fn new(kind: &'a str, value: MetaEventValue, tick: Option<i32>, offset: i32) -> Self {
+    fn new(kind: &'a str, value: MetaEventValue<'a>, tick: Option<i32>, offset: i32) -> Self {
         Self {
             kind,
             value,
@@ -62,21 +63,7 @@ struct EventList<'a> {
 }
 
 impl<'a> Collection<MetaEvent<'a>> for EventList<'a> {
-    fn new(contents: Vec<MetaEvent<'a>>) -> EventList<'a> {
-        Self { contents }
-    }
-
-    fn cts(&self) -> Vec<MetaEvent<'a>> {
-        self.contents.clone()
-    }
-
-    fn length(&self) -> usize {
-        self.contents.len()
-    }
-
-    fn construct(&self, cts: Vec<MetaEvent<'a>>) -> Box<EventList<'a>> {
-        Box::new(EventList::new(cts))
-    }
+    default_methods!(MetaEvent<'a>);
 }
 
 impl<'a> EventList<'a> {

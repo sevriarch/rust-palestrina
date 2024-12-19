@@ -1,4 +1,5 @@
 use crate::collections::traits::Collection;
+use crate::default_methods;
 use crate::entities::scale::Scale;
 
 use num_traits::{Bounded, Num, PrimInt};
@@ -52,21 +53,7 @@ where
 impl<T: Clone + Copy + Num + Debug + Display + PartialOrd + Bounded> Collection<T>
     for NumericSeq<T>
 {
-    fn new(contents: Vec<T>) -> NumericSeq<T> {
-        Self { contents }
-    }
-
-    fn cts(&self) -> Vec<T> {
-        self.contents.clone() // TODO: replace with &self.contents; rewrite related things
-    }
-
-    fn length(&self) -> usize {
-        self.contents.len()
-    }
-
-    fn construct(&self, cts: Vec<T>) -> Box<NumericSeq<T>> {
-        Box::new(NumericSeq::new(cts))
-    }
+    default_methods!(T);
 }
 
 impl<T> NumericSeq<T>
@@ -348,6 +335,20 @@ where
 
         self.contents = ret;
         Ok(self)
+    }
+
+    pub fn act<F>(mut self, f: F) -> Self
+    where
+        F: FnOnce(&mut Vec<T>),
+    {
+        f(&mut self.contents);
+        self
+    }
+
+    pub fn pad(self, val: T, num: usize) -> Self {
+        self.act(|c| {
+            c.splice(0..0, std::iter::repeat(val).take(num));
+        })
     }
 }
 
@@ -772,6 +773,19 @@ mod tests {
                 .filter_windows(3, 2, |w| w[0] > 2)
                 .unwrap(),
             NumericSeq::new(vec![3, 4, 5, 5, 6, 5, 5, 4, 3, 3, 2, 1])
+        );
+    }
+
+    #[test]
+    fn pad() {
+        assert_eq!(
+            NumericSeq::new(vec![1, 2, 3]).pad(4, 1),
+            NumericSeq::new(vec![4, 1, 2, 3])
+        );
+
+        assert_eq!(
+            NumericSeq::new(vec![1, 2, 3]).pad(2, 4),
+            NumericSeq::new(vec![2, 2, 2, 2, 1, 2, 3])
         );
     }
 }
