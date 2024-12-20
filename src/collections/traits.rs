@@ -45,8 +45,8 @@ macro_rules! default_methods {
             self
         }
 
-        fn construct(&self, contents: Vec<$type>) -> Box<Self> {
-            Box::new(Self { contents })
+        fn construct(&self, contents: Vec<$type>) -> Self {
+            Self { contents }
         }
     };
 }
@@ -64,7 +64,7 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
 
     fn cts(&self) -> Vec<T>;
     fn length(&self) -> usize;
-    fn construct(&self, contents: Vec<T>) -> Box<Self>;
+    fn construct(&self, contents: Vec<T>) -> Self;
 
     fn index(&self, i: i32) -> Result<usize, &str> {
         let len = self.length() as i32;
@@ -236,6 +236,7 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
 
     fn drop_indices(self, indices: &[i32]) -> Result<Self, String> {
         let mut ix = self.indices_sorted(indices)?;
+
         ix.dedup();
 
         Ok(self.mutate_contents(|c| {
@@ -263,7 +264,7 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
         Ok(self.mutate_contents(|c| c.truncate(0)))
     }
 
-    fn filter(&self, f: fn(T) -> bool) -> Box<Self> {
+    fn filter(&self, f: fn(T) -> bool) -> Self {
         let newcontents = self.cts().into_iter().filter(|m| f(*m)).collect();
 
         self.construct(newcontents)
@@ -293,8 +294,6 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
         let mut ix = self.indices_sorted(indices)?;
 
         ix.dedup();
-
-        let mut cts = self.cts();
 
         Ok(self.mutate_contents(|c| {
             for i in ix.into_iter() {
@@ -478,12 +477,12 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
         Ok(ret)
     }
 
-    fn split_at(&self, indices: Vec<i32>) -> Result<Vec<Box<Self>>, &str> {
+    fn split_at(&self, indices: Vec<i32>) -> Result<Vec<Self>, &str> {
         let ix = self.indices_inclusive(indices)?;
 
         let cts = self.cts();
         let mut last: usize = 0;
-        let mut ret: Vec<Box<Self>> = vec![];
+        let mut ret: Vec<Self> = vec![];
 
         for i in ix {
             ret.push(self.construct(cts[last..i].to_vec()));
@@ -495,7 +494,7 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
         Ok(ret)
     }
 
-    fn partition(&self, f: fn(T) -> bool) -> Result<(Box<Self>, Box<Self>), &str> {
+    fn partition(&self, f: fn(T) -> bool) -> Result<(Self, Self), &str> {
         let (p1, p2): (Vec<T>, Vec<T>) = self.cts().into_iter().partition(|v| f(*v));
 
         Ok((self.construct(p1), self.construct(p2)))
@@ -504,7 +503,7 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
     fn group_by<KeyType: Hash + Eq + PartialEq + Debug>(
         &self,
         f: fn(T) -> KeyType,
-    ) -> Result<HashMap<KeyType, Box<Self>>, &str> {
+    ) -> Result<HashMap<KeyType, Self>, &str> {
         let mut rets = HashMap::<KeyType, Vec<T>>::new();
 
         for m in self.cts() {
