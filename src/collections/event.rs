@@ -64,10 +64,14 @@ struct EventList<'a> {
 
 impl<'a> Collection<MetaEvent<'a>> for EventList<'a> {
     default_methods!(MetaEvent<'a>);
+
+    fn mutate_pitches<F: Fn(&MetaEvent<'a>) -> MetaEvent<'a>>(self, _: F) -> Self {
+        self
+    }
 }
 
 impl<'a> EventList<'a> {
-    fn augment_rhythm(mut self, by: i32) -> Result<Self, String> {
+    pub fn augment_rhythm(mut self, by: i32) -> Result<Self, String> {
         for e in self.contents.iter_mut() {
             e.timing.offset *= by;
         }
@@ -75,7 +79,7 @@ impl<'a> EventList<'a> {
         Ok(self)
     }
 
-    fn diminish_rhythm(mut self, by: i32) -> Result<Self, String> {
+    pub fn diminish_rhythm(mut self, by: i32) -> Result<Self, String> {
         if by == 0 {
             return Err("cannot diminish by 0".to_string());
         }

@@ -1,28 +1,29 @@
-use crate::mutators;
+/*use crate::algorithms::algorithms;
 use crate::sequence::member::numeric::NumericMember;
 use crate::sequence::member::traits::SequenceMember;
 use num_traits::{Num, Zero};
+use std::fmt::Debug;
 
 pub struct ChordMember<T: Clone + Copy + Num + Zero + PartialOrd + From<i32>> {
     value: Vec<T>,
 }
 
-impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i8> + From<i32>> ChordMember<T> {
+impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i8> + From<i32> + Debug> ChordMember<T> {
     pub fn new(mut value: Vec<T>) -> Box<Self> {
         value.sort_by(|a, b| a.partial_cmp(b).unwrap());
         Box::new(Self { value })
     }
 }
 
-impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i8> + From<i32>> From<NumericMember<T>>
-    for ChordMember<T>
+impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i8> + From<i32> + Debug>
+    From<NumericMember<T>> for ChordMember<T>
 {
     fn from(src: NumericMember<T>) -> Self {
         *ChordMember::new(src.pitches())
     }
 }
 
-impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i8> + From<i32>> SequenceMember<T>
+impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i8> + From<i32> + Debug> SequenceMember<T>
     for ChordMember<T>
 {
     fn pitches(&self) -> Vec<T> {
@@ -107,20 +108,20 @@ impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i8> + From<i32>> SequenceM
         ))
     }
 
-    fn diminish(&self, p: T) -> Result<Box<Self>, &str> {
+    fn diminish(&self, p: T) -> Result<Box<Self>, String> {
         Ok(ChordMember::new(
             self.value.clone().into_iter().map(|v| v / p).collect(),
         ))
     }
 
-    fn modulus(&self, p: T) -> Result<Box<Self>, &str> {
+    fn modulus(&self, p: T) -> Result<Box<Self>, String> {
         Ok(ChordMember::new(
             self.value.clone().into_iter().map(|v| v % p).collect(),
         ))
     }
 
-    fn trim(&self, a: Option<T>, b: Option<T>) -> Result<Box<Self>, &str> {
-        let f = mutators::trim(a.as_ref(), b.as_ref())?;
+    fn trim(&self, a: Option<T>, b: Option<T>) -> Result<Box<Self>, String> {
+        let f = algorithms::trim(a.as_ref(), b.as_ref())?;
 
         Ok(ChordMember::new(
             self.value.clone().into_iter().map(f).collect(),
@@ -201,3 +202,4 @@ mod tests {
         assert_f64_near!(inv[1], -3.2);
     }
 }
+*/

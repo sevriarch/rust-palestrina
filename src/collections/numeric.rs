@@ -1,3 +1,4 @@
+use crate::algorithms::algorithms;
 use crate::collections::traits::Collection;
 use crate::default_methods;
 use crate::entities::scale::Scale;
@@ -54,6 +55,14 @@ impl<T: Clone + Copy + Num + Debug + Display + PartialOrd + Bounded> Collection<
     for NumericSeq<T>
 {
     default_methods!(T);
+
+    fn mutate_pitches<F: Fn(&T) -> T>(mut self, f: F) -> Self {
+        for v in self.contents.iter_mut() {
+            *v = f(v);
+        }
+
+        self
+    }
 }
 
 impl<T> NumericSeq<T>
@@ -151,92 +160,59 @@ where
         self
     }
 
-    pub fn iter_pitches(mut self, f: impl Fn(&mut T)) -> Self {
-        for v in self.contents.iter_mut() {
-            f(v);
-        }
-
-        self
+    pub fn transpose(self, t: T) -> Result<Self, String> {
+        Ok(self.mutate_pitches(algorithms::transpose(&t)))
     }
 
-    pub fn transpose(self, t: T) -> Self {
-        self.map_pitches(|v| v + t)
-    }
-
-    pub fn transpose_to_min(self, t: T) -> Self {
+    pub fn transpose_to_min(self, t: T) -> Result<Self, String> {
         match self.min() {
             Some(m) => self.transpose(t - m),
-            _ => self,
+            None => Ok(self),
         }
     }
 
-    pub fn transpose_to_max(self, t: T) -> Self {
+    pub fn transpose_to_max(self, t: T) -> Result<Self, String> {
         match self.max() {
             Some(m) => self.transpose(t - m),
-            _ => self,
+            None => Ok(self),
         }
     }
 
-    pub fn invert(self, t: T) -> Self {
-        self.map_pitches(|v| t + t - v)
+    pub fn invert(self, t: T) -> Result<Self, String> {
+        Ok(self.mutate_pitches(algorithms::invert(&t)))
     }
 
-    pub fn augment(self, t: T) -> Self {
-        self.map_pitches(|v| t * v)
+    pub fn augment(self, t: T) -> Result<Self, String> {
+        Ok(self.mutate_pitches(algorithms::augment(&t)))
     }
 
     pub fn diminish(self, t: T) -> Result<Self, String> {
-        if t.is_zero() {
-            Err("cannot divide by zero".to_string())
-        } else {
-            Ok(self.map_pitches(|v| v / t))
+        match algorithms::diminish(&t) {
+            Ok(f) => Ok(self.mutate_pitches(f)),
+            Err(e) => Err(e),
         }
     }
 
     pub fn modulus(self, t: T) -> Result<Self, String> {
-        if t.is_zero() {
-            Err("cannot divide by zero".to_string())
-        } else {
-            Ok(self.map_pitches(|v| {
-                let m = v % t;
-
-                if m < T::from(0) {
-                    m + t
-                } else {
-                    m
-                }
-            }))
+        match algorithms::modulus(&t) {
+            Ok(f) => Ok(self.mutate_pitches(f)),
+            Err(e) => Err(e),
         }
     }
 
     pub fn trim(self, min: T, max: T) -> Result<Self, String> {
-        if min > max {
-            return Err(format!("min {} must not be higher than max {}", min, max));
+        match algorithms::trim(Some(&min), Some(&max)) {
+            Ok(f) => Ok(self.map_pitches(f)),
+            Err(e) => Err(e),
         }
-
-        Ok(self.iter_pitches(|v| {
-            if *v < min {
-                *v = min;
-            } else if *v > max {
-                *v = max;
-            }
-        }))
     }
 
     pub fn trim_min(self, min: T) -> Result<Self, String> {
-        Ok(self.iter_pitches(|v| {
-            if *v < min {
-                *v = min
-            }
-        }))
+        Ok(self.mutate_pitches(|v| if *v < min { min } else { *v }))
     }
 
     pub fn trim_max(self, max: T) -> Result<Self, String> {
-        Ok(self.iter_pitches(|v| {
-            if *v > max {
-                *v = max
-            }
-        }))
+        Ok(self.mutate_pitches(|v| if *v > max { max } else { *v }))
     }
 
     pub fn bounce(self, min: T, max: T) -> Result<Self, String> {
@@ -246,7 +222,7 @@ where
             return Err(format!("min {} must not be higher than max {}", min, max));
         }
 
-        Ok(self.iter_pitches(|v| {
+        Ok(self.mutate_pitches(|v| {
             if *v < min {
                 let mut modulus = (min - *v) % (diff + diff);
 
@@ -254,7 +230,7 @@ where
                     modulus = diff + diff - modulus;
                 }
 
-                *v = min + modulus;
+                return min + modulus;
             } else if *v > max {
                 let mut modulus = (*v - max) % (diff + diff);
 
@@ -262,33 +238,23 @@ where
                     modulus = diff + diff - modulus;
                 }
 
-                *v = max - modulus;
+                return max - modulus;
             }
+
+            *v
         }))
     }
 
     pub fn bounce_min(self, min: T) -> Result<Self, String> {
-        Ok(self.iter_pitches(|v| {
-            if *v < min {
-                *v = min + min - *v
-            }
-        }))
+        Ok(self.mutate_pitches(|v| if *v < min { min + min - *v } else { *v }))
     }
 
     pub fn bounce_max(self, max: T) -> Result<Self, String> {
-        Ok(self.iter_pitches(|v| {
-            if *v > max {
-                *v = max + max - *v
-            }
-        }))
+        Ok(self.mutate_pitches(|v| if *v > max { max + max - *v } else { *v }))
     }
 
     pub fn filter_in_position(self, f: fn(T) -> bool, default: T) -> Result<Self, String> {
-        Ok(self.iter_pitches(|v| {
-            if !f(*v) {
-                *v = default;
-            }
-        }))
+        Ok(self.mutate_pitches(|v| if f(*v) { *v } else { default }))
     }
 
     fn collect_windows(&self, len: usize, step: usize) -> Vec<Vec<T>> {
@@ -328,8 +294,6 @@ where
             .into_iter()
             .filter(|v| f(v.clone()))
             .collect();
-
-        println!("cts = {:?}", cts);
 
         let ret = cts.into_iter().flatten().collect();
 
@@ -512,12 +476,14 @@ mod tests {
     #[test]
     fn transpose() {
         assert_eq!(
-            NumericSeq::new(vec![1, 6, 4]).transpose(2),
+            NumericSeq::new(vec![1, 6, 4]).transpose(2).unwrap(),
             NumericSeq::new(vec![3, 8, 6])
         );
 
         assert_contents_f64_near!(
-            NumericSeq::new(vec![1.7, 3.4, 6.3]).transpose(-1.8),
+            NumericSeq::new(vec![1.7, 3.4, 6.3])
+                .transpose(-1.8)
+                .unwrap(),
             NumericSeq::new(vec![-0.1, 1.6, 4.5])
         );
     }
@@ -525,16 +491,18 @@ mod tests {
     #[test]
     fn transpose_to_min() {
         assert_eq!(
-            NumericSeq::new(vec![]).transpose_to_min(44),
+            NumericSeq::new(vec![]).transpose_to_min(44).unwrap(),
             NumericSeq::new(vec![])
         );
         assert_eq!(
-            NumericSeq::new(vec![1, 6, 4]).transpose_to_min(2),
+            NumericSeq::new(vec![1, 6, 4]).transpose_to_min(2).unwrap(),
             NumericSeq::new(vec![2, 7, 5])
         );
 
         assert_contents_f64_near!(
-            NumericSeq::new(vec![1.7, 3.4, 6.3]).transpose_to_min(-1.8),
+            NumericSeq::new(vec![1.7, 3.4, 6.3])
+                .transpose_to_min(-1.8)
+                .unwrap(),
             NumericSeq::new(vec![-1.8, -0.1, 2.8])
         );
     }
@@ -542,16 +510,18 @@ mod tests {
     #[test]
     fn transpose_to_max() {
         assert_eq!(
-            NumericSeq::new(vec![]).transpose_to_max(44),
+            NumericSeq::new(vec![]).transpose_to_max(44).unwrap(),
             NumericSeq::new(vec![])
         );
         assert_eq!(
-            NumericSeq::new(vec![1, 6, 4]).transpose_to_max(2),
+            NumericSeq::new(vec![1, 6, 4]).transpose_to_max(2).unwrap(),
             NumericSeq::new(vec![-3, 2, 0])
         );
 
         assert_contents_f64_near!(
-            NumericSeq::new(vec![1.7, 3.4, 6.3]).transpose_to_max(-1.8),
+            NumericSeq::new(vec![1.7, 3.4, 6.3])
+                .transpose_to_max(-1.8)
+                .unwrap(),
             NumericSeq::new(vec![-6.4, -4.7, -1.8])
         );
     }
@@ -559,12 +529,12 @@ mod tests {
     #[test]
     fn invert() {
         assert_eq!(
-            NumericSeq::new(vec![1, 6, 4]).invert(2),
+            NumericSeq::new(vec![1, 6, 4]).invert(2).unwrap(),
             NumericSeq::new(vec![3, -2, 0])
         );
 
         assert_contents_f64_near!(
-            NumericSeq::new(vec![1.7, 3.4, 6.3]).invert(-1.8),
+            NumericSeq::new(vec![1.7, 3.4, 6.3]).invert(-1.8).unwrap(),
             NumericSeq::new(vec![-5.3, -7.0, -9.9])
         );
     }
@@ -572,12 +542,12 @@ mod tests {
     #[test]
     fn augment() {
         assert_eq!(
-            NumericSeq::new(vec![1, 6, 4]).augment(2),
+            NumericSeq::new(vec![1, 6, 4]).augment(2).unwrap(),
             NumericSeq::new(vec![2, 12, 8])
         );
 
         assert_contents_f64_near!(
-            NumericSeq::new(vec![1.7, 3.4, 6.3]).augment(2.0),
+            NumericSeq::new(vec![1.7, 3.4, 6.3]).augment(2.0).unwrap(),
             NumericSeq::new(vec![3.4, 6.8, 12.6])
         );
     }

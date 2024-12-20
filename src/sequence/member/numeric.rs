@@ -1,14 +1,15 @@
-use crate::mutators;
+/*use crate::algorithms::algorithms;
 use crate::sequence::member::chord::ChordMember;
 use crate::sequence::member::traits::SequenceMember;
 use num_traits::{Num, Zero};
+use std::fmt::Debug;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub struct NumericMember<T: Clone + Copy + Num + PartialOrd + From<i8> + From<i32>> {
+pub struct NumericMember<T: Clone + Copy + Num + PartialOrd + From<i8> + From<i32> + Debug> {
     value: T,
 }
 
-impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i8> + From<i32>> NumericMember<T> {
+impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i8> + From<i32> + Debug> NumericMember<T> {
     pub fn from(value: T) -> Box<Self> {
         Box::new(Self { value })
     }
@@ -20,8 +21,8 @@ impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i8> + From<i32>> NumericMe
 
 macro_rules! impl_try_from {
     ($source:ty) => {
-        impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i8> + From<i32>> TryFrom<$source>
-            for NumericMember<T>
+        impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i8> + From<i32> + Debug>
+            TryFrom<$source> for NumericMember<T>
         {
             type Error = String;
 
@@ -37,7 +38,7 @@ macro_rules! impl_try_from {
 
 impl_try_from!(ChordMember<T>);
 
-impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i8> + From<i32>> SequenceMember<T>
+impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i8> + From<i32> + Debug> SequenceMember<T>
     for NumericMember<T>
 {
     fn pitches(&self) -> Vec<T> {
@@ -99,18 +100,18 @@ impl<T: Clone + Copy + Num + Zero + PartialOrd + From<i8> + From<i32>> SequenceM
         Ok(NumericMember::new(p * self.value))
     }
 
-    fn diminish(&self, p: T) -> Result<Box<Self>, &str> {
-        let f = mutators::diminish(&p)?;
+    fn diminish(&self, p: T) -> Result<Box<Self>, String> {
+        let f = algorithms::diminish(&p)?;
         Ok(NumericMember::new(f(self.value)))
     }
 
-    fn modulus(&self, p: T) -> Result<Box<Self>, &str> {
-        let f = mutators::modulus(&p)?;
+    fn modulus(&self, p: T) -> Result<Box<Self>, String> {
+        let f = algorithms::modulus(&p)?;
         Ok(NumericMember::new(f(self.value)))
     }
 
-    fn trim(&self, a: Option<T>, b: Option<T>) -> Result<Box<Self>, &str> {
-        let f = mutators::trim(a.as_ref(), b.as_ref())?;
+    fn trim(&self, a: Option<T>, b: Option<T>) -> Result<Box<Self>, String> {
+        let f = algorithms::trim(a.as_ref(), b.as_ref())?;
         Ok(NumericMember::new(f(self.value)))
     }
 }
@@ -258,3 +259,4 @@ mod tests {
         );
     }
 }
+*/

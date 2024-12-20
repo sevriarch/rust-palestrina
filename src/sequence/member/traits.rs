@@ -14,9 +14,8 @@ pub trait SequenceMember<PitchType: Clone + Copy> {
     fn invert(&self, p: PitchType) -> Result<Box<Self>, &str>;
     fn transpose(&self, p: PitchType) -> Result<Box<Self>, &str>;
     fn augment(&self, p: PitchType) -> Result<Box<Self>, &str>;
-    fn diminish(&self, p: PitchType) -> Result<Box<Self>, &str>;
-    fn modulus(&self, p: PitchType) -> Result<Box<Self>, &str>;
-
-    fn trim(&self, a: Option<PitchType>, b: Option<PitchType>) -> Result<Box<Self>, &str>;
+    fn diminish(&self, p: PitchType) -> Result<Box<Self>, String>;
+    fn modulus(&self, p: PitchType) -> Result<Box<Self>, String>;
+    fn trim(&self, a: Option<PitchType>, b: Option<PitchType>) -> Result<Box<Self>, String>;
     // plus trim(),bounce(),scale(),gamut()
 }

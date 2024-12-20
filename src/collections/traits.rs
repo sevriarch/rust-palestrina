@@ -62,6 +62,8 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
     fn replace_contents<F: FnOnce(Vec<T>) -> Vec<T>>(self, f: F) -> Self;
     fn map(self, f: fn(T) -> T) -> Self;
 
+    fn mutate_pitches<F: Fn(&T) -> T>(self, f: F) -> Self;
+
     fn cts(&self) -> Vec<T>;
     fn length(&self) -> usize;
     fn construct(&self, contents: Vec<T>) -> Self;
@@ -181,10 +183,9 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
 
     fn keep_indices(self, indices: &[i32]) -> Result<Self, String> {
         let mut ix = self.indices(indices)?;
-        let contents = self.cts();
 
         Ok(self.mutate_contents(|c| {
-            *c = ix.iter_mut().map(|i| contents[*i]).collect();
+            *c = ix.iter_mut().map(|i| c[*i]).collect();
         }))
     }
 
@@ -552,6 +553,14 @@ mod tests {
 
     impl Collection<i32> for TestColl {
         default_methods!(i32);
+
+        fn mutate_pitches<F: Fn(&i32) -> i32>(mut self, f: F) -> Self {
+            for v in self.contents.iter_mut() {
+                *v = f(v);
+            }
+
+            self
+        }
     }
 
     #[test]
