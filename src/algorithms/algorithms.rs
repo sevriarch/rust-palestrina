@@ -41,7 +41,7 @@ pub fn modulus<'a, T: Copy + Num + PartialOrd>(
 pub fn trim<'a, 'b, T: Num + Copy + PartialOrd + Debug>(
     a: Option<&'a T>,
     b: Option<&'a T>,
-) -> Result<Box<dyn Fn(T) -> T + 'a>, String> {
+) -> Result<Box<dyn Fn(&T) -> T + 'a>, String> {
     match (a, b) {
         (Some(min), Some(max)) => {
             if min > max {
@@ -53,18 +53,18 @@ pub fn trim<'a, 'b, T: Num + Copy + PartialOrd + Debug>(
             }
 
             Ok(Box::new(|v| {
-                if v > *max {
+                if v > max {
                     *max
-                } else if v < *min {
+                } else if v < min {
                     *min
                 } else {
-                    v
+                    *v
                 }
             }))
         }
-        (Some(min), None) => Ok(Box::new(|v| if v < *min { *min } else { v })),
-        (None, Some(max)) => Ok(Box::new(|v| if v > *max { *max } else { v })),
-        (None, None) => Ok(Box::new(|v| v)),
+        (Some(min), None) => Ok(Box::new(|v| if v < min { *min } else { *v })),
+        (None, Some(max)) => Ok(Box::new(|v| if v > max { *max } else { *v })),
+        (None, None) => Ok(Box::new(|v| *v)),
     }
 }
 
@@ -113,29 +113,29 @@ mod tests {
         assert!(trim(Some(&10), Some(&5)).is_err());
 
         let maxonlyi = trim(None, Some(&10)).unwrap();
-        assert_eq!(maxonlyi(5), 5);
-        assert_eq!(maxonlyi(15), 10);
+        assert_eq!(maxonlyi(&5), 5);
+        assert_eq!(maxonlyi(&15), 10);
 
         let maxonlyf = trim(None, Some(&10.5)).unwrap();
-        assert_eq!(maxonlyf(5.5), 5.5);
-        assert_eq!(maxonlyf(15.5), 10.5);
+        assert_eq!(maxonlyf(&5.5), 5.5);
+        assert_eq!(maxonlyf(&15.5), 10.5);
 
         let minonlyi = trim(Some(&10), None).unwrap();
-        assert_eq!(minonlyi(5), 10);
-        assert_eq!(minonlyi(15), 15);
+        assert_eq!(minonlyi(&5), 10);
+        assert_eq!(minonlyi(&15), 15);
 
         let minonlyf = trim(Some(&10.5), None).unwrap();
-        assert_eq!(minonlyf(5.5), 10.5);
-        assert_eq!(minonlyf(15.5), 15.5);
+        assert_eq!(minonlyf(&5.5), 10.5);
+        assert_eq!(minonlyf(&15.5), 15.5);
 
         let bothi = trim(Some(&2), Some(&10)).unwrap();
-        assert_eq!(bothi(0), 2);
-        assert_eq!(bothi(5), 5);
-        assert_eq!(bothi(15), 10);
+        assert_eq!(bothi(&0), 2);
+        assert_eq!(bothi(&5), 5);
+        assert_eq!(bothi(&15), 10);
 
         let bothf = trim(Some(&2.5), Some(&10.5)).unwrap();
-        assert_eq!(bothf(0.5), 2.5);
-        assert_eq!(bothf(5.5), 5.5);
-        assert_eq!(bothf(15.5), 10.5);
+        assert_eq!(bothf(&0.5), 2.5);
+        assert_eq!(bothf(&5.5), 5.5);
+        assert_eq!(bothf(&15.5), 10.5);
     }
 }

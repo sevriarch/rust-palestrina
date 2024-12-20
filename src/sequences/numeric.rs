@@ -2,6 +2,7 @@ use crate::algorithms::algorithms;
 use crate::collections::traits::Collection;
 use crate::default_methods;
 use crate::entities::scale::Scale;
+use crate::sequences::traits::Sequence;
 
 use num_traits::{Bounded, Num, PrimInt};
 use std::convert::TryFrom;
@@ -55,13 +56,33 @@ impl<T: Clone + Copy + Num + Debug + Display + PartialOrd + Bounded> Collection<
     for NumericSeq<T>
 {
     default_methods!(T);
+}
 
+impl<T: Clone + Copy + Num + Debug + Display + PartialOrd + Bounded + Sum + From<i32>>
+    Sequence<T, T> for NumericSeq<T>
+{
     fn mutate_pitches<F: Fn(&T) -> T>(mut self, f: F) -> Self {
         for v in self.contents.iter_mut() {
             *v = f(v);
         }
 
         self
+    }
+
+    fn to_flat_pitches(&self) -> Vec<T> {
+        self.contents.clone()
+    }
+
+    fn to_pitches(&self) -> Result<Vec<Vec<T>>, &str> {
+        Ok(self.contents.clone().into_iter().map(|p| vec![p]).collect())
+    }
+
+    fn to_numeric_values(&self) -> Result<Vec<T>, &str> {
+        Ok(self.contents.clone())
+    }
+
+    fn to_optional_numeric_values(&self) -> Result<Vec<Option<T>>, &str> {
+        Ok(self.contents.clone().into_iter().map(|p| Some(p)).collect())
     }
 }
 
@@ -78,48 +99,6 @@ where
         + Bounded
         + From<i32>,
 {
-    pub fn to_pitches(&self) -> Result<Vec<Vec<T>>, &str> {
-        Ok(self.contents.clone().into_iter().map(|p| vec![p]).collect())
-    }
-
-    pub fn to_flat_pitches(&self) -> Result<Vec<T>, &str> {
-        Ok(self.contents.clone())
-    }
-
-    pub fn to_numeric_values(&self) -> Result<Vec<T>, &str> {
-        Ok(self.contents.clone())
-    }
-
-    pub fn to_optional_numeric_values(&self) -> Result<Vec<Option<T>>, &str> {
-        Ok(self.contents.clone().into_iter().map(|p| Some(p)).collect())
-    }
-
-    pub fn min(&self) -> Option<T> {
-        self.contents
-            .iter()
-            .copied()
-            .reduce(|a, b| if a < b { a } else { b })
-    }
-
-    pub fn max(&self) -> Option<T> {
-        self.contents
-            .iter()
-            .copied()
-            .reduce(|a, b| if a > b { a } else { b })
-    }
-
-    pub fn range(&self) -> Option<T> {
-        if let (Some(min), Some(max)) = (self.min(), self.max()) {
-            Some(max - min)
-        } else {
-            None
-        }
-    }
-
-    pub fn total(&self) -> Option<T> {
-        Some(self.contents.iter().copied().sum())
-    }
-
     pub fn mean(&self) -> Option<T> {
         let mut iter = self.contents.iter();
         let first = iter.next()?;
@@ -202,7 +181,7 @@ where
 
     pub fn trim(self, min: T, max: T) -> Result<Self, String> {
         match algorithms::trim(Some(&min), Some(&max)) {
-            Ok(f) => Ok(self.map_pitches(f)),
+            Ok(f) => Ok(self.mutate_pitches(f)),
             Err(e) => Err(e),
         }
     }
@@ -301,16 +280,8 @@ where
         Ok(self)
     }
 
-    pub fn act<F>(mut self, f: F) -> Self
-    where
-        F: FnOnce(&mut Vec<T>),
-    {
-        f(&mut self.contents);
-        self
-    }
-
     pub fn pad(self, val: T, num: usize) -> Self {
-        self.act(|c| {
+        self.mutate_contents(|c| {
             c.splice(0..0, std::iter::repeat(val).take(num));
         })
     }
@@ -352,6 +323,7 @@ mod tests {
     use crate::collections::traits::Collection;
     use crate::sequences::numeric::NumericSeq;
     use crate::sequences::numeric::Scale;
+    use crate::sequences::traits::Sequence;
 
     use assert_float_eq::assert_f64_near;
 
@@ -382,7 +354,7 @@ mod tests {
     fn to_flat_pitches() {
         assert_eq!(
             NumericSeq::new(vec![4, 2, 5, 6, 3]).to_flat_pitches(),
-            Ok(vec![4, 2, 5, 6, 3])
+            vec![4, 2, 5, 6, 3]
         );
     }
 

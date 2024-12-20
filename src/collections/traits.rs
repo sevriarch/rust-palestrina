@@ -62,8 +62,6 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
     fn replace_contents<F: FnOnce(Vec<T>) -> Vec<T>>(self, f: F) -> Self;
     fn map(self, f: fn(T) -> T) -> Self;
 
-    fn mutate_pitches<F: Fn(&T) -> T>(self, f: F) -> Self;
-
     fn cts(&self) -> Vec<T>;
     fn length(&self) -> usize;
     fn construct(&self, contents: Vec<T>) -> Self;
@@ -553,14 +551,6 @@ mod tests {
 
     impl Collection<i32> for TestColl {
         default_methods!(i32);
-
-        fn mutate_pitches<F: Fn(&i32) -> i32>(mut self, f: F) -> Self {
-            for v in self.contents.iter_mut() {
-                *v = f(v);
-            }
-
-            self
-        }
     }
 
     #[test]

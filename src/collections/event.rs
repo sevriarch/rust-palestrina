@@ -64,10 +64,6 @@ struct EventList<'a> {
 
 impl<'a> Collection<MetaEvent<'a>> for EventList<'a> {
     default_methods!(MetaEvent<'a>);
-
-    fn mutate_pitches<F: Fn(&MetaEvent<'a>) -> MetaEvent<'a>>(self, _: F) -> Self {
-        self
-    }
 }
 
 impl<'a> EventList<'a> {
