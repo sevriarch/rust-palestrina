@@ -349,9 +349,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::collections::numeric::NumericSeq;
-    use crate::collections::numeric::Scale;
     use crate::collections::traits::Collection;
+    use crate::sequences::numeric::NumericSeq;
+    use crate::sequences::numeric::Scale;
 
     use assert_float_eq::assert_f64_near;
 
