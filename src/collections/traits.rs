@@ -24,6 +24,17 @@ macro_rules! default_methods {
             self
         }
 
+        fn mutate_contents_result<F: FnOnce(&mut Vec<$type>) -> Result<(), String>>(
+            mut self,
+            f: F,
+        ) -> Result<Self, String> {
+            // TODO: Determine why f(&mut self.contents)?; does not work
+            match f(&mut self.contents) {
+                Err(str) => Err(str),
+                Ok(()) => Ok(self),
+            }
+        }
+
         fn map(mut self, f: fn($type) -> $type) -> Self {
             self.contents = self.contents.into_iter().map(f).collect();
             self
@@ -44,6 +55,10 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
     fn new(contents: Vec<T>) -> Self;
 
     fn mutate_contents<F: FnOnce(&mut Vec<T>)>(self, f: F) -> Self;
+    fn mutate_contents_result<F: FnOnce(&mut Vec<T>) -> Result<(), String>>(
+        self,
+        f: F,
+    ) -> Result<Self, String>;
     fn replace_contents<F: FnOnce(Vec<T>) -> Vec<T>>(self, f: F) -> Self;
     fn map(self, f: fn(T) -> T) -> Self;
 
@@ -81,6 +96,14 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
 
     fn indices(&self, indices: &[i32]) -> Result<Vec<usize>, &str> {
         indices.iter().map(|i| self.index(*i)).collect()
+    }
+
+    // Return the supplied indices sorted from right to left
+    fn indices_sorted(&self, indices: &[i32]) -> Result<Vec<usize>, &str> {
+        let mut ix = self.indices(indices)?;
+
+        ix.sort_unstable_by(|a, b| b.cmp(a));
+        Ok(ix)
     }
 
     fn indices_inclusive(&self, indices: Vec<i32>) -> Result<Vec<usize>, &str> {
@@ -212,8 +235,7 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
     }
 
     fn drop_indices(self, indices: &[i32]) -> Result<Self, String> {
-        let mut ix = self.indices(indices)?;
-        ix.sort_unstable_by(|a, b| b.cmp(a));
+        let mut ix = self.indices_sorted(indices)?;
         ix.dedup();
 
         Ok(self.mutate_contents(|c| {
@@ -247,41 +269,38 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
         self.construct(newcontents)
     }
 
-    fn insert_before(&self, indices: &[i32], values: &[T]) -> Result<Box<Self>, &str> {
-        let ix = self.indices(indices)?;
-        let mut cts = self.cts();
+    fn insert_before(self, indices: &[i32], values: &[T]) -> Result<Self, String> {
+        let ix = self.indices_sorted(indices)?;
 
-        for i in ix.into_iter().rev() {
-            cts.splice(i..i, values.to_vec());
-        }
-
-        Ok(self.construct(cts))
+        Ok(self.mutate_contents(|c| {
+            for i in ix.into_iter() {
+                c.splice(i..i, values.to_vec());
+            }
+        }))
     }
 
-    fn insert_after(&self, indices: &[i32], values: &[T]) -> Result<Box<Self>, &str> {
-        let ix = self.indices(indices)?;
-        let mut cts = self.cts();
+    fn insert_after(self, indices: &[i32], values: &[T]) -> Result<Self, String> {
+        let ix = self.indices_sorted(indices)?;
 
-        for i in ix.into_iter().rev() {
-            cts.splice(i + 1..i + 1, values.to_vec());
-        }
-
-        Ok(self.construct(cts))
+        Ok(self.mutate_contents(|c| {
+            for i in ix.into_iter() {
+                c.splice(i + 1..i + 1, values.to_vec());
+            }
+        }))
     }
 
-    fn replace_indices(&self, indices: &[i32], values: &[T]) -> Result<Box<Self>, &str> {
-        let mut ix = self.indices(indices)?;
+    fn replace_indices(self, indices: &[i32], values: &[T]) -> Result<Self, String> {
+        let mut ix = self.indices_sorted(indices)?;
 
-        ix.sort_unstable();
         ix.dedup();
 
         let mut cts = self.cts();
 
-        for i in ix.into_iter().rev() {
-            cts.splice(i..i + 1, values.to_vec());
-        }
-
-        Ok(self.construct(cts))
+        Ok(self.mutate_contents(|c| {
+            for i in ix.into_iter() {
+                c.splice(i..i + 1, values.to_vec());
+            }
+        }))
     }
 
     fn replace_first(self, finder: fn(T) -> bool, val: T) -> Result<Self, String> {
@@ -304,19 +323,16 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
         }
     }
 
-    fn map_indices(&self, indices: &[i32], f: fn(T) -> T) -> Result<Box<Self>, &str> {
+    fn map_indices(self, indices: &[i32], f: fn(T) -> T) -> Result<Self, String> {
         let mut ix = self.indices(indices)?;
 
-        ix.sort_unstable();
         ix.dedup();
 
-        let mut cts = self.cts();
-
-        for i in ix.into_iter() {
-            cts[i] = f(cts[i]);
-        }
-
-        Ok(self.construct(cts))
+        Ok(self.mutate_contents(|c| {
+            for i in ix.into_iter() {
+                c[i] = f(c[i]);
+            }
+        }))
     }
 
     fn map_first(self, finder: fn(T) -> bool, f: fn(T) -> T) -> Result<Self, String> {
@@ -339,19 +355,16 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
         }
     }
 
-    fn flat_map_indices(&self, indices: &[i32], f: fn(T) -> Vec<T>) -> Result<Box<Self>, &str> {
-        let mut ix = self.indices(indices)?;
+    fn flat_map_indices(self, indices: &[i32], f: fn(T) -> Vec<T>) -> Result<Self, String> {
+        let mut ix = self.indices_sorted(indices)?;
 
-        ix.sort_unstable();
         ix.dedup();
 
-        let mut cts = self.cts();
-
-        for i in ix.into_iter().rev() {
-            cts.splice(i..i + 1, f(cts[i]));
-        }
-
-        Ok(self.construct(cts))
+        Ok(self.mutate_contents(|c| {
+            for i in ix.into_iter() {
+                c.splice(i..i + 1, f(c[i]));
+            }
+        }))
     }
 
     fn flat_map_first(self, finder: fn(T) -> bool, f: fn(T) -> Vec<T>) -> Result<Self, String> {
@@ -374,61 +387,77 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
         }
     }
 
-    fn append(&self, coll: &Self) -> Result<Box<Self>, &str> {
-        //self.mutate_contents(|c| c.append(&mut coll.cts()));
-        let mut cts = self.cts();
-        cts.append(&mut coll.cts());
-
-        Ok(self.construct(cts))
+    fn append(self, coll: &Self) -> Result<Self, String> {
+        Ok(self.mutate_contents(|c| c.append(&mut coll.cts())))
     }
 
-    fn append_items(&self, items: &[T]) -> Result<Box<Self>, &str> {
-        let mut cts = self.cts();
-        cts.append(&mut items.to_vec());
-
-        Ok(self.construct(cts))
+    fn append_items(self, items: &[T]) -> Result<Self, String> {
+        Ok(self.mutate_contents(|c| c.append(&mut items.to_vec())))
     }
 
-    fn prepend(&self, coll: &Self) -> Result<Box<Self>, &str> {
-        let mut cts = coll.cts();
-        cts.append(&mut self.cts());
+    fn prepend(self, coll: &Self) -> Result<Self, String> {
+        Ok(self.replace_contents(|mut c| {
+            let mut cts = coll.cts();
 
-        Ok(self.construct(cts))
+            cts.append(&mut c);
+            cts
+        }))
     }
 
-    fn prepend_items(&self, items: &[T]) -> Result<Box<Self>, &str> {
-        let mut cts = items.to_vec();
-        cts.append(&mut self.cts());
+    fn prepend_items(self, items: &[T]) -> Result<Self, String> {
+        Ok(self.replace_contents(|mut c| {
+            let mut cts = items.to_vec();
 
-        Ok(self.construct(cts))
+            cts.append(&mut c);
+            cts
+        }))
     }
 
-    fn retrograde(&self) -> Result<Box<Self>, &str> {
-        let mut cts = self.cts();
-        cts.reverse();
-
-        Ok(self.construct(cts))
+    fn retrograde(self) -> Result<Self, String> {
+        Ok(self.mutate_contents(|c| {
+            c.reverse();
+        }))
     }
 
-    fn swap(&self, (i1, i2): (i32, i32)) -> Result<Box<Self>, &str> {
+    fn swap(self, (i1, i2): (i32, i32)) -> Result<Self, String> {
         let ix1 = self.index(i1)?;
         let ix2 = self.index(i2)?;
-        let mut cts = self.cts();
-        cts.swap(ix1, ix2);
 
-        Ok(self.construct(cts))
+        Ok(self.mutate_contents(|c| {
+            c.swap(ix1, ix2);
+        }))
     }
 
-    fn swap_many(&self, tup: &[(i32, i32)]) -> Result<Box<Self>, &str> {
-        let mut cts = self.cts();
+    fn swap_many(self, tup: &[(i32, i32)]) -> Result<Self, String> {
+        /* TODO: figure out if there's a way to make this work
+        self.mutate_contents_result(|c| {
+            for (i1, i2) in tup.iter() {
+                let ixes = self.indices(&[*i1, *i2])?;
 
-        for (i1, i2) in tup.iter() {
-            let ix1 = self.index(*i1)?;
-            let ix2 = self.index(*i2)?;
-            cts.swap(ix1, ix2);
-        }
+                c.swap(ixes[0], ixes[1]);
+            }
 
-        Ok(self.construct(cts))
+            Ok(())
+        })
+        */
+        let ixes: Vec<(usize, usize)> = tup
+            .iter()
+            .map(|(i1, i2)| {
+                let ix1 = self.index(*i1);
+                let ix2 = self.index(*i2);
+
+                match (ix1, ix2) {
+                    (Ok(i1), Ok(i2)) => Ok((i1, i2)),
+                    _ => Err("invalid index".to_string()),
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(self.mutate_contents(|c| {
+            for (i1, i2) in ixes.iter() {
+                c.swap(*i1, *i2);
+            }
+        }))
     }
 
     // TODO: is this needed?
@@ -693,7 +722,7 @@ mod tests {
     #[test]
     fn insert_before() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
-        let new = coll.insert_before(&[1, -5, 4, -1], &[7, 8]);
+        let new = coll.insert_before(&[1, 4, -5, -1], &[7, 8]);
 
         assert_contents_eq!(new, vec![0, 7, 8, 7, 8, 2, 3, 4, 7, 8, 5, 7, 8, 6]);
     }
