@@ -1,5 +1,7 @@
 use crate::collections::traits::Collection;
 use crate::default_methods;
+use crate::sequences::chord::ChordSeq;
+use crate::sequences::numeric::NumericSeq;
 use crate::sequences::traits::Sequence;
 
 use num_traits::{Bounded, Num};
@@ -12,8 +14,8 @@ pub struct NoteSeq<T> {
     contents: Vec<Option<T>>,
 }
 
-#[derive(Debug)]
-pub enum NumSeqError {
+#[derive(Debug, PartialEq)]
+pub enum NoteSeqError {
     InvalidValues,
 }
 
@@ -21,7 +23,7 @@ impl<T> TryFrom<Vec<T>> for NoteSeq<T>
 where
     T: Copy + Num + Debug + PartialOrd,
 {
-    type Error = NumSeqError;
+    type Error = NoteSeqError;
 
     fn try_from(what: Vec<T>) -> Result<Self, Self::Error> {
         Ok(Self {
@@ -34,7 +36,7 @@ impl<T> TryFrom<Vec<Vec<T>>> for NoteSeq<T>
 where
     T: Copy + Num + Debug + PartialOrd,
 {
-    type Error = NumSeqError;
+    type Error = NoteSeqError;
 
     fn try_from(what: Vec<Vec<T>>) -> Result<Self, Self::Error> {
         let len = what.len();
@@ -48,12 +50,33 @@ where
             .collect();
 
         if cts.len() != len {
-            Err(NumSeqError::InvalidValues)
+            Err(NoteSeqError::InvalidValues)
         } else {
             Ok(Self { contents: cts })
         }
     }
 }
+
+macro_rules! try_from_seq {
+    ($type:ty) => {
+        impl<T> TryFrom<$type> for NoteSeq<T>
+        where
+            T: Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
+        {
+            type Error = NoteSeqError;
+
+            fn try_from(what: $type) -> Result<Self, Self::Error> {
+                match what.to_optional_numeric_values() {
+                    Ok(vals) => Ok(Self { contents: vals }),
+                    Err(_) => Err(NoteSeqError::InvalidValues),
+                }
+            }
+        }
+    };
+}
+
+try_from_seq!(ChordSeq<T>);
+try_from_seq!(NumericSeq<T>);
 
 impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded> Collection<Option<T>> for NoteSeq<T> {
     default_methods!(Option<T>);
@@ -104,5 +127,49 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Seq
 
     fn to_optional_numeric_values(&self) -> Result<Vec<Option<T>>, String> {
         Ok(self.contents.clone())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::collections::traits::Collection;
+    use crate::sequences::chord::ChordSeq;
+    use crate::sequences::note::NoteSeq;
+    use crate::sequences::numeric::NumericSeq;
+
+    #[test]
+    fn try_from_vec() {
+        assert_eq!(
+            NoteSeq::try_from(vec![1, 2, 3]),
+            Ok(NoteSeq::new(vec![Some(1), Some(2), Some(3)]))
+        );
+    }
+
+    #[test]
+    fn try_from_vec_vec() {
+        assert!(NoteSeq::try_from(vec![vec![1, 2, 3]]).is_err());
+
+        assert_eq!(
+            NoteSeq::try_from(vec![vec![1], vec![], vec![2], vec![3]]),
+            Ok(NoteSeq::new(vec![Some(1), None, Some(2), Some(3)]))
+        );
+    }
+
+    #[test]
+    fn try_from_chordseq() {
+        assert!(NoteSeq::try_from(ChordSeq::new(vec![vec![1, 2, 3]])).is_err());
+
+        assert_eq!(
+            NoteSeq::try_from(ChordSeq::new(vec![vec![1], vec![], vec![2], vec![3]])),
+            Ok(NoteSeq::new(vec![Some(1), None, Some(2), Some(3)])),
+        );
+    }
+
+    #[test]
+    fn try_from_numseq() {
+        assert_eq!(
+            NoteSeq::try_from(NumericSeq::new(vec![1, 2, 3])),
+            Ok(NoteSeq::new(vec![Some(1), Some(2), Some(3)])),
+        );
     }
 }
