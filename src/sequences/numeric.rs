@@ -1,14 +1,11 @@
-use crate::algorithms::algorithms;
 use crate::collections::traits::Collection;
 use crate::default_methods;
-use crate::entities::scale::Scale;
 use crate::sequences::traits::Sequence;
 
-use num_traits::{Bounded, Num, PrimInt};
+use num_traits::{Bounded, Num};
 use std::convert::TryFrom;
 use std::fmt::{Debug, Display};
 use std::iter::Sum;
-use std::ops::{Add, SubAssign};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct NumericSeq<T> {
@@ -74,38 +71,16 @@ impl<T: Clone + Copy + Num + Debug + Display + PartialOrd + Bounded + Sum + From
         self.contents.clone()
     }
 
-    fn to_pitches(&self) -> Result<Vec<Vec<T>>, &str> {
-        Ok(self.contents.clone().into_iter().map(|p| vec![p]).collect())
+    fn to_pitches(&self) -> Vec<Vec<T>> {
+        self.contents.clone().into_iter().map(|p| vec![p]).collect()
     }
 
-    fn to_numeric_values(&self) -> Result<Vec<T>, &str> {
+    fn to_numeric_values(&self) -> Result<Vec<T>, String> {
         Ok(self.contents.clone())
     }
 
-    fn to_optional_numeric_values(&self) -> Result<Vec<Option<T>>, &str> {
+    fn to_optional_numeric_values(&self) -> Result<Vec<Option<T>>, String> {
         Ok(self.contents.clone().into_iter().map(|p| Some(p)).collect())
-    }
-}
-
-impl<T> NumericSeq<T>
-where
-    T: Clone
-        + Copy
-        + Num
-        + Debug
-        + Display
-        + PartialOrd
-        + Add<Output = T>
-        + Sum
-        + Bounded
-        + From<i32>,
-{
-    pub fn map_pitches(mut self, f: impl Fn(T) -> T) -> Self {
-        for v in self.contents.iter_mut() {
-            *v = f(*v);
-        }
-
-        self
     }
 }
 // equality methods: equals isSubsetOf isSupersetOf isTransformationOf isTranspositionOf isInversionOf isRetrogradeOf
@@ -122,8 +97,8 @@ where
 #[cfg(test)]
 mod tests {
     use crate::collections::traits::Collection;
+    use crate::entities::scale::Scale;
     use crate::sequences::numeric::NumericSeq;
-    use crate::sequences::numeric::Scale;
     use crate::sequences::traits::Sequence;
 
     use assert_float_eq::assert_f64_near;
@@ -147,7 +122,7 @@ mod tests {
     fn to_pitches() {
         assert_eq!(
             NumericSeq::new(vec![4, 2, 5, 6, 3]).to_pitches(),
-            Ok(vec![vec![4], vec![2], vec![5], vec![6], vec![3]])
+            vec![vec![4], vec![2], vec![5], vec![6], vec![3]]
         );
     }
 

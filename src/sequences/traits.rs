@@ -13,9 +13,9 @@ pub trait Sequence<
 {
     fn mutate_pitches<F: Fn(&PitchType) -> PitchType>(self, f: F) -> Self;
     fn to_flat_pitches(&self) -> Vec<PitchType>;
-    fn to_pitches(&self) -> Result<Vec<Vec<PitchType>>, &str>;
-    fn to_numeric_values(&self) -> Result<Vec<PitchType>, &str>;
-    fn to_optional_numeric_values(&self) -> Result<Vec<Option<T>>, &str>;
+    fn to_pitches(&self) -> Vec<Vec<PitchType>>;
+    fn to_numeric_values(&self) -> Result<Vec<PitchType>, String>;
+    fn to_optional_numeric_values(&self) -> Result<Vec<Option<PitchType>>, String>;
 
     fn min(&self) -> Option<PitchType> {
         self.to_flat_pitches()
