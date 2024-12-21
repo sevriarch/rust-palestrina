@@ -45,6 +45,11 @@ macro_rules! default_methods {
             self
         }
 
+        fn with_contents(mut self, contents: Vec<$type>) -> Self {
+            self.contents = contents;
+            self
+        }
+
         fn construct(&self, contents: Vec<$type>) -> Self {
             Self { contents }
         }
@@ -60,6 +65,7 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
         f: F,
     ) -> Result<Self, String>;
     fn replace_contents<F: FnOnce(Vec<T>) -> Vec<T>>(self, f: F) -> Self;
+    fn with_contents(self, contents: Vec<T>) -> Self;
     fn map(self, f: fn(T) -> T) -> Self;
 
     fn cts(&self) -> Vec<T>;

@@ -5,7 +5,7 @@ use std::ops::SubAssign;
 #[derive(Clone, Debug)]
 pub struct Scale<T>
 where
-    T: Num,
+    T: Copy + Num + From<i8> + TryInto<usize> + TryFrom<usize> + Euclid + PartialOrd + SubAssign,
 {
     notes: Vec<T>,
     length: T,
@@ -84,7 +84,24 @@ impl<
         }
     }
 
-    pub fn fit_to_scale<'a>(&self, zeroval: &'a T) -> impl Fn(T) -> T + use<'_, 'a, T> {
+    pub fn fit_to_scale<'a>(&'a self, zeroval: &'a T) -> Box<dyn Fn(&T) -> T + 'a> {
+        Box::new(move |v: &T| {
+            let ix = v.rem_euclid(&self.length);
+            let mut octaves = *v / self.length;
+
+            if !ix.is_zero() && *v < T::zero() {
+                octaves -= T::one();
+            }
+
+            // This should never happen, so defaulting to 0 should be safe
+            let ix = ix.try_into().unwrap_or(0);
+
+            *zeroval + self.notes[ix] + octaves * self.octave
+        })
+    }
+    // impl Fn(T) -> T + use<'_, 'a, T> {
+    /*
+    pub fn fit_to_scale<'a>(&self, zeroval: &'a T) -> Box<dyn Fn(&T) -> T + 'a> {
         |v: T| {
             let ix = v.rem_euclid(&self.length);
             let mut octaves = v / self.length;
@@ -98,6 +115,7 @@ impl<
             *zeroval + self.notes[ix] + octaves * self.octave
         }
     }
+    */
 }
 
 #[cfg(test)]
@@ -142,7 +160,11 @@ mod tests {
 
         //let mut vec: Vec<i32> = (-20_i32..20_i32).collect();
         //vec = vec.into_iter().map(scale.fit_to_scale(&60)).collect();
-        let vec: Vec<i32> = (-20_i32..20_i32).map(scale.fit_to_scale(&60)).collect();
+        let vec: Vec<i32> = (-20_i32..20_i32)
+            .collect::<Vec<i32>>()
+            .iter()
+            .map(scale.fit_to_scale(&60))
+            .collect();
 
         assert_eq!(
             vec,
@@ -152,10 +174,7 @@ mod tests {
             ]
         );
 
-        let vec: Vec<i32> = vec![0, 2, 4]
-            .into_iter()
-            .map(scale.fit_to_scale(&0))
-            .collect();
+        let vec: Vec<i32> = vec![0, 2, 4].iter().map(scale.fit_to_scale(&0)).collect();
         assert_eq!(vec, vec![0, 4, 7]);
     }
 }

@@ -61,6 +61,7 @@ impl<T: Clone + Copy + Num + Debug + Display + PartialOrd + Bounded> Collection<
 impl<T: Clone + Copy + Num + Debug + Display + PartialOrd + Bounded + Sum + From<i32>>
     Sequence<T, T> for NumericSeq<T>
 {
+    // TODO: this needs to be a method that modifies if needed
     fn mutate_pitches<F: Fn(&T) -> T>(mut self, f: F) -> Self {
         for v in self.contents.iter_mut() {
             *v = f(v);
@@ -99,38 +100,6 @@ where
         + Bounded
         + From<i32>,
 {
-    pub fn mean(&self) -> Option<T> {
-        let mut iter = self.contents.iter();
-        let first = iter.next()?;
-
-        Some(iter.fold(*first, |acc, x| acc + *x) / T::from(self.contents.len() as i32))
-    }
-
-    pub fn find_if_window(&self, len: usize, step: usize, f: fn(&[T]) -> bool) -> Vec<usize> {
-        let cts = self.cts();
-
-        (0..=self.length() - len)
-            .step_by(step)
-            .filter(|i| f(&cts[*i..*i + len]))
-            .collect()
-    }
-
-    pub fn find_if_reverse_window(
-        &self,
-        len: usize,
-        step: usize,
-        f: fn(&[T]) -> bool,
-    ) -> Vec<usize> {
-        let cts = self.cts();
-        let maxposs = self.length() - len;
-
-        (0..=self.length() - len)
-            .step_by(step)
-            .map(|i| maxposs - i)
-            .filter(|i| f(&cts[*i..*i + len]))
-            .collect()
-    }
-
     pub fn map_pitches(mut self, f: impl Fn(T) -> T) -> Self {
         for v in self.contents.iter_mut() {
             *v = f(*v);
@@ -138,185 +107,17 @@ where
 
         self
     }
-
-    pub fn transpose(self, t: T) -> Result<Self, String> {
-        Ok(self.mutate_pitches(algorithms::transpose(&t)))
-    }
-
-    pub fn transpose_to_min(self, t: T) -> Result<Self, String> {
-        match self.min() {
-            Some(m) => self.transpose(t - m),
-            None => Ok(self),
-        }
-    }
-
-    pub fn transpose_to_max(self, t: T) -> Result<Self, String> {
-        match self.max() {
-            Some(m) => self.transpose(t - m),
-            None => Ok(self),
-        }
-    }
-
-    pub fn invert(self, t: T) -> Result<Self, String> {
-        Ok(self.mutate_pitches(algorithms::invert(&t)))
-    }
-
-    pub fn augment(self, t: T) -> Result<Self, String> {
-        Ok(self.mutate_pitches(algorithms::augment(&t)))
-    }
-
-    pub fn diminish(self, t: T) -> Result<Self, String> {
-        match algorithms::diminish(&t) {
-            Ok(f) => Ok(self.mutate_pitches(f)),
-            Err(e) => Err(e),
-        }
-    }
-
-    pub fn modulus(self, t: T) -> Result<Self, String> {
-        match algorithms::modulus(&t) {
-            Ok(f) => Ok(self.mutate_pitches(f)),
-            Err(e) => Err(e),
-        }
-    }
-
-    pub fn trim(self, min: T, max: T) -> Result<Self, String> {
-        match algorithms::trim(Some(&min), Some(&max)) {
-            Ok(f) => Ok(self.mutate_pitches(f)),
-            Err(e) => Err(e),
-        }
-    }
-
-    pub fn trim_min(self, min: T) -> Result<Self, String> {
-        Ok(self.mutate_pitches(|v| if *v < min { min } else { *v }))
-    }
-
-    pub fn trim_max(self, max: T) -> Result<Self, String> {
-        Ok(self.mutate_pitches(|v| if *v > max { max } else { *v }))
-    }
-
-    pub fn bounce(self, min: T, max: T) -> Result<Self, String> {
-        let diff = max - min;
-
-        if diff < T::from(0) {
-            return Err(format!("min {} must not be higher than max {}", min, max));
-        }
-
-        Ok(self.mutate_pitches(|v| {
-            if *v < min {
-                let mut modulus = (min - *v) % (diff + diff);
-
-                if modulus > diff {
-                    modulus = diff + diff - modulus;
-                }
-
-                return min + modulus;
-            } else if *v > max {
-                let mut modulus = (*v - max) % (diff + diff);
-
-                if modulus > diff {
-                    modulus = diff + diff - modulus;
-                }
-
-                return max - modulus;
-            }
-
-            *v
-        }))
-    }
-
-    pub fn bounce_min(self, min: T) -> Result<Self, String> {
-        Ok(self.mutate_pitches(|v| if *v < min { min + min - *v } else { *v }))
-    }
-
-    pub fn bounce_max(self, max: T) -> Result<Self, String> {
-        Ok(self.mutate_pitches(|v| if *v > max { max + max - *v } else { *v }))
-    }
-
-    pub fn filter_in_position(self, f: fn(T) -> bool, default: T) -> Result<Self, String> {
-        Ok(self.mutate_pitches(|v| if f(*v) { *v } else { default }))
-    }
-
-    fn collect_windows(&self, len: usize, step: usize) -> Vec<Vec<T>> {
-        let max = self.length() - len;
-        let cts = self.cts();
-
-        (0..=max)
-            .step_by(step)
-            .map(move |i| cts[i..i + len].to_vec())
-            .collect()
-    }
-
-    pub fn flat_map_windows(
-        mut self,
-        len: usize,
-        step: usize,
-        f: fn(Vec<T>) -> Vec<T>,
-    ) -> Result<Self, String> {
-        let cts = self
-            .collect_windows(len, step)
-            .into_iter()
-            .flat_map(f)
-            .collect();
-
-        self.contents = cts;
-        Ok(self)
-    }
-
-    pub fn filter_windows(
-        mut self,
-        len: usize,
-        step: usize,
-        f: fn(Vec<T>) -> bool,
-    ) -> Result<Self, String> {
-        let cts: Vec<Vec<T>> = self
-            .collect_windows(len, step)
-            .into_iter()
-            .filter(|v| f(v.clone()))
-            .collect();
-
-        let ret = cts.into_iter().flatten().collect();
-
-        self.contents = ret;
-        Ok(self)
-    }
-
-    pub fn pad(self, val: T, num: usize) -> Self {
-        self.mutate_contents(|c| {
-            c.splice(0..0, std::iter::repeat(val).take(num));
-        })
-    }
 }
+// equality methods: equals isSubsetOf isSupersetOf isTransformationOf isTranspositionOf isInversionOf isRetrogradeOf
+// isRetrogradeInversionOf hasPeriodicity[Of]
 
-// Methods that require integer values
-impl<T> NumericSeq<T>
-where
-    T: PrimInt
-        + From<i32>
-        + From<i8>
-        + TryFrom<usize>
-        + TryInto<usize>
-        + Debug
-        + Display
-        + Num
-        + Sum
-        + SubAssign
-        + num_traits::Euclid,
-{
-    pub fn scale(self, scale: Scale<T>, zeroval: T) -> Result<Self, String> {
-        Ok(self.map_pitches(scale.fit_to_scale(&zeroval)))
-    }
+// window replacement methods: replaceIfWindow replaceIfReverseWindow
 
-    // equality methods: equals isSubsetOf isSupersetOf isTransformationOf isTranspositionOf isInversionOf isRetrogradeOf
-    // isRetrogradeInversionOf hasPeriodicity[Of]
+// setSlice loop repeat dupe dedupe shuffle pad padTo padRight padRightTo withPitch withPitches withPitchesAt
+// mapPitches/filterPitches???
 
-    // window replacement methods: replaceIfWindow replaceIfReverseWindow
-
-    // setSlice loop repeat dupe dedupe shuffle pad padTo padRight padRightTo withPitch withPitches withPitchesAt
-    // mapPitches/filterPitches???
-
-    // sort chop partitionInPosition groupByInPosition untwine twine combine flatcombine combineMin combineMax combineOr combineAnd
-    // mapWith filterWith exchangeValuesIf
-}
+// sort chop partitionInPosition groupByInPosition untwine twine combine flatcombine combineMin combineMax combineOr combineAnd
+// mapWith filterWith exchangeValuesIf
 
 #[cfg(test)]
 mod tests {
