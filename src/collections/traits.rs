@@ -56,7 +56,7 @@ macro_rules! default_methods {
     };
 }
 
-pub trait Collection<T: Clone + Copy + Debug>: Sized {
+pub trait Collection<T: Clone + Debug>: Sized {
     fn new(contents: Vec<T>) -> Self;
 
     fn mutate_contents<F: FnOnce(&mut Vec<T>)>(self, f: F) -> Self;
@@ -122,7 +122,7 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
     fn val_at(&self, index: i32) -> Result<T, &str> {
         let ix = self.index(index)?;
 
-        Ok(self.cts()[ix])
+        Ok(self.cts()[ix].clone())
     }
 
     fn find_first_index(&self, f: fn(mem: &T) -> bool) -> Option<usize> {
@@ -186,10 +186,10 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
     }
 
     fn keep_indices(self, indices: &[i32]) -> Result<Self, String> {
-        let mut ix = self.indices(indices)?;
+        let ix = self.indices(indices)?;
 
         Ok(self.mutate_contents(|c| {
-            *c = ix.iter_mut().map(|i| c[*i]).collect();
+            *c = ix.iter().map(|i| c[*i].clone()).collect();
         }))
     }
 
@@ -259,7 +259,7 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
             Ok(self.replace_contents(|c| {
                 c.iter()
                     .enumerate()
-                    .filter_map(|(i, v)| if i % n == 0 { None } else { Some(*v) })
+                    .filter_map(|(i, v)| if i % n == 0 { None } else { Some(v.clone()) })
                     .collect()
             }))
         }
@@ -269,8 +269,8 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
         Ok(self.mutate_contents(|c| c.truncate(0)))
     }
 
-    fn filter(&self, f: fn(T) -> bool) -> Self {
-        let newcontents = self.cts().into_iter().filter(|m| f(*m)).collect();
+    fn filter(&self, f: fn(&T) -> bool) -> Self {
+        let newcontents = self.cts().into_iter().filter(|m| f(m)).collect();
 
         self.construct(newcontents)
     }
@@ -499,20 +499,20 @@ pub trait Collection<T: Clone + Copy + Debug>: Sized {
         Ok(ret)
     }
 
-    fn partition(&self, f: fn(T) -> bool) -> Result<(Self, Self), &str> {
-        let (p1, p2): (Vec<T>, Vec<T>) = self.cts().into_iter().partition(|v| f(*v));
+    fn partition(&self, f: fn(&T) -> bool) -> Result<(Self, Self), &str> {
+        let (p1, p2): (Vec<T>, Vec<T>) = self.cts().into_iter().partition(|v| f(v));
 
         Ok((self.construct(p1), self.construct(p2)))
     }
 
     fn group_by<KeyType: Hash + Eq + PartialEq + Debug>(
         &self,
-        f: fn(T) -> KeyType,
+        f: fn(&T) -> KeyType,
     ) -> Result<HashMap<KeyType, Self>, &str> {
         let mut rets = HashMap::<KeyType, Vec<T>>::new();
 
-        for m in self.cts() {
-            rets.entry(f(m)).or_default().push(m);
+        for m in self.cts().iter() {
+            rets.entry(f(m)).or_default().push(m.clone());
         }
 
         Ok(rets
