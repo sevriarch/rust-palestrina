@@ -2,7 +2,7 @@ use crate::algorithms::algorithms;
 use crate::collections::traits::Collection;
 use crate::entities::scale::Scale;
 use num_traits::{Num, PrimInt};
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 use std::iter::Sum;
 use std::ops::SubAssign;
 
@@ -234,7 +234,6 @@ pub trait Sequence<
             + TryFrom<usize>
             + TryInto<usize>
             + Debug
-            + Display
             + Num
             + Sum
             + SubAssign

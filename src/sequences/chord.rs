@@ -1,11 +1,12 @@
-/*
 use crate::collections::traits::Collection;
 use crate::default_methods;
+use crate::sequences::note::NoteSeq;
+use crate::sequences::numeric::NumericSeq;
 use crate::sequences::traits::Sequence;
 
 use num_traits::{Bounded, Num};
 use std::convert::TryFrom;
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 use std::iter::Sum;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -13,8 +14,8 @@ pub struct ChordSeq<T> {
     contents: Vec<Vec<T>>,
 }
 
-#[derive(Debug)]
-pub enum NumSeqError {
+#[derive(Debug, PartialEq)]
+pub enum ChordSeqError {
     InvalidValues,
 }
 
@@ -22,7 +23,7 @@ impl<T> TryFrom<Vec<T>> for ChordSeq<T>
 where
     T: Copy + Num + Debug + PartialOrd,
 {
-    type Error = NumSeqError;
+    type Error = ChordSeqError;
 
     fn try_from(what: Vec<T>) -> Result<Self, Self::Error> {
         Ok(Self {
@@ -35,25 +36,39 @@ impl<T> TryFrom<Vec<Vec<T>>> for ChordSeq<T>
 where
     T: Copy + Num + Debug + PartialOrd,
 {
-    type Error = NumSeqError;
+    type Error = ChordSeqError;
 
     fn try_from(what: Vec<Vec<T>>) -> Result<Self, Self::Error> {
         Ok(Self { contents: what })
     }
 }
 
-impl<T: Clone + Copy + Num + Debug + Display + PartialOrd + Bounded> Collection<&Vec<T>>
-    for ChordSeq<T>
-where
-    T: Copy,
-{
+macro_rules! try_from_seq {
+    ($type:ty) => {
+        impl<T> TryFrom<$type> for ChordSeq<T>
+        where
+            T: Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
+        {
+            type Error = ChordSeqError;
+
+            fn try_from(what: $type) -> Result<Self, Self::Error> {
+                Ok(Self {
+                    contents: what.to_pitches(),
+                })
+            }
+        }
+    };
+}
+
+try_from_seq!(NumericSeq<T>);
+try_from_seq!(NoteSeq<T>);
+
+impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded> Collection<Vec<T>> for ChordSeq<T> {
     default_methods!(Vec<T>);
 }
 
-impl<T: Clone + Copy + Num + Debug + Display + PartialOrd + Bounded + Sum + From<i32>>
-    Sequence<&Vec<T>, T> for ChordSeq<T>
-where
-    Vec<T>: Copy,
+impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Sequence<Vec<T>, T>
+    for ChordSeq<T>
 {
     // TODO: this needs to be a method that modifies if needed
     fn mutate_pitches<F: Fn(&T) -> T>(mut self, f: F) -> Self {
@@ -100,17 +115,84 @@ where
     }
 }
 
+#[cfg(test)]
 mod tests {
     use crate::collections::traits::Collection;
     use crate::sequences::chord::ChordSeq;
+    use crate::sequences::note::NoteSeq;
+    use crate::sequences::numeric::NumericSeq;
     use crate::sequences::traits::Sequence;
+
+    #[test]
+    fn try_from_vec() {
+        assert_eq!(
+            ChordSeq::try_from(vec![5, 12, 16]),
+            Ok(ChordSeq::new(vec![vec![5], vec![12], vec![16]]))
+        );
+    }
+
+    #[test]
+    fn try_from_vec_vec() {
+        assert_eq!(
+            ChordSeq::try_from(vec![vec![5], vec![], vec![12, 16]]),
+            Ok(ChordSeq::new(vec![vec![5], vec![], vec![12, 16]]))
+        );
+    }
+
+    #[test]
+    fn try_from_numseq() {
+        assert_eq!(
+            ChordSeq::try_from(NumericSeq::new(vec![5, 12, 16])),
+            Ok(ChordSeq::new(vec![vec![5], vec![12], vec![16]]))
+        );
+    }
+
+    #[test]
+    fn try_from_noteseq() {
+        assert_eq!(
+            ChordSeq::try_from(NoteSeq::new(vec![Some(5), None, Some(12), Some(16)])),
+            Ok(ChordSeq::new(vec![vec![5], vec![], vec![12], vec![16]]))
+        );
+    }
 
     #[test]
     fn to_flat_pitches() {
         assert_eq!(
-            ChordSeq::new(vec![vec![], vec![5], vec![], vec![12, 16], vec![44]]).to_flat_pitches(),
-            vec![5, 12, 16, 44]
+            ChordSeq::new(vec![vec![5], vec![], vec![12, 16]]).to_flat_pitches(),
+            vec![5, 12, 16]
+        );
+    }
+
+    #[test]
+    fn to_pitches() {
+        assert_eq!(
+            ChordSeq::new(vec![vec![5], vec![], vec![12, 16]]).to_pitches(),
+            vec![vec![5], vec![], vec![12, 16]]
+        );
+    }
+
+    #[test]
+    fn to_numeric_values() {
+        assert!(ChordSeq::<i32>::new(vec![vec![]])
+            .to_numeric_values()
+            .is_err());
+        assert!(ChordSeq::new(vec![vec![12, 16]])
+            .to_numeric_values()
+            .is_err());
+        assert_eq!(
+            ChordSeq::new(vec![vec![5], vec![12], vec![16]]).to_numeric_values(),
+            Ok(vec![5, 12, 16])
+        );
+    }
+
+    #[test]
+    fn to_optional_numeric_values() {
+        assert!(ChordSeq::new(vec![vec![12, 16]])
+            .to_optional_numeric_values()
+            .is_err());
+        assert_eq!(
+            ChordSeq::new(vec![vec![5], vec![], vec![12], vec![16]]).to_optional_numeric_values(),
+            Ok(vec![Some(5), None, Some(12), Some(16)])
         );
     }
 }
-*/

@@ -4,7 +4,7 @@ use crate::sequences::traits::Sequence;
 
 use num_traits::{Bounded, Num};
 use std::convert::TryFrom;
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 use std::iter::Sum;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -55,16 +55,12 @@ where
     }
 }
 
-impl<T: Clone + Copy + Num + Debug + Display + PartialOrd + Bounded> Collection<Option<T>>
-    for NoteSeq<T>
-{
+impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded> Collection<Option<T>> for NoteSeq<T> {
     default_methods!(Option<T>);
 }
 
-impl<T: Clone + Copy + Num + Debug + Display + PartialOrd + Bounded + Sum + From<i32>>
-    Sequence<Option<T>, T> for NoteSeq<T>
-where
-    Vec<Option<T>>: Copy,
+impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Sequence<Option<T>, T>
+    for NoteSeq<T>
 {
     // TODO: this needs to be a method that modifies if needed
     fn mutate_pitches<F: Fn(&T) -> T>(mut self, f: F) -> Self {
@@ -78,7 +74,11 @@ where
     }
 
     fn to_flat_pitches(&self) -> Vec<T> {
-        self.contents.into_iter().filter_map(|v| v).collect()
+        self.contents
+            .clone()
+            .into_iter()
+            .filter_map(|v| v)
+            .collect()
     }
 
     fn to_pitches(&self) -> Vec<Vec<T>> {

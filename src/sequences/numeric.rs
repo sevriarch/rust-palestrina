@@ -4,7 +4,7 @@ use crate::sequences::traits::Sequence;
 
 use num_traits::{Bounded, Num};
 use std::convert::TryFrom;
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 use std::iter::Sum;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -30,7 +30,7 @@ where
 
 impl<T> TryFrom<Vec<Vec<T>>> for NumericSeq<T>
 where
-    T: Num + Clone + Debug + PartialOrd,
+    T: Num + Copy + Debug,
 {
     type Error = NumSeqError;
 
@@ -38,13 +38,7 @@ where
         let len = what.len();
         let cts: Vec<T> = what
             .into_iter()
-            .filter_map(|v| {
-                if v.len() == 1 {
-                    Some(v[0].clone())
-                } else {
-                    None
-                }
-            })
+            .filter_map(|v| if v.len() == 1 { Some(v[0]) } else { None })
             .collect();
 
         if cts.len() != len {
@@ -55,12 +49,12 @@ where
     }
 }
 
-impl<T: Clone + Num + Debug + Display + PartialOrd + Bounded> Collection<T> for NumericSeq<T> {
+impl<T: Clone + Num + Debug + PartialOrd + Bounded> Collection<T> for NumericSeq<T> {
     default_methods!(T);
 }
 
-impl<T: Clone + Copy + Num + Debug + Display + PartialOrd + Bounded + Sum + From<i32>>
-    Sequence<T, T> for NumericSeq<T>
+impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Sequence<T, T>
+    for NumericSeq<T>
 {
     // TODO: this needs to be a method that modifies if needed
     fn mutate_pitches<F: Fn(&T) -> T>(mut self, f: F) -> Self {
