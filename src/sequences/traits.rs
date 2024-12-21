@@ -7,7 +7,7 @@ use std::iter::Sum;
 use std::ops::SubAssign;
 
 pub trait Sequence<
-    T: Clone + Copy + Debug,
+    T: Clone + Debug,
     PitchType: Clone + Copy + Debug + Num + PartialOrd + Sum + From<i32>,
 >: Collection<T>
 {
@@ -168,11 +168,11 @@ pub trait Sequence<
         Ok(self.mutate_pitches(|v| if *v > max { max + max - *v } else { *v }))
     }
 
-    fn filter_in_position(self, f: fn(T) -> bool, default: T) -> Result<Self, String> {
+    fn filter_in_position(self, f: fn(&T) -> bool, default: T) -> Result<Self, String> {
         Ok(self.mutate_contents(|v| {
             for i in v.iter_mut() {
-                if !f(*i) {
-                    *i = default;
+                if !f(i) {
+                    *i = default.clone();
                 }
             }
         }))
