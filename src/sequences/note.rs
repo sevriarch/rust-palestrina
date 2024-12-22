@@ -136,6 +136,7 @@ mod tests {
     use crate::sequences::chord::ChordSeq;
     use crate::sequences::note::NoteSeq;
     use crate::sequences::numeric::NumericSeq;
+    use crate::sequences::traits::Sequence;
 
     #[test]
     fn try_from_vec() {
@@ -170,6 +171,37 @@ mod tests {
         assert_eq!(
             NoteSeq::try_from(NumericSeq::new(vec![1, 2, 3])),
             Ok(NoteSeq::new(vec![Some(1), Some(2), Some(3)])),
+        );
+    }
+
+    #[test]
+    fn to_flat_pitches() {
+        assert_eq!(
+            NoteSeq::new(vec![Some(1), None, Some(2), Some(3)]).to_flat_pitches(),
+            vec![1, 2, 3]
+        );
+    }
+    #[test]
+    fn to_pitches() {
+        assert_eq!(
+            NoteSeq::new(vec![Some(1), None, Some(2), Some(3)]).to_pitches(),
+            vec![vec![1], vec![], vec![2], vec![3]]
+        );
+    }
+    #[test]
+    fn to_numeric_values() {
+        assert!(NoteSeq::<i32>::new(vec![None]).to_numeric_values().is_err());
+
+        assert_eq!(
+            NoteSeq::new(vec![Some(1), Some(2), Some(3)]).to_numeric_values(),
+            Ok(vec![1, 2, 3])
+        );
+    }
+    #[test]
+    fn to_optional_numeric_values() {
+        assert_eq!(
+            NoteSeq::new(vec![Some(1), None, Some(2), Some(3)]).to_optional_numeric_values(),
+            Ok(vec![Some(1), None, Some(2), Some(3)])
         );
     }
 }
