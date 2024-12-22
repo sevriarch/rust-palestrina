@@ -158,8 +158,6 @@ mod tests {
     fn fit_to_scale() {
         let scale = Scale::<i32>::new().with_name("lydian").unwrap();
 
-        //let mut vec: Vec<i32> = (-20_i32..20_i32).collect();
-        //vec = vec.into_iter().map(scale.fit_to_scale(&60)).collect();
         let mut vec: Vec<i32> = (-20_i32..20_i32).collect::<Vec<i32>>();
         let f = scale.fit_to_scale(&60);
 
