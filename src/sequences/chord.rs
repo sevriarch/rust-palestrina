@@ -71,10 +71,10 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Seq
     for ChordSeq<T>
 {
     // TODO: this needs to be a method that modifies if needed
-    fn mutate_pitches<F: Fn(&T) -> T>(mut self, f: F) -> Self {
+    fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
         for v in self.contents.iter_mut() {
             for p in v.iter_mut() {
-                *p = f(p);
+                f(p);
             }
         }
 

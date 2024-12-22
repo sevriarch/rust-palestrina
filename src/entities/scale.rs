@@ -84,8 +84,8 @@ impl<
         }
     }
 
-    pub fn fit_to_scale<'a>(&'a self, zeroval: &'a T) -> Box<dyn Fn(&T) -> T + 'a> {
-        Box::new(move |v: &T| {
+    pub fn fit_to_scale<'a>(&'a self, zeroval: &'a T) -> Box<dyn Fn(&mut T) + 'a> {
+        Box::new(|v| {
             let ix = v.rem_euclid(&self.length);
             let mut octaves = *v / self.length;
 
@@ -96,7 +96,7 @@ impl<
             // This should never happen, so defaulting to 0 should be safe
             let ix = ix.try_into().unwrap_or(0);
 
-            *zeroval + self.notes[ix] + octaves * self.octave
+            *v = *zeroval + self.notes[ix] + octaves * self.octave;
         })
     }
     // impl Fn(T) -> T + use<'_, 'a, T> {
@@ -160,11 +160,12 @@ mod tests {
 
         //let mut vec: Vec<i32> = (-20_i32..20_i32).collect();
         //vec = vec.into_iter().map(scale.fit_to_scale(&60)).collect();
-        let vec: Vec<i32> = (-20_i32..20_i32)
-            .collect::<Vec<i32>>()
-            .iter()
-            .map(scale.fit_to_scale(&60))
-            .collect();
+        let mut vec: Vec<i32> = (-20_i32..20_i32).collect::<Vec<i32>>();
+        let f = scale.fit_to_scale(&60);
+
+        for v in vec.iter_mut() {
+            f(v);
+        }
 
         assert_eq!(
             vec,
@@ -174,7 +175,13 @@ mod tests {
             ]
         );
 
-        let vec: Vec<i32> = vec![0, 2, 4].iter().map(scale.fit_to_scale(&0)).collect();
+        let mut vec: Vec<i32> = vec![0, 2, 4];
+        let f = scale.fit_to_scale(&0);
+
+        for v in vec.iter_mut() {
+            f(v);
+        }
+
         assert_eq!(vec, vec![0, 4, 7]);
     }
 }

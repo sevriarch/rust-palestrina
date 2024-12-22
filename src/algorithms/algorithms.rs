@@ -2,36 +2,36 @@ use num_traits::Num;
 use std::cmp::PartialOrd;
 use std::fmt::Debug;
 
-pub fn invert<'a, T: Copy + Num>(pitch: &'a T) -> Box<dyn Fn(&T) -> T + 'a> {
-    Box::new(move |v| *pitch + *pitch - *v)
+pub fn invert<'a, T: Copy + Num>(pitch: &'a T) -> Box<dyn Fn(&mut T) + 'a> {
+    Box::new(|v| *v = *pitch + *pitch - *v)
 }
 
-pub fn transpose<'a, T: Copy + Num>(pitch: &'a T) -> Box<dyn Fn(&T) -> T + 'a> {
-    Box::new(move |v| *pitch + *v)
+pub fn transpose<'a, T: Copy + Num>(pitch: &'a T) -> Box<dyn Fn(&mut T) + 'a> {
+    Box::new(|v| *v = *pitch + *v)
 }
 
-pub fn augment<'a, T: Copy + Num>(mult: &'a T) -> Box<dyn Fn(&T) -> T + 'a> {
-    Box::new(move |v| *mult * *v)
+pub fn augment<'a, T: Copy + Num>(mult: &'a T) -> Box<dyn Fn(&mut T) + 'a> {
+    Box::new(|v| *v = *mult * *v)
 }
 
-pub fn diminish<'a, T: Copy + Num>(div: &'a T) -> Result<Box<dyn Fn(&T) -> T + 'a>, String> {
+pub fn diminish<'a, T: Copy + Num>(div: &'a T) -> Result<Box<dyn Fn(&mut T) + 'a>, String> {
     match div.is_zero() {
         true => Err("cannot divide by zero".to_string()),
-        false => Ok(Box::new(move |v| *v / *div)),
+        false => Ok(Box::new(|v| *v = *v / *div)),
     }
 }
 
 pub fn modulus<'a, T: Copy + Num + PartialOrd>(
     m: &'a T,
-) -> Result<Box<dyn Fn(&T) -> T + 'a>, String> {
+) -> Result<Box<dyn Fn(&mut T) + 'a>, String> {
     if m.is_zero() {
         return Err("modulus(): cannot modulus by zero".to_string());
     }
 
-    Ok(Box::new(move |v| {
+    Ok(Box::new(|v| {
         let ret = *v % *m;
 
-        match ret < T::zero() {
+        *v = match ret < T::zero() {
             true => ret + *m,
             false => ret,
         }
@@ -41,7 +41,7 @@ pub fn modulus<'a, T: Copy + Num + PartialOrd>(
 pub fn trim<'a, 'b, T: Num + Copy + PartialOrd + Debug>(
     a: Option<&'a T>,
     b: Option<&'a T>,
-) -> Result<Box<dyn Fn(&T) -> T + 'a>, String> {
+) -> Result<Box<dyn Fn(&mut T) + 'a>, String> {
     match (a, b) {
         (Some(min), Some(max)) => {
             if min > max {
@@ -53,18 +53,24 @@ pub fn trim<'a, 'b, T: Num + Copy + PartialOrd + Debug>(
             }
 
             Ok(Box::new(|v| {
-                if v > max {
-                    *max
-                } else if v < min {
-                    *min
-                } else {
-                    *v
+                if *v > *max {
+                    *v = *max;
+                } else if *v < *min {
+                    *v = *min;
                 }
             }))
         }
-        (Some(min), None) => Ok(Box::new(|v| if v < min { *min } else { *v })),
-        (None, Some(max)) => Ok(Box::new(|v| if v > max { *max } else { *v })),
-        (None, None) => Ok(Box::new(|v| *v)),
+        (Some(min), None) => Ok(Box::new(|v| {
+            if *v < *min {
+                *v = *min
+            }
+        })),
+        (None, Some(max)) => Ok(Box::new(|v| {
+            if *v > *max {
+                *v = *max
+            }
+        })),
+        (None, None) => Ok(Box::new(|_| {})),
     }
 }
 
@@ -76,36 +82,63 @@ mod tests {
 
     #[test]
     fn test_invert() {
-        assert_eq!(invert(&5)(&12), -2);
-        assert_f32_near!(invert(&1.6)(&4.2), -1.0);
+        let mut v = 12;
+        invert(&5)(&mut v);
+        assert_eq!(v, -2);
+
+        let mut v = 4.2;
+        invert(&1.6)(&mut v);
+        assert_f32_near!(v, -1.0);
     }
 
     #[test]
     fn test_transpose() {
-        assert_eq!(transpose(&5)(&12), 17);
-        assert_f32_near!(transpose(&1.6)(&4.2), 5.8);
+        let mut v = 12;
+        transpose(&5)(&mut v);
+        assert_eq!(v, 17);
+
+        let mut v = 4.2;
+        transpose(&1.6)(&mut v);
+        assert_f32_near!(v, 5.8);
     }
 
     #[test]
     fn test_augment() {
-        assert_eq!(augment(&5)(&12), 60);
-        assert_f32_near!(augment(&1.6)(&4.2), 6.72);
+        let mut v = 12;
+        augment(&5)(&mut v);
+        assert_eq!(v, 60);
+
+        let mut v = 4.2;
+        augment(&1.6)(&mut v);
+        assert_f32_near!(v, 6.72);
     }
 
     #[test]
     fn test_diminish() {
         assert!(diminish(&0).is_err());
         assert!(diminish(&0.0).is_err());
-        assert_eq!(diminish(&5).unwrap()(&12), 2);
-        assert_f32_near!(diminish(&1.6).unwrap()(&4.2), 2.625);
+
+        let mut v = 12;
+        diminish(&5).unwrap()(&mut v);
+        assert_eq!(v, 2);
+
+        let mut v = 4.2;
+        diminish(&1.6).unwrap()(&mut v);
+        assert_f32_near!(v, 2.625);
     }
 
     #[test]
     fn test_modulus() {
         assert!(modulus(&0).is_err());
         assert!(modulus(&0.0).is_err());
-        assert_eq!(modulus(&5).unwrap()(&12), 2);
-        assert_f32_near!(modulus(&1.6).unwrap()(&4.2), 1.0);
+
+        let mut v = 12;
+        modulus(&5).unwrap()(&mut v);
+        assert_eq!(v, 2);
+
+        let mut v = 4.2;
+        modulus(&1.6).unwrap()(&mut v);
+        assert_f32_near!(v, 1.0);
     }
 
     #[test]
@@ -113,29 +146,71 @@ mod tests {
         assert!(trim(Some(&10), Some(&5)).is_err());
 
         let maxonlyi = trim(None, Some(&10)).unwrap();
-        assert_eq!(maxonlyi(&5), 5);
-        assert_eq!(maxonlyi(&15), 10);
+
+        let mut v = 5;
+        maxonlyi(&mut v);
+        assert_eq!(v, 5);
+
+        let mut v = 15;
+        maxonlyi(&mut v);
+        assert_eq!(v, 10);
 
         let maxonlyf = trim(None, Some(&10.5)).unwrap();
-        assert_eq!(maxonlyf(&5.5), 5.5);
-        assert_eq!(maxonlyf(&15.5), 10.5);
+
+        let mut v = 5.5;
+        maxonlyf(&mut v);
+        assert_eq!(v, 5.5);
+
+        let mut v = 15.5;
+        maxonlyf(&mut v);
+        assert_eq!(v, 10.5);
 
         let minonlyi = trim(Some(&10), None).unwrap();
-        assert_eq!(minonlyi(&5), 10);
-        assert_eq!(minonlyi(&15), 15);
+
+        let mut v = 5;
+        minonlyi(&mut v);
+        assert_eq!(v, 10);
+
+        let mut v = 15;
+        minonlyi(&mut v);
+        assert_eq!(v, 15);
 
         let minonlyf = trim(Some(&10.5), None).unwrap();
-        assert_eq!(minonlyf(&5.5), 10.5);
-        assert_eq!(minonlyf(&15.5), 15.5);
+
+        let mut v = 5.5;
+        minonlyf(&mut v);
+        assert_eq!(v, 10.5);
+
+        let mut v = 15.5;
+        minonlyf(&mut v);
+        assert_eq!(v, 15.5);
 
         let bothi = trim(Some(&2), Some(&10)).unwrap();
-        assert_eq!(bothi(&0), 2);
-        assert_eq!(bothi(&5), 5);
-        assert_eq!(bothi(&15), 10);
+
+        let mut v = 0;
+        bothi(&mut v);
+        assert_eq!(v, 2);
+
+        let mut v = 5;
+        bothi(&mut v);
+        assert_eq!(v, 5);
+
+        let mut v = 15;
+        bothi(&mut v);
+        assert_eq!(v, 10);
 
         let bothf = trim(Some(&2.5), Some(&10.5)).unwrap();
-        assert_eq!(bothf(&0.5), 2.5);
-        assert_eq!(bothf(&5.5), 5.5);
-        assert_eq!(bothf(&15.5), 10.5);
+
+        let mut v = 0.5;
+        bothf(&mut v);
+        assert_eq!(v, 2.5);
+
+        let mut v = 5.5;
+        bothf(&mut v);
+        assert_eq!(v, 5.5);
+
+        let mut v = 15.5;
+        bothf(&mut v);
+        assert_eq!(v, 10.5);
     }
 }

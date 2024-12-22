@@ -107,7 +107,6 @@ pub fn fibonacci(n: u64) -> Vec<i64> {
     match n {
         0 => vec![],
         1 => vec![0],
-        2 => vec![0, 1],
         _ => {
             let mut ret = Vec::with_capacity(len);
 
@@ -376,6 +375,7 @@ mod tests {
     #[test]
     fn test_fibonacci() {
         assert_eq!(fibonacci(0), vec![]);
+        assert_eq!(fibonacci(1), vec![0]);
         assert_eq!(fibonacci(4), vec![0, 1, 1, 2]);
         assert_eq!(
             fibonacci(32),

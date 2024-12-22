@@ -11,7 +11,7 @@ pub trait Sequence<
     PitchType: Clone + Copy + Debug + Num + PartialOrd + Sum + From<i32>,
 >: Collection<T>
 {
-    fn mutate_pitches<F: Fn(&PitchType) -> PitchType>(self, f: F) -> Self;
+    fn mutate_pitches<F: Fn(&mut PitchType)>(self, f: F) -> Self;
     fn to_flat_pitches(&self) -> Vec<PitchType>;
     fn to_pitches(&self) -> Vec<Vec<PitchType>>;
     fn to_numeric_values(&self) -> Result<Vec<PitchType>, String>;
@@ -120,11 +120,19 @@ pub trait Sequence<
     }
 
     fn trim_min(self, min: PitchType) -> Result<Self, String> {
-        Ok(self.mutate_pitches(|v| if *v < min { min } else { *v }))
+        Ok(self.mutate_pitches(|v| {
+            if *v < min {
+                *v = min;
+            }
+        }))
     }
 
     fn trim_max(self, max: PitchType) -> Result<Self, String> {
-        Ok(self.mutate_pitches(|v| if *v > max { max } else { *v }))
+        Ok(self.mutate_pitches(|v| {
+            if *v > max {
+                *v = max;
+            }
+        }))
     }
 
     fn bounce(self, min: PitchType, max: PitchType) -> Result<Self, String> {
@@ -145,7 +153,7 @@ pub trait Sequence<
                     modulus = diff + diff - modulus;
                 }
 
-                return min + modulus;
+                *v = min + modulus;
             } else if *v > max {
                 let mut modulus = (*v - max) % (diff + diff);
 
@@ -153,19 +161,25 @@ pub trait Sequence<
                     modulus = diff + diff - modulus;
                 }
 
-                return max - modulus;
+                *v = max - modulus;
             }
-
-            *v
         }))
     }
 
     fn bounce_min(self, min: PitchType) -> Result<Self, String> {
-        Ok(self.mutate_pitches(|v| if *v < min { min + min - *v } else { *v }))
+        Ok(self.mutate_pitches(|v| {
+            if *v < min {
+                *v = min + min - *v;
+            }
+        }))
     }
 
     fn bounce_max(self, max: PitchType) -> Result<Self, String> {
-        Ok(self.mutate_pitches(|v| if *v > max { max + max - *v } else { *v }))
+        Ok(self.mutate_pitches(|v| {
+            if *v > max {
+                *v = max + max - *v;
+            }
+        }))
     }
 
     fn filter_in_position(self, f: fn(&T) -> bool, default: T) -> Result<Self, String> {

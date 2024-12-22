@@ -85,11 +85,10 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded> Collection<Option<T>>
 impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Sequence<Option<T>, T>
     for NoteSeq<T>
 {
-    // TODO: this needs to be a method that modifies if needed
-    fn mutate_pitches<F: Fn(&T) -> T>(mut self, f: F) -> Self {
+    fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
         for v in self.contents.iter_mut() {
             if let Some(val) = v {
-                *v = Some(f(val));
+                f(val);
             }
         }
 
