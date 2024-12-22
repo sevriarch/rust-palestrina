@@ -1,6 +1,7 @@
 use crate::collections::traits::Collection;
 use crate::default_methods;
 use crate::sequences::chord::ChordSeq;
+use crate::sequences::melody::Melody;
 use crate::sequences::numeric::NumericSeq;
 use crate::sequences::traits::Sequence;
 
@@ -75,6 +76,7 @@ macro_rules! try_from_seq {
     };
 }
 
+try_from_seq!(Melody<T>);
 try_from_seq!(ChordSeq<T>);
 try_from_seq!(NumericSeq<T>);
 
@@ -133,6 +135,7 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Seq
 mod tests {
     use crate::collections::traits::Collection;
     use crate::sequences::chord::ChordSeq;
+    use crate::sequences::melody::Melody;
     use crate::sequences::note::NoteSeq;
     use crate::sequences::numeric::NumericSeq;
     use crate::sequences::traits::Sequence;
@@ -151,6 +154,16 @@ mod tests {
 
         assert_eq!(
             NoteSeq::try_from(vec![vec![1], vec![], vec![2], vec![3]]),
+            Ok(NoteSeq::new(vec![Some(1), None, Some(2), Some(3)]))
+        );
+    }
+
+    #[test]
+    fn try_from_melody() {
+        assert!(NoteSeq::try_from(Melody::try_from(vec![vec![1, 2, 3]]).unwrap()).is_err());
+
+        assert_eq!(
+            NoteSeq::try_from(Melody::try_from(vec![vec![1], vec![], vec![2], vec![3]]).unwrap()),
             Ok(NoteSeq::new(vec![Some(1), None, Some(2), Some(3)]))
         );
     }

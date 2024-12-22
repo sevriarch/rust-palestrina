@@ -1,6 +1,7 @@
 use crate::collections::traits::Collection;
 use crate::default_methods;
 use crate::sequences::chord::ChordSeq;
+use crate::sequences::melody::Melody;
 use crate::sequences::note::NoteSeq;
 use crate::sequences::traits::Sequence;
 
@@ -69,6 +70,7 @@ macro_rules! try_from_seq {
     };
 }
 
+try_from_seq!(Melody<T>);
 try_from_seq!(ChordSeq<T>);
 try_from_seq!(NoteSeq<T>);
 
@@ -79,7 +81,6 @@ impl<T: Clone + Num + Debug + PartialOrd + Bounded> Collection<T> for NumericSeq
 impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Sequence<T, T>
     for NumericSeq<T>
 {
-    // TODO: this needs to be a method that modifies if needed
     fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
         for v in self.contents.iter_mut() {
             f(v);
@@ -120,6 +121,7 @@ mod tests {
     use crate::collections::traits::Collection;
     use crate::entities::scale::Scale;
     use crate::sequences::chord::ChordSeq;
+    use crate::sequences::melody::Melody;
     use crate::sequences::note::NoteSeq;
     use crate::sequences::numeric::NumericSeq;
     use crate::sequences::traits::Sequence;
@@ -143,6 +145,17 @@ mod tests {
 
         assert!(NumericSeq::try_from(vec![Vec::<i32>::new()]).is_err());
         assert!(NumericSeq::try_from(vec![vec![1, 2, 3]]).is_err());
+    }
+
+    #[test]
+    fn try_from_melody() {
+        assert!(NumericSeq::try_from(Melody::<i32>::try_from(vec![vec![]]).unwrap()).is_err());
+        assert!(NumericSeq::try_from(Melody::try_from(vec![vec![1, 2, 3]]).unwrap()).is_err());
+
+        assert_eq!(
+            NumericSeq::try_from(Melody::try_from(vec![1, 2, 3]).unwrap()),
+            Ok(NumericSeq::new(vec![1, 2, 3]))
+        );
     }
 
     #[test]

@@ -40,7 +40,7 @@ macro_rules! timing_traits {
     };
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct EventTiming {
     tick: Option<u32>,
     offset: i32,
@@ -57,7 +57,7 @@ impl Default for EventTiming {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct DurationalEventTiming {
     tick: Option<u32>,
     offset: i32,
