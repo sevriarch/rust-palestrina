@@ -157,3 +157,136 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
             .collect()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::collections::traits::Collection;
+    use crate::sequences::chord::ChordSeq;
+    use crate::sequences::melody::{Melody, MelodyMember};
+    use crate::sequences::note::NoteSeq;
+    use crate::sequences::numeric::NumericSeq;
+    use crate::sequences::traits::Sequence;
+
+    #[test]
+    fn try_from_vec() {
+        assert_eq!(
+            Melody::try_from(vec![5, 12, 16]),
+            Ok(Melody::new(vec![
+                MelodyMember::from(vec![5]),
+                MelodyMember::from(vec![12]),
+                MelodyMember::from(vec![16]),
+            ]))
+        );
+    }
+
+    #[test]
+    fn try_from_vec_vec() {
+        assert_eq!(
+            Melody::try_from(vec![vec![5], vec![], vec![12, 16]]),
+            Ok(Melody::new(vec![
+                MelodyMember::from(vec![5]),
+                MelodyMember::from(vec![]),
+                MelodyMember::from(vec![12, 16]),
+            ]))
+        );
+    }
+
+    #[test]
+    fn try_from_chordseq() {
+        assert_eq!(
+            Melody::try_from(ChordSeq::new(vec![vec![5], vec![], vec![12, 16]])),
+            Ok(Melody::new(vec![
+                MelodyMember::from(vec![5]),
+                MelodyMember::from(vec![]),
+                MelodyMember::from(vec![12, 16]),
+            ]))
+        );
+    }
+
+    #[test]
+    fn try_from_numseq() {
+        assert_eq!(
+            Melody::try_from(NumericSeq::new(vec![5, 12, 16])),
+            Ok(Melody::new(vec![
+                MelodyMember::from(vec![5]),
+                MelodyMember::from(vec![12]),
+                MelodyMember::from(vec![16]),
+            ]))
+        );
+    }
+
+    #[test]
+    fn try_from_noteseq() {
+        assert_eq!(
+            Melody::try_from(NoteSeq::new(vec![Some(5), None, Some(12), Some(16)])),
+            Ok(Melody::new(vec![
+                MelodyMember::from(vec![5]),
+                MelodyMember::from(vec![]),
+                MelodyMember::from(vec![12]),
+                MelodyMember::from(vec![16]),
+            ]))
+        );
+    }
+
+    #[test]
+    fn to_flat_pitches() {
+        assert_eq!(
+            Melody::<i32>::new(vec![
+                MelodyMember::from(vec![5]),
+                MelodyMember::from(vec![]),
+                MelodyMember::from(vec![12, 16]),
+            ])
+            .to_flat_pitches(),
+            vec![5, 12, 16]
+        );
+    }
+
+    #[test]
+    fn to_pitches() {
+        assert_eq!(
+            Melody::<i32>::new(vec![
+                MelodyMember::from(vec![5]),
+                MelodyMember::from(vec![]),
+                MelodyMember::from(vec![12, 16]),
+            ])
+            .to_pitches(),
+            vec![vec![5], vec![], vec![12, 16]]
+        );
+    }
+
+    #[test]
+    fn to_numeric_values() {
+        assert!(Melody::<i32>::new(vec![MelodyMember::from(vec![])])
+            .to_numeric_values()
+            .is_err());
+        assert!(Melody::<i32>::new(vec![MelodyMember::from(vec![12, 16])])
+            .to_numeric_values()
+            .is_err());
+        assert_eq!(
+            Melody::<i32>::new(vec![
+                MelodyMember::from(vec![5]),
+                MelodyMember::from(vec![12]),
+                MelodyMember::from(vec![16]),
+            ])
+            .to_numeric_values(),
+            Ok(vec![5, 12, 16])
+        );
+    }
+
+    #[test]
+    fn to_optional_numeric_values() {
+        assert!(Melody::<i32>::new(vec![MelodyMember::from(vec![12, 16])])
+            .to_optional_numeric_values()
+            .is_err());
+        assert_eq!(
+            Melody::<i32>::new(vec![
+                MelodyMember::from(vec![5]),
+                MelodyMember::from(vec![]),
+                MelodyMember::from(vec![12]),
+                MelodyMember::from(vec![16]),
+            ])
+            .to_optional_numeric_values(),
+            Ok(vec![Some(5), None, Some(12), Some(16)])
+        );
+    }
+}
