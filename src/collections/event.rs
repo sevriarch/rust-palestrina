@@ -1,39 +1,7 @@
 use crate::collections::traits::Collection;
 use crate::default_methods;
+use crate::entities::timing::{EventTiming, Timing};
 use std::fmt::Debug;
-
-pub trait Timing {
-    fn with_exact_tick(self, tick: i32) -> Self;
-    fn with_offset(self, offset: i32) -> Self;
-    fn calculate_tick(&self, curr: i32) -> i32;
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct EventTiming {
-    tick: Option<i32>,
-    offset: i32,
-}
-
-impl EventTiming {
-    fn with_exact_tick(mut self, tick: i32) -> Self {
-        self.tick = Some(tick);
-        self
-    }
-
-    fn with_offset(mut self, offset: i32) -> Self {
-        self.offset = offset;
-        self
-    }
-
-    fn calculate_tick(&self, curr: i32) -> i32 {
-        self.offset
-            + if let Some(exact) = self.tick {
-                exact
-            } else {
-                curr
-            }
-    }
-}
 
 #[derive(Copy, Clone, Debug)]
 enum MetaEventValue<'a> {
@@ -49,7 +17,7 @@ pub struct MetaEvent<'a> {
 }
 
 impl<'a> MetaEvent<'a> {
-    fn new(kind: &'a str, value: MetaEventValue<'a>, tick: Option<i32>, offset: i32) -> Self {
+    fn new(kind: &'a str, value: MetaEventValue<'a>, tick: Option<u32>, offset: i32) -> Self {
         Self {
             kind,
             value,
