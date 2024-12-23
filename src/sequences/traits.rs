@@ -6,6 +6,52 @@ use std::fmt::Debug;
 use std::iter::Sum;
 use std::ops::SubAssign;
 
+pub trait MultiplyTarget<MT> {
+    fn multiply_target(&self, v: &mut MT);
+}
+
+macro_rules! single_conv_mult {
+    ($type:ident for $($target:ty)*) => ($(
+impl MultiplyTarget<$target> for $type {
+    fn multiply_target(&self, v: &mut $target) {
+        *v *= (*self as $target);
+    }
+}
+)*)
+}
+
+macro_rules! double_conv_mult {
+    ($type:ident for $($target:ty)*) => ($(
+impl MultiplyTarget<$target> for $type {
+    fn multiply_target(&self, v: &mut $target) {
+        *v = ((*v as $type) * self) as $target;
+    }
+}
+    )*)
+}
+
+macro_rules! make_double_conv_mult {
+    (for $($ty:ident)*) => ($(
+        double_conv_mult!($ty for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128);
+    )*)
+}
+
+macro_rules! make_single_conv_mult_int {
+    (for $($ty:ident)*) => ($(
+        single_conv_mult!($ty for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128);
+    )*)
+}
+
+macro_rules! make_single_conv_mult_float {
+    (for $($ty:ident)*) => ($(
+        single_conv_mult!($ty for f32 f64);
+    )*)
+}
+
+make_single_conv_mult_int!(for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128);
+make_single_conv_mult_float!(for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64);
+make_double_conv_mult!(for f32 f64);
+
 pub trait Sequence<
     T: Clone + Debug,
     PitchType: Clone + Copy + Debug + Num + PartialOrd + Sum + From<i32>,
@@ -94,8 +140,11 @@ pub trait Sequence<
         Ok(self.mutate_pitches(algorithms::invert(&t)))
     }
 
-    fn augment(self, t: PitchType) -> Result<Self, String> {
-        Ok(self.mutate_pitches(algorithms::augment(&t)))
+    fn augment<MT>(self, t: MT) -> Result<Self, String>
+    where
+        MT: MultiplyTarget<PitchType>,
+    {
+        Ok(self.mutate_pitches(|p| t.multiply_target(p)))
     }
 
     fn diminish(self, t: PitchType) -> Result<Self, String> {
