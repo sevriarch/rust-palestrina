@@ -8,21 +8,21 @@ pub trait AugmentTarget<MT> {
 
 macro_rules! single_conv_mult {
     ($type:ident for $($target:ty)*) => ($(
-impl AugmentTarget<$target> for $type {
-    fn augment_target(&self, v: &mut $target) {
-        *v *= (*self as $target);
-    }
-}
-)*)
+        impl AugmentTarget<$target> for $type {
+            fn augment_target(&self, v: &mut $target) {
+                *v *= (*self as $target);
+            }
+        }
+    )*)
 }
 
 macro_rules! double_conv_mult {
     ($type:ident for $($target:ty)*) => ($(
-impl AugmentTarget<$target> for $type {
-    fn augment_target(&self, v: &mut $target) {
-        *v = ((*v as $type) * self) as $target;
-    }
-}
+        impl AugmentTarget<$target> for $type {
+            fn augment_target(&self, v: &mut $target) {
+                *v = ((*v as $type) * self) as $target;
+            }
+        }
     )*)
 }
 
