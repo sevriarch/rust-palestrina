@@ -189,11 +189,9 @@ pub trait Sequence<
     }
 
     fn filter_in_position(self, f: fn(&T) -> bool, default: T) -> Result<Self, String> {
-        Ok(self.mutate_contents(|v| {
-            for i in v.iter_mut() {
-                if !f(i) {
-                    *i = default.clone();
-                }
+        Ok(self.mutate_each(|m| {
+            if !f(m) {
+                *m = default.clone();
             }
         }))
     }

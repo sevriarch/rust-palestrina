@@ -116,14 +116,12 @@ impl<T: Clone + Num + Debug + PartialOrd + Bounded> Collection<MelodyMember<T>> 
 impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
     Sequence<MelodyMember<T>, T> for Melody<T>
 {
-    fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
-        for v in self.contents.iter_mut() {
-            for p in v.values.iter_mut() {
+    fn mutate_pitches<F: Fn(&mut T)>(self, f: F) -> Self {
+        self.mutate_each(|m| {
+            for p in m.values.iter_mut() {
                 f(p);
             }
-        }
-
-        self
+        })
     }
 
     fn to_flat_pitches(&self) -> Vec<T> {
@@ -164,11 +162,8 @@ impl<T> Melody<T>
 where
     T: Bounded + Clone + Num + Debug + PartialOrd,
 {
-    pub fn with_velocity(mut self, vel: u8) -> Self {
-        for m in self.contents.iter_mut() {
-            m.velocity = vel;
-        }
-        self
+    pub fn with_velocity(self, vel: u8) -> Self {
+        self.mutate_each(|m| m.velocity = vel)
     }
 
     pub fn with_velocities(mut self, vel: Vec<u8>) -> Result<Self, String> {
@@ -191,11 +186,8 @@ where
         self.mutate_indices(ix, move |m| m.velocity = vel)
     }
 
-    pub fn with_duration(mut self, dur: u32) -> Self {
-        for m in self.contents.iter_mut() {
-            m.timing.duration = dur;
-        }
-        self
+    pub fn with_duration(self, dur: u32) -> Self {
+        self.mutate_each(|m| m.timing.duration = dur)
     }
 
     pub fn with_durations(mut self, dur: Vec<u32>) -> Result<Self, String> {

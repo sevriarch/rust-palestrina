@@ -81,12 +81,8 @@ impl<T: Clone + Num + Debug + PartialOrd + Bounded> Collection<T> for NumericSeq
 impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Sequence<T, T>
     for NumericSeq<T>
 {
-    fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
-        for v in self.contents.iter_mut() {
-            f(v);
-        }
-
-        self
+    fn mutate_pitches<F: Fn(&mut T)>(self, f: F) -> Self {
+        self.mutate_each(f)
     }
 
     fn to_flat_pitches(&self) -> Vec<T> {

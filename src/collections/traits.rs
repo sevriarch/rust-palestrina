@@ -19,6 +19,13 @@ macro_rules! default_methods {
             self.contents.len()
         }
 
+        fn mutate_each<F: Fn(&mut $type)>(mut self, f: F) -> Self {
+            for m in self.contents.iter_mut() {
+                f(m);
+            }
+            self
+        }
+
         fn mutate_contents<F: FnOnce(&mut Vec<$type>)>(mut self, f: F) -> Self {
             f(&mut self.contents);
             self
@@ -28,7 +35,6 @@ macro_rules! default_methods {
             mut self,
             f: F,
         ) -> Result<Self, String> {
-            // TODO: Determine why f(&mut self.contents)?; does not work
             match f(&mut self.contents) {
                 Err(str) => Err(str),
                 Ok(()) => Ok(self),
@@ -59,6 +65,7 @@ macro_rules! default_methods {
 pub trait Collection<T: Clone + Debug>: Sized {
     fn new(contents: Vec<T>) -> Self;
 
+    fn mutate_each<F: Fn(&mut T)>(self, f: F) -> Self;
     fn mutate_contents<F: FnOnce(&mut Vec<T>)>(self, f: F) -> Self;
     fn mutate_contents_result<F: FnOnce(&mut Vec<T>) -> Result<(), String>>(
         self,

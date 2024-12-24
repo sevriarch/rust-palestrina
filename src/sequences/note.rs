@@ -87,14 +87,12 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded> Collection<Option<T>>
 impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Sequence<Option<T>, T>
     for NoteSeq<T>
 {
-    fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
-        for v in self.contents.iter_mut() {
-            if let Some(val) = v {
+    fn mutate_pitches<F: Fn(&mut T)>(self, f: F) -> Self {
+        self.mutate_each(|m| {
+            if let Some(val) = m {
                 f(val);
             }
-        }
-
-        self
+        })
     }
 
     fn to_flat_pitches(&self) -> Vec<T> {
