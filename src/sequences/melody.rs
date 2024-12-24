@@ -11,6 +11,8 @@ use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::iter::Sum;
 
+pub const DEFAULT_VELOCITY: u8 = 64;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct MelodyMember<T> {
     values: Vec<T>,
@@ -23,7 +25,7 @@ impl<T> Default for MelodyMember<T> {
         MelodyMember {
             values: vec![],
             timing: DurationalEventTiming::default(),
-            velocity: 64,
+            velocity: DEFAULT_VELOCITY,
         }
     }
 }
@@ -158,11 +160,60 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
     }
 }
 
+impl<T> Melody<T> {
+    pub fn with_velocity(mut self, vel: u8) -> Self {
+        for m in self.contents.iter_mut() {
+            m.velocity = vel;
+        }
+        self
+    }
+
+    pub fn with_velocities(mut self, vel: Vec<u8>) -> Result<Self, String> {
+        if vel.len() != self.contents.len() {
+            return Err(format!(
+                "supplied velocities are of a different length ({:?}) from Sequence ({:?})",
+                vel.len(),
+                self.contents.len()
+            ));
+        }
+
+        for (m, v) in self.contents.iter_mut().zip(vel.iter()) {
+            m.velocity = *v;
+        }
+
+        Ok(self)
+    }
+
+    pub fn with_duration(mut self, dur: u32) -> Self {
+        for m in self.contents.iter_mut() {
+            m.timing.duration = dur;
+        }
+        self
+    }
+
+    pub fn with_durations(mut self, dur: Vec<u32>) -> Result<Self, String> {
+        if dur.len() != self.contents.len() {
+            return Err(format!(
+                "supplied velocities are of a different length ({:?}) from Sequence ({:?})",
+                dur.len(),
+                self.contents.len()
+            ));
+        }
+
+        for (m, v) in self.contents.iter_mut().zip(dur.iter()) {
+            m.timing.duration = *v;
+        }
+
+        Ok(self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::collections::traits::Collection;
+    use crate::entities::timing::DurationalEventTiming;
     use crate::sequences::chord::ChordSeq;
-    use crate::sequences::melody::{Melody, MelodyMember};
+    use crate::sequences::melody::{Melody, MelodyMember, DEFAULT_VELOCITY};
     use crate::sequences::note::NoteSeq;
     use crate::sequences::numeric::NumericSeq;
     use crate::sequences::traits::Sequence;
@@ -287,6 +338,88 @@ mod tests {
             ])
             .to_optional_numeric_values(),
             Ok(vec![Some(5), None, Some(12), Some(16)])
+        );
+    }
+
+    #[test]
+    fn with_velocity() {
+        assert_eq!(
+            Melody::try_from(vec![12, 16]).unwrap().with_velocity(25),
+            Melody::new(vec![
+                MelodyMember {
+                    values: vec![12],
+                    timing: DurationalEventTiming::default(),
+                    velocity: 25,
+                },
+                MelodyMember {
+                    values: vec![16],
+                    timing: DurationalEventTiming::default(),
+                    velocity: 25,
+                },
+            ])
+        );
+    }
+
+    #[test]
+    fn with_velocities() {
+        assert_eq!(
+            Melody::try_from(vec![12, 16])
+                .unwrap()
+                .with_velocities(vec![25, 35])
+                .unwrap(),
+            Melody::new(vec![
+                MelodyMember {
+                    values: vec![12],
+                    timing: DurationalEventTiming::default(),
+                    velocity: 25,
+                },
+                MelodyMember {
+                    values: vec![16],
+                    timing: DurationalEventTiming::default(),
+                    velocity: 35,
+                },
+            ])
+        );
+    }
+
+    #[test]
+    fn with_duration() {
+        assert_eq!(
+            Melody::try_from(vec![12, 16]).unwrap().with_duration(25),
+            Melody::new(vec![
+                MelodyMember {
+                    values: vec![12],
+                    timing: DurationalEventTiming::default().with_duration(25),
+                    velocity: DEFAULT_VELOCITY,
+                },
+                MelodyMember {
+                    values: vec![16],
+                    timing: DurationalEventTiming::default().with_duration(25),
+                    velocity: DEFAULT_VELOCITY,
+                },
+            ])
+        );
+    }
+
+    #[test]
+    fn with_durations() {
+        assert_eq!(
+            Melody::try_from(vec![12, 16])
+                .unwrap()
+                .with_durations(vec![25, 35])
+                .unwrap(),
+            Melody::new(vec![
+                MelodyMember {
+                    values: vec![12],
+                    timing: DurationalEventTiming::default().with_duration(25),
+                    velocity: DEFAULT_VELOCITY,
+                },
+                MelodyMember {
+                    values: vec![16],
+                    timing: DurationalEventTiming::default().with_duration(35),
+                    velocity: DEFAULT_VELOCITY,
+                },
+            ])
         );
     }
 }
