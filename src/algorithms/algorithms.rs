@@ -2,51 +2,60 @@ use num_traits::Num;
 use std::cmp::PartialOrd;
 use std::fmt::Debug;
 
-pub trait AugmentTarget<MT> {
+pub trait AugDim<MT> {
     fn augment_target(&self, v: &mut MT);
+    fn diminish_target(&self, v: &mut MT);
 }
 
-macro_rules! single_conv_mult {
+macro_rules! single_conv_aug_dim {
     ($type:ident for $($target:ty)*) => ($(
-        impl AugmentTarget<$target> for $type {
+        impl AugDim<$target> for $type {
             fn augment_target(&self, v: &mut $target) {
                 *v *= (*self as $target);
             }
-        }
-    )*)
-}
 
-macro_rules! double_conv_mult {
-    ($type:ident for $($target:ty)*) => ($(
-        impl AugmentTarget<$target> for $type {
-            fn augment_target(&self, v: &mut $target) {
-                *v = ((*v as $type) * self) as $target;
+            fn diminish_target(&self, v: &mut $target) {
+                *v /= (*self as $target);
             }
         }
     )*)
 }
 
-macro_rules! make_double_conv_aug {
-    (for $($ty:ident)*) => ($(
-        double_conv_mult!($ty for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128);
+macro_rules! double_conv_aug_dim {
+    ($type:ident for $($target:ty)*) => ($(
+        impl AugDim<$target> for $type {
+            fn augment_target(&self, v: &mut $target) {
+                *v = ((*v as $type) * self) as $target;
+            }
+
+            fn diminish_target(&self, v: &mut $target) {
+                *v = ((*v as $type) / self) as $target;
+            }
+        }
     )*)
 }
 
-macro_rules! make_single_conv_aug_int {
+macro_rules! make_double_conv_aug_dim {
     (for $($ty:ident)*) => ($(
-        single_conv_mult!($ty for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128);
+        double_conv_aug_dim!($ty for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128);
     )*)
 }
 
-macro_rules! make_single_conv_aug_float {
+macro_rules! make_single_conv_aug_dim_int {
     (for $($ty:ident)*) => ($(
-        single_conv_mult!($ty for f32 f64);
+        single_conv_aug_dim!($ty for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128);
     )*)
 }
 
-make_single_conv_aug_int!(for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128);
-make_single_conv_aug_float!(for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64);
-make_double_conv_aug!(for f32 f64);
+macro_rules! make_single_conv_aug_dim_float {
+    (for $($ty:ident)*) => ($(
+        single_conv_aug_dim!($ty for f32 f64);
+    )*)
+}
+
+make_single_conv_aug_dim_int!(for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128);
+make_single_conv_aug_dim_float!(for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64);
+make_double_conv_aug_dim!(for f32 f64);
 
 pub fn invert<'a, T: Copy + Num>(pitch: &'a T) -> Box<dyn Fn(&mut T) + 'a> {
     Box::new(|v| *v = *pitch + *pitch - *v)
@@ -59,15 +68,19 @@ pub fn transpose<'a, T: Copy + Num>(pitch: &'a T) -> Box<dyn Fn(&mut T) + 'a> {
 pub fn augment<'a, T, MT>(t: &'a MT) -> Box<dyn Fn(&mut T) + 'a>
 where
     T: Copy + Num,
-    MT: AugmentTarget<T>,
+    MT: AugDim<T>,
 {
     Box::new(|v| t.augment_target(v))
 }
 
-pub fn diminish<'a, T: Copy + Num>(div: &'a T) -> Result<Box<dyn Fn(&mut T) + 'a>, String> {
-    match div.is_zero() {
+pub fn diminish<'a, T, MT>(t: &'a MT) -> Result<Box<dyn Fn(&mut T) + 'a>, String>
+where
+    T: Copy + Num,
+    MT: AugDim<T> + Num,
+{
+    match t.is_zero() {
         true => Err("cannot divide by zero".to_string()),
-        false => Ok(Box::new(|v| *v = *v / *div)),
+        false => Ok(Box::new(|v| t.diminish_target(v))),
     }
 }
 
@@ -154,11 +167,11 @@ mod tests {
 
     #[test]
     fn test_augment() {
-        let mut v = 12;
-        augment(&5)(&mut v);
-        assert_eq!(v, 60);
-        augment(&1.5)(&mut v);
-        assert_eq!(v, 90);
+        let mut v = 13;
+        augment(&7)(&mut v);
+        assert_eq!(v, 91);
+        augment(&1.6)(&mut v);
+        assert_eq!(v, 145);
 
         let mut v = 4.2;
         augment(&1.6)(&mut v);
@@ -169,16 +182,20 @@ mod tests {
 
     #[test]
     fn test_diminish() {
-        assert!(diminish(&0).is_err());
-        assert!(diminish(&0.0).is_err());
+        assert!(diminish::<i32, i32>(&0).is_err());
+        assert!(diminish::<f32, f32>(&0.0).is_err());
 
         let mut v = 12;
         diminish(&5).unwrap()(&mut v);
         assert_eq!(v, 2);
+        diminish(&0.5).unwrap()(&mut v);
+        assert_eq!(v, 4);
 
         let mut v = 4.2;
         diminish(&1.6).unwrap()(&mut v);
         assert_f32_near!(v, 2.625);
+        diminish(&5).unwrap()(&mut v);
+        assert_f32_near!(v, 0.525);
     }
 
     #[test]

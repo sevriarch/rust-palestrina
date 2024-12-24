@@ -96,12 +96,15 @@ pub trait Sequence<
 
     fn augment<MT>(self, t: MT) -> Result<Self, String>
     where
-        MT: algorithms::AugmentTarget<PitchType>,
+        MT: algorithms::AugDim<PitchType>,
     {
         Ok(self.mutate_pitches(algorithms::augment(&t)))
     }
 
-    fn diminish(self, t: PitchType) -> Result<Self, String> {
+    fn diminish<MT>(self, t: MT) -> Result<Self, String>
+    where
+        MT: algorithms::AugDim<PitchType> + Num,
+    {
         match algorithms::diminish(&t) {
             Ok(f) => Ok(self.mutate_pitches(f)),
             Err(e) => Err(e),
