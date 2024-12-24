@@ -142,9 +142,9 @@ pub trait Sequence<
 
     fn augment<MT>(self, t: MT) -> Result<Self, String>
     where
-        MT: MultiplyTarget<PitchType>,
+        MT: algorithms::MultiplyTarget<PitchType>,
     {
-        Ok(self.mutate_pitches(|p| t.multiply_target(p)))
+        Ok(self.mutate_pitches(algorithms::augment(&t)))
     }
 
     fn diminish(self, t: PitchType) -> Result<Self, String> {

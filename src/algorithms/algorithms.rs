@@ -2,6 +2,52 @@ use num_traits::Num;
 use std::cmp::PartialOrd;
 use std::fmt::Debug;
 
+pub trait MultiplyTarget<MT> {
+    fn multiply_target(&self, v: &mut MT);
+}
+
+macro_rules! single_conv_mult {
+    ($type:ident for $($target:ty)*) => ($(
+impl MultiplyTarget<$target> for $type {
+    fn multiply_target(&self, v: &mut $target) {
+        *v *= (*self as $target);
+    }
+}
+)*)
+}
+
+macro_rules! double_conv_mult {
+    ($type:ident for $($target:ty)*) => ($(
+impl MultiplyTarget<$target> for $type {
+    fn multiply_target(&self, v: &mut $target) {
+        *v = ((*v as $type) * self) as $target;
+    }
+}
+    )*)
+}
+
+macro_rules! make_double_conv_mult {
+    (for $($ty:ident)*) => ($(
+        double_conv_mult!($ty for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128);
+    )*)
+}
+
+macro_rules! make_single_conv_mult_int {
+    (for $($ty:ident)*) => ($(
+        single_conv_mult!($ty for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128);
+    )*)
+}
+
+macro_rules! make_single_conv_mult_float {
+    (for $($ty:ident)*) => ($(
+        single_conv_mult!($ty for f32 f64);
+    )*)
+}
+
+make_single_conv_mult_int!(for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128);
+make_single_conv_mult_float!(for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64);
+make_double_conv_mult!(for f32 f64);
+
 pub fn invert<'a, T: Copy + Num>(pitch: &'a T) -> Box<dyn Fn(&mut T) + 'a> {
     Box::new(|v| *v = *pitch + *pitch - *v)
 }
@@ -10,8 +56,12 @@ pub fn transpose<'a, T: Copy + Num>(pitch: &'a T) -> Box<dyn Fn(&mut T) + 'a> {
     Box::new(|v| *v = *pitch + *v)
 }
 
-pub fn augment<'a, T: Copy + Num>(mult: &'a T) -> Box<dyn Fn(&mut T) + 'a> {
-    Box::new(|v| *v = *mult * *v)
+pub fn augment<'a, T, MT>(mult: &'a MT) -> Box<dyn Fn(&mut T) + 'a>
+where
+    T: Copy + Num,
+    MT: MultiplyTarget<T>,
+{
+    Box::new(|v| mult.multiply_target(v))
 }
 
 pub fn diminish<'a, T: Copy + Num>(div: &'a T) -> Result<Box<dyn Fn(&mut T) + 'a>, String> {
