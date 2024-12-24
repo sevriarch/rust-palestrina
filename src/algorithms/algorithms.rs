@@ -157,10 +157,14 @@ mod tests {
         let mut v = 12;
         augment(&5)(&mut v);
         assert_eq!(v, 60);
+        augment(&1.5)(&mut v);
+        assert_eq!(v, 90);
 
         let mut v = 4.2;
         augment(&1.6)(&mut v);
         assert_f32_near!(v, 6.72);
+        augment(&2)(&mut v);
+        assert_f32_near!(v, 13.44);
     }
 
     #[test]
