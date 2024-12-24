@@ -307,6 +307,16 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
+    fn mutate_indices(self, indices: &[i32], f: fn(&mut T)) -> Result<Self, String> {
+        let ix = self.indices(indices)?;
+
+        Ok(self.mutate_contents(|c| {
+            for i in ix.into_iter() {
+                f(&mut c[i]);
+            }
+        }))
+    }
+
     fn replace_first(self, finder: fn(&T) -> bool, val: T) -> Result<Self, String> {
         if let Some(i) = self.find_first_index(finder) {
             Ok(self.mutate_contents(|c| {
@@ -732,6 +742,14 @@ mod tests {
         let new = coll.replace_indices(&[1, -5, 4, -1], &[7, 8]);
 
         assert_contents_eq!(new, vec![0, 7, 8, 3, 4, 7, 8, 7, 8]);
+    }
+
+    #[test]
+    fn mutate_indices() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+        let new = coll.mutate_indices(&[1, -5, 4, -1], |v| *v = *v + 3);
+
+        assert_contents_eq!(new, vec![0, 8, 3, 4, 8, 9]);
     }
 
     #[test]
