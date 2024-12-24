@@ -160,7 +160,10 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
     }
 }
 
-impl<T> Melody<T> {
+impl<T> Melody<T>
+where
+    T: Bounded + Clone + Num + Debug + PartialOrd,
+{
     pub fn with_velocity(mut self, vel: u8) -> Self {
         for m in self.contents.iter_mut() {
             m.velocity = vel;
@@ -184,6 +187,10 @@ impl<T> Melody<T> {
         Ok(self)
     }
 
+    pub fn with_velocity_at(self, ix: &[i32], vel: u8) -> Result<Self, String> {
+        self.mutate_indices(ix, move |m| m.velocity = vel)
+    }
+
     pub fn with_duration(mut self, dur: u32) -> Self {
         for m in self.contents.iter_mut() {
             m.timing.duration = dur;
@@ -205,6 +212,10 @@ impl<T> Melody<T> {
         }
 
         Ok(self)
+    }
+
+    pub fn with_duration_at(self, ix: &[i32], dur: u32) -> Result<Self, String> {
+        self.mutate_indices(ix, move |m| m.timing.duration = dur)
     }
 }
 
@@ -383,6 +394,28 @@ mod tests {
     }
 
     #[test]
+    fn with_velocity_at() {
+        assert_eq!(
+            Melody::try_from(vec![12, 16])
+                .unwrap()
+                .with_velocity_at(&[-1], 25)
+                .unwrap(),
+            Melody::new(vec![
+                MelodyMember {
+                    values: vec![12],
+                    timing: DurationalEventTiming::default(),
+                    velocity: DEFAULT_VELOCITY,
+                },
+                MelodyMember {
+                    values: vec![16],
+                    timing: DurationalEventTiming::default(),
+                    velocity: 25,
+                },
+            ])
+        );
+    }
+
+    #[test]
     fn with_duration() {
         assert_eq!(
             Melody::try_from(vec![12, 16]).unwrap().with_duration(25),
@@ -417,6 +450,28 @@ mod tests {
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default().with_duration(35),
+                    velocity: DEFAULT_VELOCITY,
+                },
+            ])
+        );
+    }
+
+    #[test]
+    fn with_duration_at() {
+        assert_eq!(
+            Melody::try_from(vec![12, 16])
+                .unwrap()
+                .with_duration_at(&[-1], 25)
+                .unwrap(),
+            Melody::new(vec![
+                MelodyMember {
+                    values: vec![12],
+                    timing: DurationalEventTiming::default(),
+                    velocity: DEFAULT_VELOCITY,
+                },
+                MelodyMember {
+                    values: vec![16],
+                    timing: DurationalEventTiming::default().with_duration(25),
                     velocity: DEFAULT_VELOCITY,
                 },
             ])

@@ -307,7 +307,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn mutate_indices(self, indices: &[i32], f: fn(&mut T)) -> Result<Self, String> {
+    fn mutate_indices(self, indices: &[i32], f: impl Fn(&mut T)) -> Result<Self, String> {
         let ix = self.indices(indices)?;
 
         Ok(self.mutate_contents(|c| {
