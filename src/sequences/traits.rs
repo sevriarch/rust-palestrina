@@ -96,7 +96,7 @@ pub trait Sequence<
 
     fn augment<MT>(self, t: MT) -> Result<Self, String>
     where
-        MT: algorithms::MultiplyTarget<PitchType>,
+        MT: algorithms::AugmentTarget<PitchType>,
     {
         Ok(self.mutate_pitches(algorithms::augment(&t)))
     }
