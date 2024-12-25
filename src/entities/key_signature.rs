@@ -91,7 +91,7 @@ mod tests {
         assert!(!is_valid(""));
         assert!(is_valid("C"));
         assert!(!is_valid("H"));
-        assert!(is_valid("gb"));
+        assert!(is_valid("Gb"));
     }
 
     macro_rules! midi_conv_test {
