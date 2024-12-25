@@ -89,6 +89,12 @@ impl DurationalEventTiming {
     pub fn next_tick(&self, curr: u32) -> Result<u32, String> {
         Ok(exact_or_curr(self.tick, curr) + self.duration)
     }
+
+    pub fn augment_rhythm(mut self, v: u32) -> Result<Self, String> {
+        self.duration *= v;
+        self.offset *= v as i32;
+        Ok(self)
+    }
 }
 
 #[cfg(test)]

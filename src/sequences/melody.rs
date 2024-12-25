@@ -52,10 +52,10 @@ impl<T> From<Vec<T>> for MelodyMember<T> {
 }
 
 impl<T> MelodyMember<T> {
-    fn with_event(mut self, e: MetaEvent) -> Result<Self, String> {
-        self.before = self.before.append_items(&[e])?;
+    fn with_event(mut self, e: MetaEvent) -> Self {
+        self.before = self.before.append_items(&[e]);
 
-        Ok(self)
+        self
     }
 }
 
@@ -221,12 +221,16 @@ where
         self.mutate_indices(ix, move |m| m.timing.duration = dur)
     }
 
-    pub fn with_event_at(mut self, ix: &[i32], evt: MetaEvent) -> Result<Self, String> {
-        let ix = self.indices(ix)?;
+    pub fn with_event_at(self, ix: &[i32], evt: MetaEvent) -> Result<Self, String> {
+        self.mutate_indices(ix, |m| {
+            *m = m.clone().with_event(evt.clone());
+        })
+    }
 
-        for i in ix.into_iter() {
-            // TODO: Find a better way to do this
-            self.contents[i] = self.contents[i].clone().with_event(evt.clone())?;
+    pub fn augment_rhythm(mut self, a: u32) -> Result<Self, String> {
+        for m in self.contents.iter_mut() {
+            // TODO: any reasons why this can't just mutate?
+            m.timing = m.timing.augment_rhythm(a)?;
         }
 
         Ok(self)
@@ -237,7 +241,7 @@ where
 mod tests {
     use crate::collections::event::{EventList, MetaEvent};
     use crate::collections::traits::Collection;
-    use crate::entities::timing::DurationalEventTiming;
+    use crate::entities::timing::{DurationalEventTiming, Timing};
     use crate::sequences::chord::ChordSeq;
     use crate::sequences::melody::{Melody, MelodyMember, DEFAULT_VELOCITY};
     use crate::sequences::note::NoteSeq;
@@ -248,8 +252,7 @@ mod tests {
     fn mel_member_with_event() {
         assert_eq!(
             MelodyMember::from(vec![12, 16])
-                .with_event(MetaEvent::try_from(("text", "test text")).unwrap())
-                .unwrap(),
+                .with_event(MetaEvent::try_from(("text", "test text")).unwrap()),
             MelodyMember {
                 values: vec![12, 16],
                 timing: DurationalEventTiming::default(),
@@ -543,6 +546,54 @@ mod tests {
                     ]),
                 },
             ])
+        );
+    }
+
+    #[test]
+    fn augment_rhythm() {
+        assert_eq!(
+            Melody {
+                contents: vec![
+                    MelodyMember {
+                        values: vec![12],
+                        timing: DurationalEventTiming::default()
+                            .with_duration(32)
+                            .with_offset(100),
+                        velocity: DEFAULT_VELOCITY,
+                        before: EventList::new(vec![]),
+                    },
+                    MelodyMember {
+                        values: vec![16],
+                        timing: DurationalEventTiming::default()
+                            .with_duration(25)
+                            .with_offset(75),
+                        velocity: DEFAULT_VELOCITY,
+                        before: EventList::new(vec![]),
+                    }
+                ]
+            }
+            .augment_rhythm(3)
+            .unwrap(),
+            Melody {
+                contents: vec![
+                    MelodyMember {
+                        values: vec![12],
+                        timing: DurationalEventTiming::default()
+                            .with_duration(96)
+                            .with_offset(300),
+                        velocity: DEFAULT_VELOCITY,
+                        before: EventList::new(vec![]),
+                    },
+                    MelodyMember {
+                        values: vec![16],
+                        timing: DurationalEventTiming::default()
+                            .with_duration(75)
+                            .with_offset(225),
+                        velocity: DEFAULT_VELOCITY,
+                        before: EventList::new(vec![]),
+                    },
+                ]
+            }
         );
     }
 }

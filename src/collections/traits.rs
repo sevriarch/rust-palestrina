@@ -408,30 +408,30 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }
     }
 
-    fn append(self, coll: &Self) -> Result<Self, String> {
-        Ok(self.mutate_contents(|c| c.append(&mut coll.cts())))
+    fn append(self, coll: &Self) -> Self {
+        self.mutate_contents(|c| c.append(&mut coll.cts()))
     }
 
-    fn append_items(self, items: &[T]) -> Result<Self, String> {
-        Ok(self.mutate_contents(|c| c.append(&mut items.to_vec())))
+    fn append_items(self, items: &[T]) -> Self {
+        self.mutate_contents(|c| c.append(&mut items.to_vec()))
     }
 
-    fn prepend(self, coll: &Self) -> Result<Self, String> {
-        Ok(self.replace_contents(|mut c| {
+    fn prepend(self, coll: &Self) -> Self {
+        self.replace_contents(|mut c| {
             let mut cts = coll.cts();
 
             cts.append(&mut c);
             cts
-        }))
+        })
     }
 
-    fn prepend_items(self, items: &[T]) -> Result<Self, String> {
-        Ok(self.replace_contents(|mut c| {
+    fn prepend_items(self, items: &[T]) -> Self {
+        self.replace_contents(|mut c| {
             let mut cts = items.to_vec();
 
             cts.append(&mut c);
             cts
-        }))
+        })
     }
 
     fn retrograde(self) -> Result<Self, String> {
@@ -854,16 +854,19 @@ mod tests {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
         let app = TestColl::new(vec![9, 11, 13]);
 
-        assert_contents_eq!(coll.append(&app), vec![0, 2, 3, 4, 5, 6, 9, 11, 13]);
+        assert_eq!(
+            coll.append(&app),
+            TestColl::new(vec![0, 2, 3, 4, 5, 6, 9, 11, 13])
+        );
     }
 
     #[test]
     fn append_items() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
-        assert_contents_eq!(
+        assert_eq!(
             coll.append_items(&[9, 11, 13]),
-            vec![0, 2, 3, 4, 5, 6, 9, 11, 13]
+            TestColl::new(vec![0, 2, 3, 4, 5, 6, 9, 11, 13])
         );
     }
 
@@ -872,16 +875,19 @@ mod tests {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
         let app = TestColl::new(vec![9, 11, 13]);
 
-        assert_contents_eq!(coll.prepend(&app), vec![9, 11, 13, 0, 2, 3, 4, 5, 6]);
+        assert_eq!(
+            coll.prepend(&app),
+            TestColl::new(vec![9, 11, 13, 0, 2, 3, 4, 5, 6])
+        );
     }
 
     #[test]
     fn prepend_items() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
-        assert_contents_eq!(
+        assert_eq!(
             coll.prepend_items(&[9, 11, 13]),
-            vec![9, 11, 13, 0, 2, 3, 4, 5, 6]
+            TestColl::new(vec![9, 11, 13, 0, 2, 3, 4, 5, 6])
         );
     }
 
