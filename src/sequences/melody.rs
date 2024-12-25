@@ -1,3 +1,4 @@
+use crate::collections::event::{EventList, MetaEvent};
 use crate::collections::traits::Collection;
 use crate::default_methods;
 use crate::entities::timing::DurationalEventTiming;
@@ -18,6 +19,7 @@ pub struct MelodyMember<T> {
     values: Vec<T>,
     timing: DurationalEventTiming,
     velocity: u8,
+    before: EventList,
 }
 
 impl<T> Default for MelodyMember<T> {
@@ -26,6 +28,7 @@ impl<T> Default for MelodyMember<T> {
             values: vec![],
             timing: DurationalEventTiming::default(),
             velocity: DEFAULT_VELOCITY,
+            before: EventList::new(vec![]),
         }
     }
 }
@@ -45,6 +48,14 @@ impl<T> From<Vec<T>> for MelodyMember<T> {
             values: what,
             ..Default::default()
         }
+    }
+}
+
+impl<T> MelodyMember<T> {
+    fn with_event(mut self, e: MetaEvent) -> Result<Self, String> {
+        self.before = self.before.append_items(&[e])?;
+
+        Ok(self)
     }
 }
 
@@ -209,10 +220,22 @@ where
     pub fn with_duration_at(self, ix: &[i32], dur: u32) -> Result<Self, String> {
         self.mutate_indices(ix, move |m| m.timing.duration = dur)
     }
+
+    pub fn with_event_at(mut self, ix: &[i32], evt: MetaEvent) -> Result<Self, String> {
+        let ix = self.indices(ix)?;
+
+        for i in ix.into_iter() {
+            // TODO: Find a better way to do this
+            self.contents[i] = self.contents[i].clone().with_event(evt.clone())?;
+        }
+
+        Ok(self)
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::collections::event::{EventList, MetaEvent};
     use crate::collections::traits::Collection;
     use crate::entities::timing::DurationalEventTiming;
     use crate::sequences::chord::ChordSeq;
@@ -220,6 +243,21 @@ mod tests {
     use crate::sequences::note::NoteSeq;
     use crate::sequences::numeric::NumericSeq;
     use crate::sequences::traits::Sequence;
+
+    #[test]
+    fn mel_member_with_event() {
+        assert_eq!(
+            MelodyMember::from(vec![12, 16])
+                .with_event(MetaEvent::try_from(("text", "test text")).unwrap())
+                .unwrap(),
+            MelodyMember {
+                values: vec![12, 16],
+                timing: DurationalEventTiming::default(),
+                velocity: DEFAULT_VELOCITY,
+                before: EventList::new(vec![MetaEvent::try_from(("text", "test text")).unwrap()])
+            }
+        );
+    }
 
     #[test]
     fn try_from_vec() {
@@ -353,11 +391,13 @@ mod tests {
                     values: vec![12],
                     timing: DurationalEventTiming::default(),
                     velocity: 25,
+                    before: EventList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default(),
                     velocity: 25,
+                    before: EventList::new(vec![]),
                 },
             ])
         );
@@ -375,11 +415,13 @@ mod tests {
                     values: vec![12],
                     timing: DurationalEventTiming::default(),
                     velocity: 25,
+                    before: EventList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default(),
                     velocity: 35,
+                    before: EventList::new(vec![]),
                 },
             ])
         );
@@ -397,11 +439,13 @@ mod tests {
                     values: vec![12],
                     timing: DurationalEventTiming::default(),
                     velocity: DEFAULT_VELOCITY,
+                    before: EventList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default(),
                     velocity: 25,
+                    before: EventList::new(vec![]),
                 },
             ])
         );
@@ -416,11 +460,13 @@ mod tests {
                     values: vec![12],
                     timing: DurationalEventTiming::default().with_duration(25),
                     velocity: DEFAULT_VELOCITY,
+                    before: EventList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default().with_duration(25),
                     velocity: DEFAULT_VELOCITY,
+                    before: EventList::new(vec![]),
                 },
             ])
         );
@@ -438,11 +484,13 @@ mod tests {
                     values: vec![12],
                     timing: DurationalEventTiming::default().with_duration(25),
                     velocity: DEFAULT_VELOCITY,
+                    before: EventList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default().with_duration(35),
                     velocity: DEFAULT_VELOCITY,
+                    before: EventList::new(vec![]),
                 },
             ])
         );
@@ -460,11 +508,39 @@ mod tests {
                     values: vec![12],
                     timing: DurationalEventTiming::default(),
                     velocity: DEFAULT_VELOCITY,
+                    before: EventList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default().with_duration(25),
                     velocity: DEFAULT_VELOCITY,
+                    before: EventList::new(vec![]),
+                },
+            ])
+        );
+    }
+
+    #[test]
+    fn with_event_at() {
+        assert_eq!(
+            Melody::try_from(vec![12, 16])
+                .unwrap()
+                .with_event_at(&[-1], MetaEvent::try_from(("key-signature", "D")).unwrap())
+                .unwrap(),
+            Melody::new(vec![
+                MelodyMember {
+                    values: vec![12],
+                    timing: DurationalEventTiming::default(),
+                    velocity: DEFAULT_VELOCITY,
+                    before: EventList::new(vec![]),
+                },
+                MelodyMember {
+                    values: vec![16],
+                    timing: DurationalEventTiming::default(),
+                    velocity: DEFAULT_VELOCITY,
+                    before: EventList::new(vec![
+                        MetaEvent::try_from(("key-signature", "D")).unwrap()
+                    ]),
                 },
             ])
         );
