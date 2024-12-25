@@ -1,3 +1,4 @@
+use crate::algorithms::algorithms;
 use crate::collections::event::{EventList, MetaEvent};
 use crate::collections::traits::Collection;
 use crate::default_methods;
@@ -12,13 +13,13 @@ use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::iter::Sum;
 
-pub const DEFAULT_VELOCITY: u8 = 64;
+pub const DEFAULT_VOLUME: u8 = 64;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct MelodyMember<T> {
     values: Vec<T>,
     timing: DurationalEventTiming,
-    velocity: u8,
+    volume: u8,
     before: EventList,
 }
 
@@ -27,7 +28,7 @@ impl<T> Default for MelodyMember<T> {
         MelodyMember {
             values: vec![],
             timing: DurationalEventTiming::default(),
-            velocity: DEFAULT_VELOCITY,
+            volume: DEFAULT_VOLUME,
             before: EventList::new(vec![]),
         }
     }
@@ -173,28 +174,52 @@ impl<T> Melody<T>
 where
     T: Bounded + Clone + Num + Debug + PartialOrd,
 {
-    pub fn with_velocity(self, vel: u8) -> Self {
-        self.mutate_each(|m| m.velocity = vel)
+    pub fn to_volume(&self) -> Vec<u8> {
+        self.contents.iter().map(|m| m.volume).collect()
     }
 
-    pub fn with_velocities(mut self, vel: Vec<u8>) -> Result<Self, String> {
+    pub fn max_volume(&self) -> Option<u8> {
+        self.contents
+            .iter()
+            .filter(|m| !m.values.is_empty())
+            .max_by(|a, b| a.volume.cmp(&b.volume))
+            .map(|r| r.volume)
+    }
+
+    pub fn min_volume(&self) -> Option<u8> {
+        self.contents
+            .iter()
+            .filter(|m| !m.values.is_empty())
+            .min_by(|a, b| a.volume.cmp(&b.volume))
+            .map(|r| r.volume)
+    }
+
+    pub fn to_duration(&self) -> Vec<u32> {
+        self.contents.iter().map(|m| m.timing.duration).collect()
+    }
+
+    pub fn with_volume(self, vel: u8) -> Self {
+        self.mutate_each(|m| m.volume = vel)
+    }
+
+    pub fn with_volumes(mut self, vel: Vec<u8>) -> Result<Self, String> {
         if vel.len() != self.contents.len() {
             return Err(format!(
-                "supplied velocities are of a different length ({:?}) from Sequence ({:?})",
+                "supplied volumes are of a different length ({:?}) from Sequence ({:?})",
                 vel.len(),
                 self.contents.len()
             ));
         }
 
         for (m, v) in self.contents.iter_mut().zip(vel.iter()) {
-            m.velocity = *v;
+            m.volume = *v;
         }
 
         Ok(self)
     }
 
-    pub fn with_velocity_at(self, ix: &[i32], vel: u8) -> Result<Self, String> {
-        self.mutate_indices(ix, move |m| m.velocity = vel)
+    pub fn with_volume_at(self, ix: &[i32], vel: u8) -> Result<Self, String> {
+        self.mutate_indices(ix, move |m| m.volume = vel)
     }
 
     pub fn with_duration(self, dur: u32) -> Self {
@@ -204,7 +229,7 @@ where
     pub fn with_durations(mut self, dur: Vec<u32>) -> Result<Self, String> {
         if dur.len() != self.contents.len() {
             return Err(format!(
-                "supplied velocities are of a different length ({:?}) from Sequence ({:?})",
+                "supplied volumes are of a different length ({:?}) from Sequence ({:?})",
                 dur.len(),
                 self.contents.len()
             ));
@@ -227,13 +252,24 @@ where
         })
     }
 
-    pub fn augment_rhythm(mut self, a: u32) -> Result<Self, String> {
-        for m in self.contents.iter_mut() {
-            // TODO: any reasons why this can't just mutate?
-            m.timing = m.timing.augment_rhythm(a)?;
-        }
+    pub fn augment_rhythm(self, a: u32) -> Result<Self, String> {
+        let fi32 = algorithms::augment(&a);
+        let fu32 = algorithms::augment(&a);
 
-        Ok(self)
+        Ok(self.mutate_each(|m| {
+            fi32(&mut m.timing.offset);
+            fu32(&mut m.timing.duration);
+        }))
+    }
+
+    pub fn diminish_rhythm(self, a: u32) -> Result<Self, String> {
+        let fi32 = algorithms::diminish(&a)?;
+        let fu32 = algorithms::diminish(&a)?;
+
+        Ok(self.mutate_each(|m| {
+            fi32(&mut m.timing.offset);
+            fu32(&mut m.timing.duration);
+        }))
     }
 }
 
@@ -243,7 +279,7 @@ mod tests {
     use crate::collections::traits::Collection;
     use crate::entities::timing::{DurationalEventTiming, Timing};
     use crate::sequences::chord::ChordSeq;
-    use crate::sequences::melody::{Melody, MelodyMember, DEFAULT_VELOCITY};
+    use crate::sequences::melody::{Melody, MelodyMember, DEFAULT_VOLUME};
     use crate::sequences::note::NoteSeq;
     use crate::sequences::numeric::NumericSeq;
     use crate::sequences::traits::Sequence;
@@ -256,7 +292,7 @@ mod tests {
             MelodyMember {
                 values: vec![12, 16],
                 timing: DurationalEventTiming::default(),
-                velocity: DEFAULT_VELOCITY,
+                volume: DEFAULT_VOLUME,
                 before: EventList::new(vec![MetaEvent::try_from(("text", "test text")).unwrap()])
             }
         );
@@ -386,20 +422,140 @@ mod tests {
     }
 
     #[test]
-    fn with_velocity() {
+    fn to_volume() {
         assert_eq!(
-            Melody::try_from(vec![12, 16]).unwrap().with_velocity(25),
             Melody::new(vec![
                 MelodyMember {
                     values: vec![12],
                     timing: DurationalEventTiming::default(),
-                    velocity: 25,
+                    volume: 25,
                     before: EventList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default(),
-                    velocity: 25,
+                    volume: 35,
+                    before: EventList::new(vec![]),
+                },
+            ])
+            .to_volume(),
+            vec![25, 35]
+        );
+    }
+
+    #[test]
+    fn max_volume() {
+        assert!(Melody::<i32>::new(vec![]).max_volume().is_none());
+        assert!(Melody::<i32>::new(vec![MelodyMember {
+            values: vec![],
+            timing: DurationalEventTiming::default(),
+            volume: 25,
+            before: EventList::new(vec![]),
+        }])
+        .max_volume()
+        .is_none());
+
+        assert_eq!(
+            Melody::new(vec![
+                MelodyMember {
+                    values: vec![12],
+                    timing: DurationalEventTiming::default(),
+                    volume: 25,
+                    before: EventList::new(vec![]),
+                },
+                MelodyMember {
+                    values: vec![],
+                    timing: DurationalEventTiming::default(),
+                    volume: 45,
+                    before: EventList::new(vec![]),
+                },
+                MelodyMember {
+                    values: vec![16],
+                    timing: DurationalEventTiming::default(),
+                    volume: 35,
+                    before: EventList::new(vec![]),
+                },
+            ])
+            .max_volume(),
+            Some(35)
+        );
+    }
+
+    #[test]
+    fn min_volume() {
+        assert!(Melody::<i32>::new(vec![]).min_volume().is_none());
+        assert!(Melody::<i32>::new(vec![MelodyMember {
+            values: vec![],
+            timing: DurationalEventTiming::default(),
+            volume: 25,
+            before: EventList::new(vec![]),
+        }])
+        .min_volume()
+        .is_none());
+
+        assert_eq!(
+            Melody::new(vec![
+                MelodyMember {
+                    values: vec![12],
+                    timing: DurationalEventTiming::default(),
+                    volume: 25,
+                    before: EventList::new(vec![]),
+                },
+                MelodyMember {
+                    values: vec![],
+                    timing: DurationalEventTiming::default(),
+                    volume: 15,
+                    before: EventList::new(vec![]),
+                },
+                MelodyMember {
+                    values: vec![16],
+                    timing: DurationalEventTiming::default(),
+                    volume: 35,
+                    before: EventList::new(vec![]),
+                },
+            ])
+            .min_volume(),
+            Some(25)
+        );
+    }
+
+    #[test]
+    fn to_duration() {
+        assert_eq!(
+            Melody::new(vec![
+                MelodyMember {
+                    values: vec![12],
+                    timing: DurationalEventTiming::default().with_duration(16),
+                    volume: 25,
+                    before: EventList::new(vec![]),
+                },
+                MelodyMember {
+                    values: vec![16],
+                    timing: DurationalEventTiming::default().with_duration(32),
+                    volume: 35,
+                    before: EventList::new(vec![]),
+                },
+            ])
+            .to_duration(),
+            vec![16, 32]
+        );
+    }
+
+    #[test]
+    fn with_volume() {
+        assert_eq!(
+            Melody::try_from(vec![12, 16]).unwrap().with_volume(25),
+            Melody::new(vec![
+                MelodyMember {
+                    values: vec![12],
+                    timing: DurationalEventTiming::default(),
+                    volume: 25,
+                    before: EventList::new(vec![]),
+                },
+                MelodyMember {
+                    values: vec![16],
+                    timing: DurationalEventTiming::default(),
+                    volume: 25,
                     before: EventList::new(vec![]),
                 },
             ])
@@ -407,23 +563,23 @@ mod tests {
     }
 
     #[test]
-    fn with_velocities() {
+    fn with_volumes() {
         assert_eq!(
             Melody::try_from(vec![12, 16])
                 .unwrap()
-                .with_velocities(vec![25, 35])
+                .with_volumes(vec![25, 35])
                 .unwrap(),
             Melody::new(vec![
                 MelodyMember {
                     values: vec![12],
                     timing: DurationalEventTiming::default(),
-                    velocity: 25,
+                    volume: 25,
                     before: EventList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default(),
-                    velocity: 35,
+                    volume: 35,
                     before: EventList::new(vec![]),
                 },
             ])
@@ -431,23 +587,23 @@ mod tests {
     }
 
     #[test]
-    fn with_velocity_at() {
+    fn with_volume_at() {
         assert_eq!(
             Melody::try_from(vec![12, 16])
                 .unwrap()
-                .with_velocity_at(&[-1], 25)
+                .with_volume_at(&[-1], 25)
                 .unwrap(),
             Melody::new(vec![
                 MelodyMember {
                     values: vec![12],
                     timing: DurationalEventTiming::default(),
-                    velocity: DEFAULT_VELOCITY,
+                    volume: DEFAULT_VOLUME,
                     before: EventList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default(),
-                    velocity: 25,
+                    volume: 25,
                     before: EventList::new(vec![]),
                 },
             ])
@@ -462,13 +618,13 @@ mod tests {
                 MelodyMember {
                     values: vec![12],
                     timing: DurationalEventTiming::default().with_duration(25),
-                    velocity: DEFAULT_VELOCITY,
+                    volume: DEFAULT_VOLUME,
                     before: EventList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default().with_duration(25),
-                    velocity: DEFAULT_VELOCITY,
+                    volume: DEFAULT_VOLUME,
                     before: EventList::new(vec![]),
                 },
             ])
@@ -486,13 +642,13 @@ mod tests {
                 MelodyMember {
                     values: vec![12],
                     timing: DurationalEventTiming::default().with_duration(25),
-                    velocity: DEFAULT_VELOCITY,
+                    volume: DEFAULT_VOLUME,
                     before: EventList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default().with_duration(35),
-                    velocity: DEFAULT_VELOCITY,
+                    volume: DEFAULT_VOLUME,
                     before: EventList::new(vec![]),
                 },
             ])
@@ -510,13 +666,13 @@ mod tests {
                 MelodyMember {
                     values: vec![12],
                     timing: DurationalEventTiming::default(),
-                    velocity: DEFAULT_VELOCITY,
+                    volume: DEFAULT_VOLUME,
                     before: EventList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default().with_duration(25),
-                    velocity: DEFAULT_VELOCITY,
+                    volume: DEFAULT_VOLUME,
                     before: EventList::new(vec![]),
                 },
             ])
@@ -534,13 +690,13 @@ mod tests {
                 MelodyMember {
                     values: vec![12],
                     timing: DurationalEventTiming::default(),
-                    velocity: DEFAULT_VELOCITY,
+                    volume: DEFAULT_VOLUME,
                     before: EventList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default(),
-                    velocity: DEFAULT_VELOCITY,
+                    volume: DEFAULT_VOLUME,
                     before: EventList::new(vec![
                         MetaEvent::try_from(("key-signature", "D")).unwrap()
                     ]),
@@ -559,7 +715,7 @@ mod tests {
                         timing: DurationalEventTiming::default()
                             .with_duration(32)
                             .with_offset(100),
-                        velocity: DEFAULT_VELOCITY,
+                        volume: DEFAULT_VOLUME,
                         before: EventList::new(vec![]),
                     },
                     MelodyMember {
@@ -567,7 +723,7 @@ mod tests {
                         timing: DurationalEventTiming::default()
                             .with_duration(25)
                             .with_offset(75),
-                        velocity: DEFAULT_VELOCITY,
+                        volume: DEFAULT_VOLUME,
                         before: EventList::new(vec![]),
                     }
                 ]
@@ -581,7 +737,7 @@ mod tests {
                         timing: DurationalEventTiming::default()
                             .with_duration(96)
                             .with_offset(300),
-                        velocity: DEFAULT_VELOCITY,
+                        volume: DEFAULT_VOLUME,
                         before: EventList::new(vec![]),
                     },
                     MelodyMember {
@@ -589,7 +745,60 @@ mod tests {
                         timing: DurationalEventTiming::default()
                             .with_duration(75)
                             .with_offset(225),
-                        velocity: DEFAULT_VELOCITY,
+                        volume: DEFAULT_VOLUME,
+                        before: EventList::new(vec![]),
+                    },
+                ]
+            }
+        );
+    }
+
+    #[test]
+    fn diminish_rhythm() {
+        assert!(Melody::try_from(Vec::<i32>::new())
+            .unwrap()
+            .diminish_rhythm(0)
+            .is_err());
+
+        assert_eq!(
+            Melody {
+                contents: vec![
+                    MelodyMember {
+                        values: vec![12],
+                        timing: DurationalEventTiming::default()
+                            .with_duration(96)
+                            .with_offset(300),
+                        volume: DEFAULT_VOLUME,
+                        before: EventList::new(vec![]),
+                    },
+                    MelodyMember {
+                        values: vec![16],
+                        timing: DurationalEventTiming::default()
+                            .with_duration(75)
+                            .with_offset(225),
+                        volume: DEFAULT_VOLUME,
+                        before: EventList::new(vec![]),
+                    }
+                ]
+            }
+            .diminish_rhythm(3)
+            .unwrap(),
+            Melody {
+                contents: vec![
+                    MelodyMember {
+                        values: vec![12],
+                        timing: DurationalEventTiming::default()
+                            .with_duration(32)
+                            .with_offset(100),
+                        volume: DEFAULT_VOLUME,
+                        before: EventList::new(vec![]),
+                    },
+                    MelodyMember {
+                        values: vec![16],
+                        timing: DurationalEventTiming::default()
+                            .with_duration(25)
+                            .with_offset(75),
+                        volume: DEFAULT_VOLUME,
                         before: EventList::new(vec![]),
                     },
                 ]
