@@ -142,6 +142,7 @@ impl TryFrom<(&str, f32)> for MetaEvent {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct EventList {
     contents: Vec<MetaEvent>,
 }
@@ -151,6 +152,10 @@ impl Collection<MetaEvent> for EventList {
 }
 
 impl EventList {
+    pub fn new(contents: Vec<MetaEvent>) -> Self {
+        EventList { contents }
+    }
+
     pub fn augment_rhythm(self, by: i32) -> Result<Self, String> {
         Ok(self.mutate_each(|m| m.timing.offset *= by))
     }
@@ -224,5 +229,33 @@ mod tests {
             MetaEvent::try_from(("sustain", true)).unwrap().data,
             MetaEventData::Sustain(true)
         )
+    }
+
+    #[test]
+    fn augment_rhythm() {
+        assert_eq!(
+            EventList::new(vec![MetaEvent::try_from(("sustain", true))
+                .unwrap()
+                .with_offset(100)])
+            .augment_rhythm(3)
+            .unwrap(),
+            EventList::new(vec![MetaEvent::try_from(("sustain", true))
+                .unwrap()
+                .with_offset(300)])
+        );
+    }
+
+    #[test]
+    fn diminish_rhythm() {
+        assert_eq!(
+            EventList::new(vec![MetaEvent::try_from(("sustain", true))
+                .unwrap()
+                .with_offset(300)])
+            .diminish_rhythm(3)
+            .unwrap(),
+            EventList::new(vec![MetaEvent::try_from(("sustain", true))
+                .unwrap()
+                .with_offset(100)])
+        );
     }
 }
