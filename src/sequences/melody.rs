@@ -2,7 +2,7 @@ use crate::algorithms::algorithms;
 use crate::collections::event::{EventList, MetaEvent};
 use crate::collections::traits::Collection;
 use crate::default_methods;
-use crate::entities::timing::DurationalEventTiming;
+use crate::entities::timing::{DurationalEventTiming, Timing};
 use crate::sequences::chord::ChordSeq;
 use crate::sequences::note::NoteSeq;
 use crate::sequences::numeric::NumericSeq;
@@ -178,6 +178,53 @@ where
         self.contents.iter().map(|m| m.volume).collect()
     }
 
+    pub fn to_duration(&self) -> Vec<u32> {
+        self.contents.iter().map(|m| m.timing.duration).collect()
+    }
+
+    pub fn to_ticks(&self) -> Result<Vec<(u32, u32)>, String> {
+        let mut curr = 0;
+        self.contents
+            .iter()
+            .map(|m| {
+                let start = m.timing.start_tick(curr)?;
+                let end = m.timing.end_tick(curr)?;
+
+                curr = m.timing.next_tick(curr)?;
+
+                Ok((start, end))
+            })
+            .collect()
+    }
+
+    pub fn to_start_ticks(&self) -> Result<Vec<u32>, String> {
+        let mut curr = 0;
+        self.contents
+            .iter()
+            .map(|m| {
+                let start = m.timing.start_tick(curr)?;
+
+                curr = m.timing.next_tick(curr)?;
+
+                Ok(start)
+            })
+            .collect()
+    }
+
+    pub fn to_end_ticks(&self) -> Result<Vec<u32>, String> {
+        let mut curr = 0;
+        self.contents
+            .iter()
+            .map(|m| {
+                let end = m.timing.end_tick(curr)?;
+
+                curr = m.timing.next_tick(curr)?;
+
+                Ok(end)
+            })
+            .collect()
+    }
+
     pub fn max_volume(&self) -> Option<u8> {
         self.contents
             .iter()
@@ -192,10 +239,6 @@ where
             .filter(|m| !m.values.is_empty())
             .min_by(|a, b| a.volume.cmp(&b.volume))
             .map(|r| r.volume)
-    }
-
-    pub fn to_duration(&self) -> Vec<u32> {
-        self.contents.iter().map(|m| m.timing.duration).collect()
     }
 
     pub fn with_volume(self, vel: u8) -> Self {
@@ -270,6 +313,26 @@ where
             fi32(&mut m.timing.offset);
             fu32(&mut m.timing.duration);
         }))
+    }
+
+    // Join consecutive chords together if the passed function is true for
+    // (chord a, chord a + 1); if chords are joined non-pitch information
+    // about the second chord will be lost.
+    pub fn join_if(self, f: fn(&MelodyMember<T>, &MelodyMember<T>) -> bool) -> Self {
+        self.mutate_contents(|c| {
+            for i in (0..c.len() - 1).rev() {
+                if f(&c[i], &c[i + 1]) {
+                    c[i].timing.duration += c[i + 1].timing.duration;
+                    c.remove(i + 1);
+                }
+            }
+        })
+    }
+
+    // Join consecutive chords together if they are identical; if chords are
+    // joined non-pitch information about the second chord will be lost.
+    pub fn join_repeats(self) -> Self {
+        self.join_if(|a, b| a.values == b.values)
     }
 }
 
@@ -444,6 +507,109 @@ mod tests {
     }
 
     #[test]
+    fn to_duration() {
+        assert_eq!(
+            Melody::new(vec![
+                MelodyMember {
+                    values: vec![12],
+                    timing: DurationalEventTiming::default().with_duration(16),
+                    volume: 25,
+                    before: EventList::new(vec![]),
+                },
+                MelodyMember {
+                    values: vec![16],
+                    timing: DurationalEventTiming::default().with_duration(32),
+                    volume: 35,
+                    before: EventList::new(vec![]),
+                },
+            ])
+            .to_duration(),
+            vec![16, 32]
+        );
+    }
+
+    macro_rules! mmtiming {
+        ($tick:expr, $offset:expr, $duration:expr) => {
+            MelodyMember {
+                values: vec![20],
+                timing: DurationalEventTiming {
+                    tick: $tick,
+                    offset: $offset,
+                    duration: $duration,
+                },
+                volume: 32,
+                before: EventList::new(vec![]),
+            }
+        };
+    }
+
+    #[test]
+    fn to_ticks() {
+        assert_eq!(
+            Melody::new(vec![
+                mmtiming!(None, 0, 64),
+                mmtiming!(None, 16, 32),
+                mmtiming!(None, -48, 96),
+                mmtiming!(Some(128), 0, 32),
+                mmtiming!(None, 0, 64),
+                mmtiming!(Some(160), 32, 96),
+                mmtiming!(None, 0, 32),
+                mmtiming!(None, -64, 32),
+            ])
+            .to_ticks()
+            .unwrap(),
+            vec![
+                (0, 64),
+                (80, 112),
+                (48, 144),
+                (128, 160),
+                (160, 224),
+                (192, 288),
+                (256, 288),
+                (224, 256)
+            ]
+        );
+    }
+
+    #[test]
+    fn to_start_ticks() {
+        assert_eq!(
+            Melody::new(vec![
+                mmtiming!(None, 0, 64),
+                mmtiming!(None, 16, 32),
+                mmtiming!(None, -48, 96),
+                mmtiming!(Some(128), 0, 32),
+                mmtiming!(None, 0, 64),
+                mmtiming!(Some(160), 32, 96),
+                mmtiming!(None, 0, 32),
+                mmtiming!(None, -64, 32),
+            ])
+            .to_start_ticks()
+            .unwrap(),
+            vec![0, 80, 48, 128, 160, 192, 256, 224,]
+        );
+    }
+
+    #[test]
+    fn to_end_ticks() {
+        assert_eq!(
+            Melody::new(vec![
+                mmtiming!(None, 0, 64),
+                mmtiming!(None, 16, 32),
+                mmtiming!(None, -48, 96),
+                mmtiming!(Some(128), 0, 32),
+                mmtiming!(None, 0, 64),
+                mmtiming!(Some(160), 32, 96),
+                mmtiming!(None, 0, 32),
+                mmtiming!(None, -64, 32),
+            ])
+            .to_end_ticks()
+            .unwrap(),
+            vec![64, 112, 144, 160, 224, 288, 288, 256]
+        );
+    }
+
+    #[test]
     fn max_volume() {
         assert!(Melody::<i32>::new(vec![]).max_volume().is_none());
         assert!(Melody::<i32>::new(vec![MelodyMember {
@@ -516,28 +682,6 @@ mod tests {
             ])
             .min_volume(),
             Some(25)
-        );
-    }
-
-    #[test]
-    fn to_duration() {
-        assert_eq!(
-            Melody::new(vec![
-                MelodyMember {
-                    values: vec![12],
-                    timing: DurationalEventTiming::default().with_duration(16),
-                    volume: 25,
-                    before: EventList::new(vec![]),
-                },
-                MelodyMember {
-                    values: vec![16],
-                    timing: DurationalEventTiming::default().with_duration(32),
-                    volume: 35,
-                    before: EventList::new(vec![]),
-                },
-            ])
-            .to_duration(),
-            vec![16, 32]
         );
     }
 
@@ -802,6 +946,57 @@ mod tests {
                         before: EventList::new(vec![]),
                     },
                 ]
+            }
+        );
+    }
+
+    macro_rules! mmvdv {
+        ($p:expr, $d:expr, $v:expr) => {
+            MelodyMember {
+                values: vec![$p],
+                timing: DurationalEventTiming::default().with_duration($d),
+                volume: $v,
+                before: EventList::new(vec![]),
+            }
+        };
+    }
+
+    #[test]
+    fn join_if() {
+        assert_eq!(
+            Melody {
+                contents: vec![
+                    mmvdv!(12, 32, 20),
+                    mmvdv!(12, 64, 30),
+                    mmvdv!(16, 32, 40),
+                    mmvdv!(12, 32, 50),
+                    mmvdv!(12, 64, 60),
+                    mmvdv!(12, 128, 70)
+                ]
+            }
+            .join_if(|a, b| a.values == b.values),
+            Melody {
+                contents: vec![mmvdv!(12, 96, 20), mmvdv!(16, 32, 40), mmvdv!(12, 224, 50)]
+            }
+        );
+    }
+
+    #[test]
+    fn join_repeats() {
+        assert_eq!(
+            Melody {
+                contents: vec![
+                    mmvdv!(12, 32, 20),
+                    mmvdv!(12, 64, 30),
+                    mmvdv!(16, 32, 40),
+                    mmvdv!(12, 32, 50),
+                    mmvdv!(12, 64, 60),
+                    mmvdv!(12, 128, 70)
+                ]
+            }
+            .join_repeats(),
+            Melody {
+                contents: vec![mmvdv!(12, 96, 20), mmvdv!(16, 32, 40), mmvdv!(12, 224, 50)]
             }
         );
     }
