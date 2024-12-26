@@ -108,8 +108,8 @@ impl TryFrom<(&str, f32)> for Metadata {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Metadata {
-    data: MetadataData,
-    timing: EventTiming,
+    pub data: MetadataData,
+    pub timing: EventTiming,
 }
 
 impl Metadata {
@@ -127,6 +127,11 @@ impl Metadata {
 
     pub fn with_offset(mut self, offset: i32) -> Self {
         self.timing = self.timing.with_offset(offset);
+        self
+    }
+
+    pub fn mutate_offset(mut self, f: fn(&mut i32)) -> Self {
+        f(&mut self.timing.offset);
         self
     }
 }
@@ -167,6 +172,22 @@ mod tests {
                 timing: EventTiming {
                     tick: None,
                     offset: 50
+                }
+            }
+        );
+    }
+
+    #[test]
+    fn mutate_offset() {
+        assert_eq!(
+            Metadata::default()
+                .with_offset(50)
+                .mutate_offset(|v| *v += 50),
+            Metadata {
+                data: MetadataData::EndTrack,
+                timing: EventTiming {
+                    tick: None,
+                    offset: 100
                 }
             }
         );

@@ -300,6 +300,14 @@ where
         let fu32 = algorithms::augment(&a);
 
         Ok(self.mutate_each(|m| {
+            for x in m.before.contents.iter_mut() {
+                fi32(&mut x.timing.offset);
+
+                if let Some(v) = x.timing.tick.as_mut() {
+                    fu32(v);
+                }
+            }
+
             fi32(&mut m.timing.offset);
             fu32(&mut m.timing.duration);
         }))
@@ -310,6 +318,14 @@ where
         let fu32 = algorithms::diminish(&a)?;
 
         Ok(self.mutate_each(|m| {
+            for x in m.before.contents.iter_mut() {
+                fi32(&mut x.timing.offset);
+
+                if let Some(v) = x.timing.tick.as_mut() {
+                    fu32(v);
+                }
+            }
+
             fi32(&mut m.timing.offset);
             fu32(&mut m.timing.duration);
         }))
@@ -340,7 +356,10 @@ where
 mod tests {
     use crate::collections::traits::Collection;
     use crate::entities::timing::{DurationalEventTiming, Timing};
-    use crate::metadata::{data::Metadata, list::MetadataList};
+    use crate::metadata::{
+        data::{Metadata, MetadataData},
+        list::MetadataList,
+    };
     use crate::sequences::chord::ChordSeq;
     use crate::sequences::melody::{Melody, MelodyMember, DEFAULT_VOLUME};
     use crate::sequences::note::NoteSeq;
@@ -860,7 +879,11 @@ mod tests {
                             .with_duration(32)
                             .with_offset(100),
                         volume: DEFAULT_VOLUME,
-                        before: MetadataList::new(vec![]),
+                        before: MetadataList::new(vec![Metadata::new(
+                            MetadataData::Sustain(true),
+                            None,
+                            16
+                        )]),
                     },
                     MelodyMember {
                         values: vec![16],
@@ -868,8 +891,12 @@ mod tests {
                             .with_duration(25)
                             .with_offset(75),
                         volume: DEFAULT_VOLUME,
-                        before: MetadataList::new(vec![]),
-                    }
+                        before: MetadataList::new(vec![Metadata::new(
+                            MetadataData::Sustain(false),
+                            Some(32),
+                            25
+                        )]),
+                    },
                 ]
             }
             .augment_rhythm(3)
@@ -882,7 +909,11 @@ mod tests {
                             .with_duration(96)
                             .with_offset(300),
                         volume: DEFAULT_VOLUME,
-                        before: MetadataList::new(vec![]),
+                        before: MetadataList::new(vec![Metadata::new(
+                            MetadataData::Sustain(true),
+                            None,
+                            48
+                        )]),
                     },
                     MelodyMember {
                         values: vec![16],
@@ -890,8 +921,12 @@ mod tests {
                             .with_duration(75)
                             .with_offset(225),
                         volume: DEFAULT_VOLUME,
-                        before: MetadataList::new(vec![]),
-                    },
+                        before: MetadataList::new(vec![Metadata::new(
+                            MetadataData::Sustain(false),
+                            Some(96),
+                            75
+                        )]),
+                    }
                 ]
             }
         );
@@ -913,7 +948,11 @@ mod tests {
                             .with_duration(96)
                             .with_offset(300),
                         volume: DEFAULT_VOLUME,
-                        before: MetadataList::new(vec![]),
+                        before: MetadataList::new(vec![Metadata::new(
+                            MetadataData::Sustain(true),
+                            None,
+                            48
+                        )]),
                     },
                     MelodyMember {
                         values: vec![16],
@@ -921,7 +960,11 @@ mod tests {
                             .with_duration(75)
                             .with_offset(225),
                         volume: DEFAULT_VOLUME,
-                        before: MetadataList::new(vec![]),
+                        before: MetadataList::new(vec![Metadata::new(
+                            MetadataData::Sustain(false),
+                            Some(96),
+                            75
+                        )]),
                     }
                 ]
             }
@@ -935,7 +978,11 @@ mod tests {
                             .with_duration(32)
                             .with_offset(100),
                         volume: DEFAULT_VOLUME,
-                        before: MetadataList::new(vec![]),
+                        before: MetadataList::new(vec![Metadata::new(
+                            MetadataData::Sustain(true),
+                            None,
+                            16
+                        )]),
                     },
                     MelodyMember {
                         values: vec![16],
@@ -943,7 +990,11 @@ mod tests {
                             .with_duration(25)
                             .with_offset(75),
                         volume: DEFAULT_VOLUME,
-                        before: MetadataList::new(vec![]),
+                        before: MetadataList::new(vec![Metadata::new(
+                            MetadataData::Sustain(false),
+                            Some(32),
+                            25
+                        )]),
                     },
                 ]
             }

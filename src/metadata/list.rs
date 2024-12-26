@@ -1,8 +1,9 @@
+use crate::entities::timing::Timing;
 use crate::metadata::data::{Metadata, MetadataError};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct MetadataList {
-    contents: Vec<Metadata>,
+    pub contents: Vec<Metadata>,
 }
 
 impl MetadataList {
@@ -15,23 +16,13 @@ impl MetadataList {
         self
     }
 
-    /*
-    pub fn augment_rhythm(self, by: i32) -> Result<Self, String> {
+    pub fn mutate_offset(self, f: impl Fn(&mut i32)) -> Self {
         for m in self.contents.iter() {
-            m.timing.offset *= by;
+            m.timing.mutate_offset(&f);
         }
 
-        Self
+        self
     }
-
-    pub fn diminish_rhythm(self, by: i32) -> Result<Self, String> {
-        if by == 0 {
-            return Err("cannot diminish by 0".to_string());
-        }
-
-        Ok(self.mutate_each(|m| m.timing.offset /= by))
-    }
-    */
 }
 
 pub trait PushMetadata<T> {

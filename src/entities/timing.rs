@@ -1,6 +1,7 @@
 pub trait Timing {
     fn with_exact_tick(self, tick: u32) -> Self;
     fn with_offset(self, tick: i32) -> Self;
+    fn mutate_offset(self, f: impl Fn(&mut i32)) -> Self;
     fn start_tick(&self, curr: u32) -> Result<u32, String>;
 }
 
@@ -30,6 +31,11 @@ macro_rules! timing_traits {
 
             fn with_offset(mut self, offset: i32) -> Self {
                 self.offset = offset;
+                self
+            }
+
+            fn mutate_offset(mut self, f: impl Fn(&mut i32)) -> Self {
+                f(&mut self.offset);
                 self
             }
 
@@ -93,6 +99,11 @@ mod test_event_timing {
 
             let t = <$type>::default().with_offset(50);
             assert_eq!(t.offset, 50);
+
+            let t = <$type>::default()
+                .with_offset(-100)
+                .mutate_offset(|v| *v = -*v);
+            assert_eq!(t.offset, 100);
 
             let t = <$type>::default().with_offset(100);
             assert_eq!(t.start_tick(200), Ok(300));
