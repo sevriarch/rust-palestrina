@@ -54,6 +54,11 @@ mod tests {
         assert!(from_str("8/7").is_err());
     }
 
+    fn test_is_valid() {
+        assert!(is_valid("4/4"));
+        assert!(!is_valid("0/4"));
+    }
+
     macro_rules! midi_conv_test {
         ($sig:expr, $byte1:expr, $byte2:expr) => {
             assert_eq!(
