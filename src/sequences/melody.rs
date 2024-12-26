@@ -1,8 +1,8 @@
 use crate::algorithms;
-use crate::collections::event::{EventList, MetaEvent};
 use crate::collections::traits::Collection;
 use crate::default_methods;
 use crate::entities::timing::{DurationalEventTiming, Timing};
+use crate::metadata::{data::Metadata, list::MetadataList};
 use crate::sequences::chord::ChordSeq;
 use crate::sequences::note::NoteSeq;
 use crate::sequences::numeric::NumericSeq;
@@ -20,7 +20,7 @@ pub struct MelodyMember<T> {
     values: Vec<T>,
     timing: DurationalEventTiming,
     volume: u8,
-    before: EventList,
+    before: MetadataList,
 }
 
 impl<T> Default for MelodyMember<T> {
@@ -29,7 +29,7 @@ impl<T> Default for MelodyMember<T> {
             values: vec![],
             timing: DurationalEventTiming::default(),
             volume: DEFAULT_VOLUME,
-            before: EventList::new(vec![]),
+            before: MetadataList::new(vec![]),
         }
     }
 }
@@ -53,8 +53,8 @@ impl<T> From<Vec<T>> for MelodyMember<T> {
 }
 
 impl<T> MelodyMember<T> {
-    fn with_event(mut self, e: MetaEvent) -> Self {
-        self.before = self.before.append_items(&[e]);
+    fn with_event(mut self, e: Metadata) -> Self {
+        self.before = self.before.append(e);
 
         self
     }
@@ -289,7 +289,7 @@ where
         self.mutate_indices(ix, move |m| m.timing.duration = dur)
     }
 
-    pub fn with_event_at(self, ix: &[i32], evt: MetaEvent) -> Result<Self, String> {
+    pub fn with_event_at(self, ix: &[i32], evt: Metadata) -> Result<Self, String> {
         self.mutate_indices(ix, |m| {
             *m = m.clone().with_event(evt.clone());
         })
@@ -338,9 +338,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::collections::event::{EventList, MetaEvent};
     use crate::collections::traits::Collection;
     use crate::entities::timing::{DurationalEventTiming, Timing};
+    use crate::metadata::{data::Metadata, list::MetadataList};
     use crate::sequences::chord::ChordSeq;
     use crate::sequences::melody::{Melody, MelodyMember, DEFAULT_VOLUME};
     use crate::sequences::note::NoteSeq;
@@ -351,12 +351,12 @@ mod tests {
     fn mel_member_with_event() {
         assert_eq!(
             MelodyMember::from(vec![12, 16])
-                .with_event(MetaEvent::try_from(("text", "test text")).unwrap()),
+                .with_event(Metadata::try_from(("text", "test text")).unwrap()),
             MelodyMember {
                 values: vec![12, 16],
                 timing: DurationalEventTiming::default(),
                 volume: DEFAULT_VOLUME,
-                before: EventList::new(vec![MetaEvent::try_from(("text", "test text")).unwrap()])
+                before: MetadataList::new(vec![Metadata::try_from(("text", "test text")).unwrap()])
             }
         );
     }
@@ -492,13 +492,13 @@ mod tests {
                     values: vec![12],
                     timing: DurationalEventTiming::default(),
                     volume: 25,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default(),
                     volume: 35,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
             ])
             .to_volume(),
@@ -514,13 +514,13 @@ mod tests {
                     values: vec![12],
                     timing: DurationalEventTiming::default().with_duration(16),
                     volume: 25,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default().with_duration(32),
                     volume: 35,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
             ])
             .to_duration(),
@@ -538,7 +538,7 @@ mod tests {
                     duration: $duration,
                 },
                 volume: 32,
-                before: EventList::new(vec![]),
+                before: MetadataList::new(vec![]),
             }
         };
     }
@@ -616,7 +616,7 @@ mod tests {
             values: vec![],
             timing: DurationalEventTiming::default(),
             volume: 25,
-            before: EventList::new(vec![]),
+            before: MetadataList::new(vec![]),
         }])
         .max_volume()
         .is_none());
@@ -627,19 +627,19 @@ mod tests {
                     values: vec![12],
                     timing: DurationalEventTiming::default(),
                     volume: 25,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![],
                     timing: DurationalEventTiming::default(),
                     volume: 45,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default(),
                     volume: 35,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
             ])
             .max_volume(),
@@ -654,7 +654,7 @@ mod tests {
             values: vec![],
             timing: DurationalEventTiming::default(),
             volume: 25,
-            before: EventList::new(vec![]),
+            before: MetadataList::new(vec![]),
         }])
         .min_volume()
         .is_none());
@@ -665,19 +665,19 @@ mod tests {
                     values: vec![12],
                     timing: DurationalEventTiming::default(),
                     volume: 25,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![],
                     timing: DurationalEventTiming::default(),
                     volume: 15,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default(),
                     volume: 35,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
             ])
             .min_volume(),
@@ -694,13 +694,13 @@ mod tests {
                     values: vec![12],
                     timing: DurationalEventTiming::default(),
                     volume: 25,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default(),
                     volume: 25,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
             ])
         );
@@ -718,13 +718,13 @@ mod tests {
                     values: vec![12],
                     timing: DurationalEventTiming::default(),
                     volume: 25,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default(),
                     volume: 35,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
             ])
         );
@@ -742,13 +742,13 @@ mod tests {
                     values: vec![12],
                     timing: DurationalEventTiming::default(),
                     volume: DEFAULT_VOLUME,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default(),
                     volume: 25,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
             ])
         );
@@ -763,13 +763,13 @@ mod tests {
                     values: vec![12],
                     timing: DurationalEventTiming::default().with_duration(25),
                     volume: DEFAULT_VOLUME,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default().with_duration(25),
                     volume: DEFAULT_VOLUME,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
             ])
         );
@@ -787,13 +787,13 @@ mod tests {
                     values: vec![12],
                     timing: DurationalEventTiming::default().with_duration(25),
                     volume: DEFAULT_VOLUME,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default().with_duration(35),
                     volume: DEFAULT_VOLUME,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
             ])
         );
@@ -811,13 +811,13 @@ mod tests {
                     values: vec![12],
                     timing: DurationalEventTiming::default(),
                     volume: DEFAULT_VOLUME,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default().with_duration(25),
                     volume: DEFAULT_VOLUME,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
             ])
         );
@@ -828,21 +828,21 @@ mod tests {
         assert_eq!(
             Melody::try_from(vec![12, 16])
                 .unwrap()
-                .with_event_at(&[-1], MetaEvent::try_from(("key-signature", "D")).unwrap())
+                .with_event_at(&[-1], Metadata::try_from(("key-signature", "D")).unwrap())
                 .unwrap(),
             Melody::new(vec![
                 MelodyMember {
                     values: vec![12],
                     timing: DurationalEventTiming::default(),
                     volume: DEFAULT_VOLUME,
-                    before: EventList::new(vec![]),
+                    before: MetadataList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::default(),
                     volume: DEFAULT_VOLUME,
-                    before: EventList::new(vec![
-                        MetaEvent::try_from(("key-signature", "D")).unwrap()
+                    before: MetadataList::new(vec![
+                        Metadata::try_from(("key-signature", "D")).unwrap()
                     ]),
                 },
             ])
@@ -860,7 +860,7 @@ mod tests {
                             .with_duration(32)
                             .with_offset(100),
                         volume: DEFAULT_VOLUME,
-                        before: EventList::new(vec![]),
+                        before: MetadataList::new(vec![]),
                     },
                     MelodyMember {
                         values: vec![16],
@@ -868,7 +868,7 @@ mod tests {
                             .with_duration(25)
                             .with_offset(75),
                         volume: DEFAULT_VOLUME,
-                        before: EventList::new(vec![]),
+                        before: MetadataList::new(vec![]),
                     }
                 ]
             }
@@ -882,7 +882,7 @@ mod tests {
                             .with_duration(96)
                             .with_offset(300),
                         volume: DEFAULT_VOLUME,
-                        before: EventList::new(vec![]),
+                        before: MetadataList::new(vec![]),
                     },
                     MelodyMember {
                         values: vec![16],
@@ -890,7 +890,7 @@ mod tests {
                             .with_duration(75)
                             .with_offset(225),
                         volume: DEFAULT_VOLUME,
-                        before: EventList::new(vec![]),
+                        before: MetadataList::new(vec![]),
                     },
                 ]
             }
@@ -913,7 +913,7 @@ mod tests {
                             .with_duration(96)
                             .with_offset(300),
                         volume: DEFAULT_VOLUME,
-                        before: EventList::new(vec![]),
+                        before: MetadataList::new(vec![]),
                     },
                     MelodyMember {
                         values: vec![16],
@@ -921,7 +921,7 @@ mod tests {
                             .with_duration(75)
                             .with_offset(225),
                         volume: DEFAULT_VOLUME,
-                        before: EventList::new(vec![]),
+                        before: MetadataList::new(vec![]),
                     }
                 ]
             }
@@ -935,7 +935,7 @@ mod tests {
                             .with_duration(32)
                             .with_offset(100),
                         volume: DEFAULT_VOLUME,
-                        before: EventList::new(vec![]),
+                        before: MetadataList::new(vec![]),
                     },
                     MelodyMember {
                         values: vec![16],
@@ -943,7 +943,7 @@ mod tests {
                             .with_duration(25)
                             .with_offset(75),
                         volume: DEFAULT_VOLUME,
-                        before: EventList::new(vec![]),
+                        before: MetadataList::new(vec![]),
                     },
                 ]
             }
@@ -956,7 +956,7 @@ mod tests {
                 values: vec![$p],
                 timing: DurationalEventTiming::default().with_duration($d),
                 volume: $v,
-                before: EventList::new(vec![]),
+                before: MetadataList::new(vec![]),
             }
         };
     }
