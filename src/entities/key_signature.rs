@@ -67,8 +67,6 @@ pub fn from_midi_bytes((byte, minor): (u8, u8)) -> Result<String, String> {
         return Err(format!("invalid byte 1: {}", byte));
     }
 
-    if minor > 1 {}
-
     let ix = (7 + byte as usize) & 0xff;
 
     match minor {

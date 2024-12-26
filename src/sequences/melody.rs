@@ -1,4 +1,4 @@
-use crate::algorithms::algorithms;
+use crate::algorithms;
 use crate::collections::event::{EventList, MetaEvent};
 use crate::collections::traits::Collection;
 use crate::default_methods;
@@ -78,7 +78,7 @@ where
 
     fn try_from(what: Vec<Vec<T>>) -> Result<Self, Self::Error> {
         Ok(Self {
-            contents: what.into_iter().map(|v| MelodyMember::from(v)).collect(),
+            contents: what.into_iter().map(MelodyMember::from).collect(),
         })
     }
 }
@@ -91,7 +91,7 @@ where
 
     fn try_from(what: Vec<T>) -> Result<Self, Self::Error> {
         Ok(Self {
-            contents: what.into_iter().map(|v| MelodyMember::from(v)).collect(),
+            contents: what.into_iter().map(MelodyMember::from).collect(),
         })
     }
 }
@@ -109,7 +109,7 @@ macro_rules! try_from_seq {
                     contents: what
                         .to_pitches()
                         .into_iter()
-                        .map(|v| MelodyMember::from(v))
+                        .map(MelodyMember::from)
                         .collect(),
                 })
             }

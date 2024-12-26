@@ -277,7 +277,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
     }
 
     fn filter(&self, f: fn(&T) -> bool) -> Self {
-        let newcontents = self.cts().into_iter().filter(|m| f(m)).collect();
+        let newcontents = self.cts().into_iter().filter(f).collect();
 
         self.construct(newcontents)
     }
@@ -517,7 +517,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
     }
 
     fn partition(&self, f: fn(&T) -> bool) -> Result<(Self, Self), &str> {
-        let (p1, p2): (Vec<T>, Vec<T>) = self.cts().into_iter().partition(|v| f(v));
+        let (p1, p2): (Vec<T>, Vec<T>) = self.cts().into_iter().partition(f);
 
         Ok((self.construct(p1), self.construct(p2)))
     }
@@ -754,7 +754,7 @@ mod tests {
     #[test]
     fn mutate_indices() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
-        let new = coll.mutate_indices(&[1, -5, 4, -1], |v| *v = *v + 3);
+        let new = coll.mutate_indices(&[1, -5, 4, -1], |v| *v += 3);
 
         assert_contents_eq!(new, vec![0, 8, 3, 4, 8, 9]);
     }

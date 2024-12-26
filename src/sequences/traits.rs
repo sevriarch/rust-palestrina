@@ -1,4 +1,4 @@
-use crate::algorithms::algorithms;
+use crate::algorithms;
 use crate::collections::traits::Collection;
 use crate::entities::scale::Scale;
 use num_traits::{Num, PrimInt};

@@ -40,7 +40,7 @@ macro_rules! timing_traits {
     };
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct EventTiming {
     pub tick: Option<u32>,
     pub offset: i32,
@@ -48,16 +48,7 @@ pub struct EventTiming {
 
 timing_traits!(EventTiming);
 
-impl Default for EventTiming {
-    fn default() -> EventTiming {
-        Self {
-            tick: None,
-            offset: 0,
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct DurationalEventTiming {
     pub tick: Option<u32>,
     pub offset: i32,
@@ -65,16 +56,6 @@ pub struct DurationalEventTiming {
 }
 
 timing_traits!(DurationalEventTiming);
-
-impl Default for DurationalEventTiming {
-    fn default() -> DurationalEventTiming {
-        Self {
-            tick: None,
-            offset: 0,
-            duration: 0,
-        }
-    }
-}
 
 impl DurationalEventTiming {
     pub fn with_duration(mut self, dur: u32) -> Self {

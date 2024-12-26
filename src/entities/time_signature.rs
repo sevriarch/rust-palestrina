@@ -54,6 +54,7 @@ mod tests {
         assert!(from_str("8/7").is_err());
     }
 
+    #[test]
     fn test_is_valid() {
         assert!(is_valid("4/4"));
         assert!(!is_valid("0/4"));

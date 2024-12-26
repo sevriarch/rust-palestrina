@@ -96,11 +96,7 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Seq
     }
 
     fn to_flat_pitches(&self) -> Vec<T> {
-        self.contents
-            .clone()
-            .into_iter()
-            .filter_map(|v| v)
-            .collect()
+        self.contents.clone().into_iter().flatten().collect()
     }
 
     fn to_pitches(&self) -> Vec<Vec<T>> {
