@@ -1,8 +1,8 @@
 pub trait Timing {
-    fn with_exact_tick(self, tick: u32) -> Self;
-    fn with_offset(self, tick: i32) -> Self;
-    fn mutate_exact_tick(self, f: impl Fn(&mut u32)) -> Self;
-    fn mutate_offset(self, f: impl Fn(&mut i32)) -> Self;
+    fn with_exact_tick(&mut self, tick: u32) -> Self;
+    fn with_offset(&mut self, tick: i32) -> Self;
+    fn mutate_exact_tick(&mut self, f: impl Fn(&mut u32)) -> Self;
+    fn mutate_offset(&mut self, f: impl Fn(&mut i32)) -> Self;
     fn start_tick(&self, curr: u32) -> Result<u32, String>;
 }
 
@@ -25,26 +25,26 @@ fn pos_or_err(tick: i32) -> Result<u32, String> {
 macro_rules! timing_traits {
     ($type:ty) => {
         impl Timing for $type {
-            fn with_exact_tick(mut self, tick: u32) -> Self {
+            fn with_exact_tick(&mut self, tick: u32) -> Self {
                 self.tick = Some(tick);
-                self
+                *self
             }
 
-            fn with_offset(mut self, offset: i32) -> Self {
+            fn with_offset(&mut self, offset: i32) -> Self {
                 self.offset = offset;
-                self
+                *self
             }
 
-            fn mutate_offset(mut self, f: impl Fn(&mut i32)) -> Self {
+            fn mutate_offset(&mut self, f: impl Fn(&mut i32)) -> Self {
                 f(&mut self.offset);
-                self
+                *self
             }
 
-            fn mutate_exact_tick(mut self, f: impl Fn(&mut u32)) -> Self {
+            fn mutate_exact_tick(&mut self, f: impl Fn(&mut u32)) -> Self {
                 if let Some(tick) = self.tick.as_mut() {
                     f(tick);
                 }
-                self
+                *self
             }
 
             fn start_tick(&self, curr: u32) -> Result<u32, String> {
