@@ -1,9 +1,10 @@
 use crate::collections::traits::Collection;
-use crate::default_methods;
+use crate::metadata::list::MetadataList;
 use crate::sequences::melody::Melody;
 use crate::sequences::note::NoteSeq;
 use crate::sequences::numeric::NumericSeq;
 use crate::sequences::traits::Sequence;
+use crate::{default_collection_methods, default_sequence_methods};
 
 use num_traits::{Bounded, Num};
 use std::convert::TryFrom;
@@ -13,6 +14,7 @@ use std::iter::Sum;
 #[derive(Clone, Debug, PartialEq)]
 pub struct ChordSeq<T> {
     contents: Vec<Vec<T>>,
+    metadata: MetadataList,
 }
 
 #[derive(Debug, PartialEq)]
@@ -22,25 +24,23 @@ pub enum ChordSeqError {
 
 impl<T> TryFrom<Vec<T>> for ChordSeq<T>
 where
-    T: Copy + Num + Debug + PartialOrd,
+    T: Clone + Copy + Num + Debug + PartialOrd + Bounded,
 {
     type Error = ChordSeqError;
 
     fn try_from(what: Vec<T>) -> Result<Self, Self::Error> {
-        Ok(Self {
-            contents: what.iter().map(|v| vec![*v]).collect(),
-        })
+        Ok(Self::new(what.iter().map(|v| vec![*v]).collect()))
     }
 }
 
 impl<T> TryFrom<Vec<Vec<T>>> for ChordSeq<T>
 where
-    T: Copy + Num + Debug + PartialOrd,
+    T: Clone + Copy + Num + Debug + PartialOrd + Bounded,
 {
     type Error = ChordSeqError;
 
     fn try_from(what: Vec<Vec<T>>) -> Result<Self, Self::Error> {
-        Ok(Self { contents: what })
+        Ok(Self::new(what))
     }
 }
 
@@ -53,9 +53,7 @@ macro_rules! try_from_seq {
             type Error = ChordSeqError;
 
             fn try_from(what: $type) -> Result<Self, Self::Error> {
-                Ok(Self {
-                    contents: what.to_pitches(),
-                })
+                Ok(Self::new(what.to_pitches()))
             }
         }
     };
@@ -66,7 +64,8 @@ try_from_seq!(NoteSeq<T>);
 try_from_seq!(NumericSeq<T>);
 
 impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded> Collection<Vec<T>> for ChordSeq<T> {
-    default_methods!(Vec<T>);
+    default_collection_methods!(Vec<T>);
+    default_sequence_methods!(Vec<T>);
 }
 
 impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Sequence<Vec<T>, T>

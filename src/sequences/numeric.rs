@@ -1,9 +1,10 @@
 use crate::collections::traits::Collection;
-use crate::default_methods;
+use crate::metadata::list::MetadataList;
 use crate::sequences::chord::ChordSeq;
 use crate::sequences::melody::Melody;
 use crate::sequences::note::NoteSeq;
 use crate::sequences::traits::Sequence;
+use crate::{default_collection_methods, default_sequence_methods};
 
 use num_traits::{Bounded, Num};
 use std::convert::TryFrom;
@@ -13,6 +14,7 @@ use std::iter::Sum;
 #[derive(Clone, Debug, PartialEq)]
 pub struct NumericSeq<T> {
     contents: Vec<T>,
+    metadata: MetadataList,
 }
 
 #[derive(Debug, PartialEq)]
@@ -22,18 +24,18 @@ pub enum NumSeqError {
 
 impl<T> TryFrom<Vec<T>> for NumericSeq<T>
 where
-    T: Num + Debug + PartialOrd,
+    T: Copy + Clone + Num + Debug + PartialOrd + Bounded,
 {
     type Error = NumSeqError;
 
     fn try_from(what: Vec<T>) -> Result<Self, Self::Error> {
-        Ok(Self { contents: what })
+        Ok(NumericSeq::new(what))
     }
 }
 
 impl<T> TryFrom<Vec<Vec<T>>> for NumericSeq<T>
 where
-    T: Num + Copy + Debug,
+    T: Copy + Clone + Num + Debug + PartialOrd + Bounded,
 {
     type Error = NumSeqError;
 
@@ -47,7 +49,7 @@ where
         if cts.len() != len {
             Err(NumSeqError::InvalidValues)
         } else {
-            Ok(Self { contents: cts })
+            Ok(NumericSeq::new(cts))
         }
     }
 }
@@ -62,7 +64,7 @@ macro_rules! try_from_seq {
 
             fn try_from(what: $type) -> Result<Self, Self::Error> {
                 match what.to_numeric_values() {
-                    Ok(vals) => Ok(Self { contents: vals }),
+                    Ok(vals) => Ok(NumericSeq::new(vals)),
                     Err(_) => Err(NumSeqError::InvalidValues),
                 }
             }
@@ -75,7 +77,8 @@ try_from_seq!(ChordSeq<T>);
 try_from_seq!(NoteSeq<T>);
 
 impl<T: Clone + Num + Debug + PartialOrd + Bounded> Collection<T> for NumericSeq<T> {
-    default_methods!(T);
+    default_collection_methods!(T);
+    default_sequence_methods!(T);
 }
 
 impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Sequence<T, T>

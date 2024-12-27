@@ -6,6 +6,25 @@ use std::fmt::Debug;
 use std::iter::Sum;
 use std::ops::SubAssign;
 
+#[macro_export]
+macro_rules! default_sequence_methods {
+    ($type:ty) => {
+        fn new(contents: Vec<$type>) -> Self {
+            Self {
+                contents,
+                metadata: MetadataList::default(),
+            }
+        }
+
+        fn construct(&self, contents: Vec<$type>) -> Self {
+            Self {
+                contents,
+                metadata: self.metadata.clone(),
+            }
+        }
+    };
+}
+
 pub trait Sequence<
     T: Clone + Debug,
     PitchType: Clone + Copy + Debug + Num + PartialOrd + Sum + From<i32>,

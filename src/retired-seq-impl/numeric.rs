@@ -1,7 +1,7 @@
 // Traits common to all Sequences
 /*
 use crate::collections::traits::Collection;
-use crate::default_methods;
+use crate::default_collection_methods;
 use crate::sequence::member::numeric::NumericMember;
 use num_traits::Num;
 use std::fmt::Debug;
@@ -29,7 +29,7 @@ impl<T: Clone + Copy + Debug + Num + PartialOrd + From<i8> + From<i32>> NumericS
 impl<T: Clone + Copy + Debug + Num + PartialOrd + From<i8> + From<i32>> Collection<NumericMember<T>>
     for NumericSequence<T>
 {
-    default_methods!(NumericMember<T>);
+    default_collection_methods!(NumericMember<T>);
 
     fn mutate_pitches<F: Fn(&mut NumericMember<T>)>(self, _: F) -> Self {
         self

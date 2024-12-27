@@ -5,12 +5,8 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 #[macro_export]
-macro_rules! default_methods {
+macro_rules! default_collection_methods {
     ($type:ty) => {
-        fn new(contents: Vec<$type>) -> Self {
-            Self { contents }
-        }
-
         fn cts(&self) -> Vec<$type> {
             self.contents.clone()
         }
@@ -54,10 +50,6 @@ macro_rules! default_methods {
         fn with_contents(mut self, contents: Vec<$type>) -> Self {
             self.contents = contents;
             self
-        }
-
-        fn construct(&self, contents: Vec<$type>) -> Self {
-            Self { contents }
         }
     };
 }
@@ -560,7 +552,15 @@ mod tests {
     }
 
     impl Collection<i32> for TestColl {
-        default_methods!(i32);
+        default_collection_methods!(i32);
+
+        fn new(contents: Vec<i32>) -> Self {
+            TestColl { contents }
+        }
+
+        fn construct(&self, contents: Vec<i32>) -> Self {
+            TestColl { contents }
+        }
     }
 
     #[test]

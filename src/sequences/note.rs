@@ -1,9 +1,10 @@
 use crate::collections::traits::Collection;
-use crate::default_methods;
+use crate::metadata::list::MetadataList;
 use crate::sequences::chord::ChordSeq;
 use crate::sequences::melody::Melody;
 use crate::sequences::numeric::NumericSeq;
 use crate::sequences::traits::Sequence;
+use crate::{default_collection_methods, default_sequence_methods};
 
 use num_traits::{Bounded, Num};
 use std::convert::TryFrom;
@@ -13,6 +14,7 @@ use std::iter::Sum;
 #[derive(Clone, Debug, PartialEq)]
 pub struct NoteSeq<T> {
     contents: Vec<Option<T>>,
+    metadata: MetadataList,
 }
 
 #[derive(Debug, PartialEq)]
@@ -22,20 +24,18 @@ pub enum NoteSeqError {
 
 impl<T> TryFrom<Vec<T>> for NoteSeq<T>
 where
-    T: Copy + Num + Debug + PartialOrd,
+    T: Copy + Clone + Num + Debug + PartialOrd + Bounded,
 {
     type Error = NoteSeqError;
 
     fn try_from(what: Vec<T>) -> Result<Self, Self::Error> {
-        Ok(Self {
-            contents: what.iter().map(|v| Some(*v)).collect(),
-        })
+        Ok(Self::new(what.iter().map(|v| Some(*v)).collect()))
     }
 }
 
 impl<T> TryFrom<Vec<Vec<T>>> for NoteSeq<T>
 where
-    T: Copy + Num + Debug + PartialOrd,
+    T: Copy + Clone + Num + Debug + PartialOrd + Bounded,
 {
     type Error = NoteSeqError;
 
@@ -53,7 +53,7 @@ where
         if cts.len() != len {
             Err(NoteSeqError::InvalidValues)
         } else {
-            Ok(Self { contents: cts })
+            Ok(Self::new(cts))
         }
     }
 }
@@ -68,7 +68,7 @@ macro_rules! try_from_seq {
 
             fn try_from(what: $type) -> Result<Self, Self::Error> {
                 match what.to_optional_numeric_values() {
-                    Ok(vals) => Ok(Self { contents: vals }),
+                    Ok(vals) => Ok(Self::new(vals)),
                     Err(_) => Err(NoteSeqError::InvalidValues),
                 }
             }
@@ -81,7 +81,8 @@ try_from_seq!(ChordSeq<T>);
 try_from_seq!(NumericSeq<T>);
 
 impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded> Collection<Option<T>> for NoteSeq<T> {
-    default_methods!(Option<T>);
+    default_collection_methods!(Option<T>);
+    default_sequence_methods!(Option<T>);
 }
 
 impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Sequence<Option<T>, T>

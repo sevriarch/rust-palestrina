@@ -1,12 +1,12 @@
 use crate::algorithms;
 use crate::collections::traits::Collection;
-use crate::default_methods;
 use crate::entities::timing::{DurationalEventTiming, Timing};
 use crate::metadata::{data::Metadata, list::MetadataList};
 use crate::sequences::chord::ChordSeq;
 use crate::sequences::note::NoteSeq;
 use crate::sequences::numeric::NumericSeq;
 use crate::sequences::traits::Sequence;
+use crate::{default_collection_methods, default_sequence_methods};
 
 use num_traits::{Bounded, Num};
 use std::convert::TryFrom;
@@ -63,6 +63,7 @@ impl<T> MelodyMember<T> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Melody<T> {
     contents: Vec<MelodyMember<T>>,
+    metadata: MetadataList,
 }
 
 #[derive(Debug, PartialEq)]
@@ -72,27 +73,27 @@ pub enum MelodyError {
 
 impl<T> TryFrom<Vec<Vec<T>>> for Melody<T>
 where
-    T: Num + Debug + PartialOrd,
+    T: Clone + Copy + Num + Debug + PartialOrd + Bounded,
 {
     type Error = MelodyError;
 
     fn try_from(what: Vec<Vec<T>>) -> Result<Self, Self::Error> {
-        Ok(Self {
-            contents: what.into_iter().map(MelodyMember::from).collect(),
-        })
+        Ok(Self::new(
+            what.into_iter().map(MelodyMember::from).collect(),
+        ))
     }
 }
 
 impl<T> TryFrom<Vec<T>> for Melody<T>
 where
-    T: Num + Debug + PartialOrd,
+    T: Clone + Copy + Num + Debug + PartialOrd + Bounded,
 {
     type Error = MelodyError;
 
     fn try_from(what: Vec<T>) -> Result<Self, Self::Error> {
-        Ok(Self {
-            contents: what.into_iter().map(MelodyMember::from).collect(),
-        })
+        Ok(Self::new(
+            what.into_iter().map(MelodyMember::from).collect(),
+        ))
     }
 }
 
@@ -105,13 +106,12 @@ macro_rules! try_from_seq {
             type Error = MelodyError;
 
             fn try_from(what: $type) -> Result<Self, Self::Error> {
-                Ok(Self {
-                    contents: what
-                        .to_pitches()
+                Ok(Self::new(
+                    what.to_pitches()
                         .into_iter()
                         .map(MelodyMember::from)
                         .collect(),
-                })
+                ))
             }
         }
     };
@@ -122,7 +122,8 @@ try_from_seq!(NoteSeq<T>);
 try_from_seq!(ChordSeq<T>);
 
 impl<T: Clone + Num + Debug + PartialOrd + Bounded> Collection<MelodyMember<T>> for Melody<T> {
-    default_methods!(MelodyMember<T>);
+    default_collection_methods!(MelodyMember<T>);
+    default_sequence_methods!(MelodyMember<T>);
 }
 
 impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
@@ -871,64 +872,60 @@ mod tests {
     #[test]
     fn augment_rhythm() {
         assert_eq!(
-            Melody {
-                contents: vec![
-                    MelodyMember {
-                        values: vec![12],
-                        timing: DurationalEventTiming::default()
-                            .with_duration(32)
-                            .with_offset(100),
-                        volume: DEFAULT_VOLUME,
-                        before: MetadataList::new(vec![Metadata::new(
-                            MetadataData::Sustain(true),
-                            None,
-                            16
-                        )]),
-                    },
-                    MelodyMember {
-                        values: vec![16],
-                        timing: DurationalEventTiming::default()
-                            .with_duration(25)
-                            .with_offset(75),
-                        volume: DEFAULT_VOLUME,
-                        before: MetadataList::new(vec![Metadata::new(
-                            MetadataData::Sustain(false),
-                            Some(32),
-                            25
-                        )]),
-                    },
-                ]
-            }
+            Melody::new(vec![
+                MelodyMember {
+                    values: vec![12],
+                    timing: DurationalEventTiming::default()
+                        .with_duration(32)
+                        .with_offset(100),
+                    volume: DEFAULT_VOLUME,
+                    before: MetadataList::new(vec![Metadata::new(
+                        MetadataData::Sustain(true),
+                        None,
+                        16
+                    )]),
+                },
+                MelodyMember {
+                    values: vec![16],
+                    timing: DurationalEventTiming::default()
+                        .with_duration(25)
+                        .with_offset(75),
+                    volume: DEFAULT_VOLUME,
+                    before: MetadataList::new(vec![Metadata::new(
+                        MetadataData::Sustain(false),
+                        Some(32),
+                        25
+                    )]),
+                },
+            ])
             .augment_rhythm(3)
             .unwrap(),
-            Melody {
-                contents: vec![
-                    MelodyMember {
-                        values: vec![12],
-                        timing: DurationalEventTiming::default()
-                            .with_duration(96)
-                            .with_offset(300),
-                        volume: DEFAULT_VOLUME,
-                        before: MetadataList::new(vec![Metadata::new(
-                            MetadataData::Sustain(true),
-                            None,
-                            48
-                        )]),
-                    },
-                    MelodyMember {
-                        values: vec![16],
-                        timing: DurationalEventTiming::default()
-                            .with_duration(75)
-                            .with_offset(225),
-                        volume: DEFAULT_VOLUME,
-                        before: MetadataList::new(vec![Metadata::new(
-                            MetadataData::Sustain(false),
-                            Some(96),
-                            75
-                        )]),
-                    }
-                ]
-            }
+            Melody::new(vec![
+                MelodyMember {
+                    values: vec![12],
+                    timing: DurationalEventTiming::default()
+                        .with_duration(96)
+                        .with_offset(300),
+                    volume: DEFAULT_VOLUME,
+                    before: MetadataList::new(vec![Metadata::new(
+                        MetadataData::Sustain(true),
+                        None,
+                        48
+                    )]),
+                },
+                MelodyMember {
+                    values: vec![16],
+                    timing: DurationalEventTiming::default()
+                        .with_duration(75)
+                        .with_offset(225),
+                    volume: DEFAULT_VOLUME,
+                    before: MetadataList::new(vec![Metadata::new(
+                        MetadataData::Sustain(false),
+                        Some(96),
+                        75
+                    )]),
+                }
+            ])
         );
     }
 
@@ -940,64 +937,60 @@ mod tests {
             .is_err());
 
         assert_eq!(
-            Melody {
-                contents: vec![
-                    MelodyMember {
-                        values: vec![12],
-                        timing: DurationalEventTiming::default()
-                            .with_duration(96)
-                            .with_offset(300),
-                        volume: DEFAULT_VOLUME,
-                        before: MetadataList::new(vec![Metadata::new(
-                            MetadataData::Sustain(true),
-                            None,
-                            48
-                        )]),
-                    },
-                    MelodyMember {
-                        values: vec![16],
-                        timing: DurationalEventTiming::default()
-                            .with_duration(75)
-                            .with_offset(225),
-                        volume: DEFAULT_VOLUME,
-                        before: MetadataList::new(vec![Metadata::new(
-                            MetadataData::Sustain(false),
-                            Some(96),
-                            75
-                        )]),
-                    }
-                ]
-            }
+            Melody::new(vec![
+                MelodyMember {
+                    values: vec![12],
+                    timing: DurationalEventTiming::default()
+                        .with_duration(96)
+                        .with_offset(300),
+                    volume: DEFAULT_VOLUME,
+                    before: MetadataList::new(vec![Metadata::new(
+                        MetadataData::Sustain(true),
+                        None,
+                        48
+                    )]),
+                },
+                MelodyMember {
+                    values: vec![16],
+                    timing: DurationalEventTiming::default()
+                        .with_duration(75)
+                        .with_offset(225),
+                    volume: DEFAULT_VOLUME,
+                    before: MetadataList::new(vec![Metadata::new(
+                        MetadataData::Sustain(false),
+                        Some(96),
+                        75
+                    )]),
+                }
+            ])
             .diminish_rhythm(3)
             .unwrap(),
-            Melody {
-                contents: vec![
-                    MelodyMember {
-                        values: vec![12],
-                        timing: DurationalEventTiming::default()
-                            .with_duration(32)
-                            .with_offset(100),
-                        volume: DEFAULT_VOLUME,
-                        before: MetadataList::new(vec![Metadata::new(
-                            MetadataData::Sustain(true),
-                            None,
-                            16
-                        )]),
-                    },
-                    MelodyMember {
-                        values: vec![16],
-                        timing: DurationalEventTiming::default()
-                            .with_duration(25)
-                            .with_offset(75),
-                        volume: DEFAULT_VOLUME,
-                        before: MetadataList::new(vec![Metadata::new(
-                            MetadataData::Sustain(false),
-                            Some(32),
-                            25
-                        )]),
-                    },
-                ]
-            }
+            Melody::new(vec![
+                MelodyMember {
+                    values: vec![12],
+                    timing: DurationalEventTiming::default()
+                        .with_duration(32)
+                        .with_offset(100),
+                    volume: DEFAULT_VOLUME,
+                    before: MetadataList::new(vec![Metadata::new(
+                        MetadataData::Sustain(true),
+                        None,
+                        16
+                    )]),
+                },
+                MelodyMember {
+                    values: vec![16],
+                    timing: DurationalEventTiming::default()
+                        .with_duration(25)
+                        .with_offset(75),
+                    volume: DEFAULT_VOLUME,
+                    before: MetadataList::new(vec![Metadata::new(
+                        MetadataData::Sustain(false),
+                        Some(32),
+                        25
+                    )]),
+                },
+            ])
         );
     }
 
@@ -1015,40 +1008,40 @@ mod tests {
     #[test]
     fn join_if() {
         assert_eq!(
-            Melody {
-                contents: vec![
-                    mmvdv!(12, 32, 20),
-                    mmvdv!(12, 64, 30),
-                    mmvdv!(16, 32, 40),
-                    mmvdv!(12, 32, 50),
-                    mmvdv!(12, 64, 60),
-                    mmvdv!(12, 128, 70)
-                ]
-            }
+            Melody::new(vec![
+                mmvdv!(12, 32, 20),
+                mmvdv!(12, 64, 30),
+                mmvdv!(16, 32, 40),
+                mmvdv!(12, 32, 50),
+                mmvdv!(12, 64, 60),
+                mmvdv!(12, 128, 70)
+            ])
             .join_if(|a, b| a.values == b.values),
-            Melody {
-                contents: vec![mmvdv!(12, 96, 20), mmvdv!(16, 32, 40), mmvdv!(12, 224, 50)]
-            }
+            Melody::new(vec![
+                mmvdv!(12, 96, 20),
+                mmvdv!(16, 32, 40),
+                mmvdv!(12, 224, 50)
+            ])
         );
     }
 
     #[test]
     fn join_repeats() {
         assert_eq!(
-            Melody {
-                contents: vec![
-                    mmvdv!(12, 32, 20),
-                    mmvdv!(12, 64, 30),
-                    mmvdv!(16, 32, 40),
-                    mmvdv!(12, 32, 50),
-                    mmvdv!(12, 64, 60),
-                    mmvdv!(12, 128, 70)
-                ]
-            }
+            Melody::new(vec![
+                mmvdv!(12, 32, 20),
+                mmvdv!(12, 64, 30),
+                mmvdv!(16, 32, 40),
+                mmvdv!(12, 32, 50),
+                mmvdv!(12, 64, 60),
+                mmvdv!(12, 128, 70)
+            ])
             .join_repeats(),
-            Melody {
-                contents: vec![mmvdv!(12, 96, 20), mmvdv!(16, 32, 40), mmvdv!(12, 224, 50)]
-            }
+            Melody::new(vec![
+                mmvdv!(12, 96, 20),
+                mmvdv!(16, 32, 40),
+                mmvdv!(12, 224, 50)
+            ])
         );
     }
 }
