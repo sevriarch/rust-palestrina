@@ -125,6 +125,11 @@ impl Metadata {
         self
     }
 
+    pub fn mutate_exact_tick(&mut self, f: impl Fn(&mut u32)) -> &mut Self {
+        self.timing.mutate_exact_tick(&f);
+        self
+    }
+
     pub fn with_offset(&mut self, offset: i32) -> &mut Self {
         self.timing.with_offset(offset);
         self
@@ -157,6 +162,33 @@ mod tests {
                 data: MetadataData::EndTrack,
                 timing: EventTiming {
                     tick: Some(500),
+                    offset: 0
+                }
+            }
+        );
+    }
+
+    #[test]
+    fn mutate_exact_tick() {
+        assert_eq!(
+            Metadata::default().mutate_exact_tick(|v| *v += 50),
+            &Metadata {
+                data: MetadataData::EndTrack,
+                timing: EventTiming {
+                    tick: None,
+                    offset: 0
+                }
+            }
+        );
+
+        assert_eq!(
+            Metadata::default()
+                .with_exact_tick(50)
+                .mutate_exact_tick(|v| *v += 50),
+            &Metadata {
+                data: MetadataData::EndTrack,
+                timing: EventTiming {
+                    tick: Some(100),
                     offset: 0
                 }
             }

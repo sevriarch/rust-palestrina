@@ -17,7 +17,7 @@ impl MetadataList {
         self
     }
 
-    pub fn mutate_exact_tick(mut self, f: impl Fn(&mut u32)) -> Self {
+    pub fn mutate_exact_tick(&mut self, f: impl Fn(&mut u32)) -> &Self {
         for m in self.contents.iter_mut() {
             m.timing.mutate_exact_tick(&f);
         }
@@ -25,7 +25,7 @@ impl MetadataList {
         self
     }
 
-    pub fn mutate_offset(mut self, f: impl Fn(&mut i32)) -> Self {
+    pub fn mutate_offset(&mut self, f: impl Fn(&mut i32)) -> &Self {
         for m in self.contents.iter_mut() {
             m.timing.mutate_offset(&f);
         }
@@ -141,7 +141,7 @@ mod tests {
                 .push_with_timing("text", "test text", None, 50)
                 .unwrap()
                 .mutate_exact_tick(|v| *v *= 2),
-            MetadataList {
+            &MetadataList {
                 contents: vec![Metadata {
                     data: MetadataData::Text("test text".to_string()),
                     timing: EventTiming {
@@ -157,7 +157,7 @@ mod tests {
                 .push_with_timing("text", "test text", Some(20), 50)
                 .unwrap()
                 .mutate_exact_tick(|v| *v *= 2),
-            MetadataList {
+            &MetadataList {
                 contents: vec![Metadata {
                     data: MetadataData::Text("test text".to_string()),
                     timing: EventTiming {
@@ -176,7 +176,7 @@ mod tests {
                 .push_with_timing("text", "test text", Some(20), 50)
                 .unwrap()
                 .mutate_offset(|v| *v *= 2),
-            MetadataList {
+            &MetadataList {
                 contents: vec![Metadata {
                     data: MetadataData::Text("test text".to_string()),
                     timing: EventTiming {
