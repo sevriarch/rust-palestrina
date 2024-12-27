@@ -152,14 +152,12 @@ impl<T: Clone + Num + Debug + PartialOrd + Bounded> Collection<MelodyMember<T>> 
 impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
     Sequence<MelodyMember<T>, T> for Melody<T>
 {
-    fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
-        //self.mutate_each(|m| {
-        for c in self.contents.iter_mut() {
-            for p in c.values.iter_mut() {
+    fn mutate_pitches<F: Fn(&mut T)>(&mut self, f: F) -> &Self {
+        self.mutate_each(|m| {
+            for p in m.values.iter_mut() {
                 f(p)
             }
-        }
-        self
+        })
     }
 
     fn to_flat_pitches(&self) -> Vec<T> {
