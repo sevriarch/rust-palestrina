@@ -1,6 +1,7 @@
 pub trait Timing {
     fn with_exact_tick(self, tick: u32) -> Self;
     fn with_offset(self, tick: i32) -> Self;
+    fn mutate_exact_tick(self, f: impl Fn(&mut u32)) -> Self;
     fn mutate_offset(self, f: impl Fn(&mut i32)) -> Self;
     fn start_tick(&self, curr: u32) -> Result<u32, String>;
 }
@@ -39,6 +40,13 @@ macro_rules! timing_traits {
                 self
             }
 
+            fn mutate_exact_tick(mut self, f: impl Fn(&mut u32)) -> Self {
+                if let Some(tick) = self.tick.as_mut() {
+                    f(tick);
+                }
+                self
+            }
+
             fn start_tick(&self, curr: u32) -> Result<u32, String> {
                 pos_or_err(self.offset + exact_or_curr(self.tick, curr) as i32)
             }
@@ -66,6 +74,11 @@ timing_traits!(DurationalEventTiming);
 impl DurationalEventTiming {
     pub fn with_duration(mut self, dur: u32) -> Self {
         self.duration = dur;
+        self
+    }
+
+    pub fn mutate_duration(mut self, f: impl Fn(&mut u32)) -> Self {
+        f(&mut self.duration);
         self
     }
 
@@ -100,6 +113,14 @@ mod test_event_timing {
             let t = <$type>::default().with_offset(50);
             assert_eq!(t.offset, 50);
 
+            let t = <$type>::default().mutate_exact_tick(|v| *v *= 2);
+            assert_eq!(t.tick, None);
+
+            let t = <$type>::default()
+                .with_exact_tick(100)
+                .mutate_exact_tick(|v| *v *= 2);
+            assert_eq!(t.tick, Some(200));
+
             let t = <$type>::default()
                 .with_offset(-100)
                 .mutate_offset(|v| *v = -*v);
@@ -126,6 +147,15 @@ mod test_event_timing {
     #[test]
     fn trait_method_tests_durational() {
         trait_method_tests!(DurationalEventTiming);
+    }
+
+    #[test]
+    fn mutate_duration() {
+        let t = DurationalEventTiming::default()
+            .with_duration(150)
+            .mutate_duration(|v| *v -= 100);
+
+        assert_eq!(t.duration, 50);
     }
 
     #[test]
