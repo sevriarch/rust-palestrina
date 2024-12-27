@@ -84,8 +84,13 @@ impl<T: Clone + Num + Debug + PartialOrd + Bounded> Collection<T> for NumericSeq
 impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Sequence<T, T>
     for NumericSeq<T>
 {
-    fn mutate_pitches<F: Fn(&mut T)>(self, f: F) -> Self {
-        self.mutate_each(f)
+    fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
+        //self.mutate_each(f)
+        for c in self.contents.iter_mut() {
+            f(c);
+        }
+
+        self
     }
 
     fn to_flat_pitches(&self) -> Vec<T> {
@@ -510,7 +515,7 @@ mod tests {
             NumericSeq::new(vec![1, 2, 3, 4, 5])
                 .filter_in_position(|v| v % 2 == 0, 8)
                 .unwrap(),
-            NumericSeq::new(vec![8, 2, 8, 4, 8])
+            &NumericSeq::new(vec![8, 2, 8, 4, 8])
         );
     }
 

@@ -15,7 +15,7 @@ macro_rules! default_collection_methods {
             self.contents.len()
         }
 
-        fn mutate_each<F: Fn(&mut $type)>(mut self, f: F) -> Self {
+        fn mutate_each<F: Fn(&mut $type)>(&mut self, f: F) -> &Self {
             for m in self.contents.iter_mut() {
                 f(m);
             }
@@ -57,7 +57,7 @@ macro_rules! default_collection_methods {
 pub trait Collection<T: Clone + Debug>: Sized {
     fn new(contents: Vec<T>) -> Self;
 
-    fn mutate_each<F: Fn(&mut T)>(self, f: F) -> Self;
+    fn mutate_each<F: Fn(&mut T)>(&mut self, f: F) -> &Self;
     fn mutate_contents<F: FnOnce(&mut Vec<T>)>(self, f: F) -> Self;
     fn mutate_contents_result<F: FnOnce(&mut Vec<T>) -> Result<(), String>>(
         self,

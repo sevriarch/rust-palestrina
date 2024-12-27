@@ -58,6 +58,29 @@ impl<T> MelodyMember<T> {
 
         self
     }
+
+    fn mutate_exact_tick(&mut self, f: impl Fn(&mut u32)) -> &mut Self {
+        for m in self.before.contents.iter_mut() {
+            m.mutate_exact_tick(&f);
+        }
+
+        self.timing.mutate_exact_tick(f);
+        self
+    }
+
+    fn mutate_offset(&mut self, f: impl Fn(&mut i32)) -> &mut Self {
+        for m in self.before.contents.iter_mut() {
+            m.mutate_offset(&f);
+        }
+
+        self.timing.mutate_offset(&f);
+        self
+    }
+
+    fn mutate_duration(&mut self, f: impl Fn(&mut u32)) -> &mut Self {
+        self.timing.mutate_duration(f);
+        self
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -129,12 +152,14 @@ impl<T: Clone + Num + Debug + PartialOrd + Bounded> Collection<MelodyMember<T>> 
 impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
     Sequence<MelodyMember<T>, T> for Melody<T>
 {
-    fn mutate_pitches<F: Fn(&mut T)>(self, f: F) -> Self {
-        self.mutate_each(|m| {
-            for p in m.values.iter_mut() {
-                f(p);
+    fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
+        //self.mutate_each(|m| {
+        for c in self.contents.iter_mut() {
+            for p in c.values.iter_mut() {
+                f(p)
             }
-        })
+        }
+        self
     }
 
     fn to_flat_pitches(&self) -> Vec<T> {
@@ -242,7 +267,7 @@ where
             .map(|r| r.volume)
     }
 
-    pub fn with_volume(self, vel: u8) -> Self {
+    pub fn with_volume(&mut self, vel: u8) -> &Self {
         self.mutate_each(|m| m.volume = vel)
     }
 
@@ -266,7 +291,7 @@ where
         self.mutate_indices(ix, move |m| m.volume = vel)
     }
 
-    pub fn with_duration(self, dur: u32) -> Self {
+    pub fn with_duration(&mut self, dur: u32) -> &Self {
         self.mutate_each(|m| m.timing.duration = dur)
     }
 
@@ -296,39 +321,25 @@ where
         })
     }
 
-    pub fn augment_rhythm(self, a: u32) -> Result<Self, String> {
+    pub fn augment_rhythm(&mut self, a: u32) -> Result<&Self, String> {
         let fi32 = algorithms::augment(&a);
         let fu32 = algorithms::augment(&a);
 
         Ok(self.mutate_each(|m| {
-            for x in m.before.contents.iter_mut() {
-                fi32(&mut x.timing.offset);
-
-                if let Some(v) = x.timing.tick.as_mut() {
-                    fu32(v);
-                }
-            }
-
-            fi32(&mut m.timing.offset);
-            fu32(&mut m.timing.duration);
+            m.mutate_exact_tick(&fu32)
+                .mutate_duration(&fu32)
+                .mutate_offset(&fi32);
         }))
     }
 
-    pub fn diminish_rhythm(self, a: u32) -> Result<Self, String> {
+    pub fn diminish_rhythm(&mut self, a: u32) -> Result<&Self, String> {
         let fi32 = algorithms::diminish(&a)?;
         let fu32 = algorithms::diminish(&a)?;
 
         Ok(self.mutate_each(|m| {
-            for x in m.before.contents.iter_mut() {
-                fi32(&mut x.timing.offset);
-
-                if let Some(v) = x.timing.tick.as_mut() {
-                    fu32(v);
-                }
-            }
-
-            fi32(&mut m.timing.offset);
-            fu32(&mut m.timing.duration);
+            m.mutate_exact_tick(&fu32)
+                .mutate_duration(&fu32)
+                .mutate_offset(&fi32);
         }))
     }
 
@@ -709,7 +720,7 @@ mod tests {
     fn with_volume() {
         assert_eq!(
             Melody::try_from(vec![12, 16]).unwrap().with_volume(25),
-            Melody::new(vec![
+            &Melody::new(vec![
                 MelodyMember {
                     values: vec![12],
                     timing: DurationalEventTiming::default(),
@@ -778,7 +789,7 @@ mod tests {
     fn with_duration() {
         assert_eq!(
             Melody::try_from(vec![12, 16]).unwrap().with_duration(25),
-            Melody::new(vec![
+            &Melody::new(vec![
                 MelodyMember {
                     values: vec![12],
                     timing: DurationalEventTiming::default().with_duration(25),
@@ -900,7 +911,7 @@ mod tests {
             ])
             .augment_rhythm(3)
             .unwrap(),
-            Melody::new(vec![
+            &Melody::new(vec![
                 MelodyMember {
                     values: vec![12],
                     timing: DurationalEventTiming::default()
@@ -965,7 +976,7 @@ mod tests {
             ])
             .diminish_rhythm(3)
             .unwrap(),
-            Melody::new(vec![
+            &Melody::new(vec![
                 MelodyMember {
                     values: vec![12],
                     timing: DurationalEventTiming::default()

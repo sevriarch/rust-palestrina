@@ -72,14 +72,14 @@ pub struct DurationalEventTiming {
 timing_traits!(DurationalEventTiming);
 
 impl DurationalEventTiming {
-    pub fn with_duration(mut self, dur: u32) -> Self {
+    pub fn with_duration(&mut self, dur: u32) -> Self {
         self.duration = dur;
-        self
+        *self
     }
 
-    pub fn mutate_duration(mut self, f: impl Fn(&mut u32)) -> Self {
+    pub fn mutate_duration(&mut self, f: impl Fn(&mut u32)) -> Self {
         f(&mut self.duration);
-        self
+        *self
     }
 
     pub fn end_tick(&self, curr: u32) -> Result<u32, String> {
