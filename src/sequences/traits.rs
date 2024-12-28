@@ -72,22 +72,22 @@ pub trait Sequence<
     }
 
     fn find_if_window(&self, len: usize, step: usize, f: fn(&[T]) -> bool) -> Vec<usize> {
-        let cts = self.cts();
+        let c = self.cts_ref();
 
-        (0..=self.length() - len)
+        (0..=c.len() - len)
             .step_by(step)
-            .filter(|i| f(&cts[*i..*i + len]))
+            .filter(|i| f(&c[*i..*i + len]))
             .collect()
     }
 
     fn find_if_reverse_window(&self, len: usize, step: usize, f: fn(&[T]) -> bool) -> Vec<usize> {
-        let cts = self.cts();
+        let c = self.cts_ref();
         let maxposs = self.length() - len;
 
-        (0..=self.length() - len)
+        (0..=c.len() - len)
             .step_by(step)
             .map(|i| maxposs - i)
-            .filter(|i| f(&cts[*i..*i + len]))
+            .filter(|i| f(&c[*i..*i + len]))
             .collect()
     }
 
@@ -216,12 +216,12 @@ pub trait Sequence<
     }
 
     fn collect_windows(&self, len: usize, step: usize) -> Vec<Vec<T>> {
-        let max = self.length() - len;
-        let cts = self.cts();
+        let c = self.cts_ref();
+        let max = c.len() - len;
 
         (0..=max)
             .step_by(step)
-            .map(move |i| cts[i..i + len].to_vec())
+            .map(move |i| c[i..i + len].to_vec())
             .collect()
     }
 
