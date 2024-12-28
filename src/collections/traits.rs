@@ -727,43 +727,42 @@ mod tests {
 
     #[test]
     fn filter() {
-        let mut coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
-        let new = coll.filter(|v| v % 2 == 0);
-
-        assert_eq!(new.contents, vec![0, 2, 4, 6]);
+        assert_eq!(
+            TestColl::new(vec![0, 2, 3, 4, 5, 6]).filter(|v| v % 2 == 0),
+            &TestColl::new(vec![0, 2, 4, 6])
+        );
     }
 
     #[test]
     fn insert_before() {
-        // TODO: This can be better; as can the methods below
-        let mut coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
-        let new = coll.insert_before(&[1, 4, -5, -1], &[7, 8]);
-
-        assert_contents_eq!(new, vec![0, 7, 8, 7, 8, 2, 3, 4, 7, 8, 5, 7, 8, 6]);
+        assert_contents_eq!(
+            TestColl::new(vec![0, 2, 3, 4, 5, 6]).insert_before(&[1, 4, -5, -1], &[7, 8]),
+            vec![0, 7, 8, 7, 8, 2, 3, 4, 7, 8, 5, 7, 8, 6]
+        );
     }
 
     #[test]
     fn insert_after() {
-        let mut coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
-        let new = coll.insert_after(&[1, -5, 4, -1], &[7, 8]);
-
-        assert_contents_eq!(new, vec![0, 2, 7, 8, 7, 8, 3, 4, 5, 7, 8, 6, 7, 8]);
+        assert_contents_eq!(
+            TestColl::new(vec![0, 2, 3, 4, 5, 6]).insert_after(&[1, -5, 4, -1], &[7, 8]),
+            vec![0, 2, 7, 8, 7, 8, 3, 4, 5, 7, 8, 6, 7, 8]
+        );
     }
 
     #[test]
     fn replace_indices() {
-        let mut coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
-        let new = coll.replace_indices(&[1, -5, 4, -1], &[7, 8]);
-
-        assert_contents_eq!(new, vec![0, 7, 8, 3, 4, 7, 8, 7, 8]);
+        assert_contents_eq!(
+            TestColl::new(vec![0, 2, 3, 4, 5, 6]).replace_indices(&[1, -5, 4, -1], &[7, 8]),
+            vec![0, 7, 8, 3, 4, 7, 8, 7, 8]
+        );
     }
 
     #[test]
     fn mutate_indices() {
-        let mut coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
-        let new = coll.mutate_indices(&[1, -5, 4, -1], |v| *v += 3);
-
-        assert_contents_eq!(new, vec![0, 8, 3, 4, 8, 9]);
+        assert_contents_eq!(
+            TestColl::new(vec![0, 2, 3, 4, 5, 6]).mutate_indices(&[1, -5, 4, -1], |v| *v += 3),
+            vec![0, 8, 3, 4, 8, 9]
+        );
     }
 
     #[test]
@@ -790,40 +789,52 @@ mod tests {
 
     #[test]
     fn map_indices() {
-        let mut coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
-        let new = coll.map_indices(&[1, -5, 4, -1], |v| *v + 5);
-
-        assert_contents_eq!(new, vec![0, 7, 3, 4, 10, 11]);
+        assert_contents_eq!(
+            TestColl::new(vec![0, 2, 3, 4, 5, 6]).map_indices(&[1, -5, 4, -1], |v| *v + 5),
+            vec![0, 7, 3, 4, 10, 11]
+        );
     }
 
     #[test]
     fn map_first() {
         let mut coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
-        let new = coll.map_first(|v| *v > 10, |v| *v + 10);
-        assert_contents_eq!(new, vec![0, 2, 3, 4, 5, 6]);
+        assert_contents_eq!(
+            coll.map_first(|v| *v > 10, |v| *v + 10),
+            vec![0, 2, 3, 4, 5, 6]
+        );
 
-        let new = coll.map_first(|v| *v % 2 == 1, |v| *v + 10);
-        assert_contents_eq!(new, vec![0, 2, 13, 4, 5, 6]);
+        assert_contents_eq!(
+            coll.map_first(|v| *v % 2 == 1, |v| *v + 10),
+            vec![0, 2, 13, 4, 5, 6]
+        );
     }
 
     #[test]
     fn map_last() {
         let mut coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
-        let new = coll.map_last(|v| *v > 10, |v| *v + 10);
-        assert_contents_eq!(new, vec![0, 2, 3, 4, 5, 6]);
+        assert_contents_eq!(
+            coll.map_last(|v| *v > 10, |v| *v + 10),
+            vec![0, 2, 3, 4, 5, 6]
+        );
 
-        let new = coll.map_last(|v| *v % 2 == 1, |v| *v + 10);
-        assert_contents_eq!(new, vec![0, 2, 3, 4, 15, 6]);
+        assert_contents_eq!(
+            coll.map_last(|v| *v % 2 == 1, |v| *v + 10),
+            vec![0, 2, 3, 4, 15, 6]
+        );
     }
 
     #[test]
     fn flat_map_indices() {
-        let mut coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
-        let new = coll.flat_map_indices(&[1, -5, 4, -1], |v| vec![*v, *v * 2, *v * *v]);
-
-        assert_contents_eq!(new, vec![0, 2, 4, 4, 3, 4, 5, 10, 25, 6, 12, 36]);
+        assert_contents_eq!(
+            TestColl::new(vec![0, 2, 3, 4, 5, 6]).flat_map_indices(&[1, -5, 4, -1], |v| vec![
+                *v,
+                *v * 2,
+                *v * *v
+            ]),
+            vec![0, 2, 4, 4, 3, 4, 5, 10, 25, 6, 12, 36]
+        );
     }
 
     #[test]
@@ -850,51 +861,42 @@ mod tests {
 
     #[test]
     fn append() {
-        let mut coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
-        let app = TestColl::new(vec![9, 11, 13]);
-
         assert_eq!(
-            coll.append(&app),
+            TestColl::new(vec![0, 2, 3, 4, 5, 6]).append(&TestColl::new(vec![9, 11, 13])),
             &TestColl::new(vec![0, 2, 3, 4, 5, 6, 9, 11, 13])
         );
     }
 
     #[test]
     fn append_items() {
-        let mut coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
-
         assert_eq!(
-            coll.append_items(&[9, 11, 13]),
-            &TestColl::new(vec![0, 2, 3, 4, 5, 6, 9, 11, 13])
+            TestColl::new(vec![0, 2, 3, 4, 5, 6]).append_items(&[9, 11, 13]),
+            &TestColl::new(vec![0, 2, 3, 4, 5, 6, 9, 11, 13]),
         );
     }
 
     #[test]
     fn prepend() {
-        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
-        let app = TestColl::new(vec![9, 11, 13]);
-
         assert_eq!(
-            coll.prepend(&app),
+            TestColl::new(vec![0, 2, 3, 4, 5, 6]).prepend(&TestColl::new(vec![9, 11, 13])),
             TestColl::new(vec![9, 11, 13, 0, 2, 3, 4, 5, 6])
         );
     }
 
     #[test]
     fn prepend_items() {
-        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
-
         assert_eq!(
-            coll.prepend_items(&[9, 11, 13]),
+            TestColl::new(vec![0, 2, 3, 4, 5, 6]).prepend_items(&[9, 11, 13]),
             TestColl::new(vec![9, 11, 13, 0, 2, 3, 4, 5, 6])
         );
     }
 
     #[test]
     fn retrograde() {
-        let mut coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
-
-        assert_contents_eq!(coll.retrograde(), vec![6, 5, 4, 3, 2, 0]);
+        assert_contents_eq!(
+            TestColl::new(vec![0, 2, 3, 4, 5, 6]).retrograde(),
+            vec![6, 5, 4, 3, 2, 0]
+        );
     }
 
     #[test]
@@ -924,20 +926,20 @@ mod tests {
     fn split_at() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
-        assert!(coll.clone().split_at(vec![7]).is_err());
-        assert!(coll.clone().split_at(vec![-7]).is_err());
+        assert!(coll.split_at(vec![7]).is_err());
+        assert!(coll.split_at(vec![-7]).is_err());
 
-        let ret = coll.clone().split_at(vec![]).unwrap();
+        let ret = coll.split_at(vec![]).unwrap();
         assert_eq!(ret.len(), 1);
         assert_eq!(ret[0].contents, vec![0, 2, 3, 4, 5, 6]);
 
-        let ret = coll.clone().split_at(vec![-2]).unwrap();
+        let ret = coll.split_at(vec![-2]).unwrap();
 
         assert_eq!(ret.len(), 2);
         assert_eq!(ret[0].contents, vec![0, 2, 3, 4]);
         assert_eq!(ret[1].contents, vec![5, 6]);
 
-        let ret = coll.clone().split_at(vec![0, -6, -1, 6]).unwrap();
+        let ret = coll.split_at(vec![0, -6, -1, 6]).unwrap();
 
         assert_eq!(ret.len(), 5);
         assert_eq!(ret[0].contents, vec![]);
@@ -949,18 +951,20 @@ mod tests {
 
     #[test]
     fn partition() {
-        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+        let (p1, p2) = TestColl::new(vec![0, 2, 3, 4, 5, 6])
+            .partition(|i| i % 2 == 0)
+            .unwrap();
 
-        let (p1, p2) = coll.partition(|i| i % 2 == 0).unwrap();
         assert_eq!(p1.contents, vec![0, 2, 4, 6]);
         assert_eq!(p2.contents, vec![3, 5]);
     }
 
     #[test]
     fn group_by() {
-        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+        let map = TestColl::new(vec![0, 2, 3, 4, 5, 6])
+            .group_by(|i| i % 3)
+            .unwrap();
 
-        let map = coll.group_by(|i| i % 3).unwrap();
         assert_eq!(map.len(), 3);
         assert_eq!(map.get(&0).unwrap().contents, vec![0, 3, 6]);
         assert_eq!(map.get(&1).unwrap().contents, vec![4]);
