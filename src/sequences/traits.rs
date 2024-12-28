@@ -226,11 +226,11 @@ pub trait Sequence<
     }
 
     fn flat_map_windows(
-        self,
+        &mut self,
         len: usize,
         step: usize,
         f: fn(Vec<T>) -> Vec<T>,
-    ) -> Result<Self, String> {
+    ) -> Result<&Self, String> {
         let cts = self
             .collect_windows(len, step)
             .into_iter()
@@ -241,11 +241,11 @@ pub trait Sequence<
     }
 
     fn filter_windows(
-        self,
+        &mut self,
         len: usize,
         step: usize,
         f: fn(Vec<T>) -> bool,
-    ) -> Result<Self, String> {
+    ) -> Result<&Self, String> {
         let cts: Vec<Vec<T>> = self
             .collect_windows(len, step)
             .into_iter()

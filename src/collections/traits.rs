@@ -47,7 +47,7 @@ macro_rules! default_collection_methods {
             self
         }
 
-        fn with_contents(mut self, contents: Vec<$type>) -> Self {
+        fn with_contents(&mut self, contents: Vec<$type>) -> &Self {
             self.contents = contents;
             self
         }
@@ -75,8 +75,8 @@ pub trait Collection<T: Clone + Debug>: Sized {
         &mut self,
         f: F,
     ) -> Result<&Self, String>;
-    fn replace_contents<F: FnOnce(Vec<T>) -> Vec<T>>(self, f: F) -> Self;
-    fn with_contents(self, contents: Vec<T>) -> Self;
+    fn replace_contents<F: FnOnce(Vec<T>) -> Vec<T>>(self, f: F) -> Self; // TODO: A better name for this?
+    fn with_contents(&mut self, contents: Vec<T>) -> &Self; // TODO: Perhaps should be in Sequence?
     fn map(self, f: fn(T) -> T) -> Self;
 
     fn cts(&self) -> Vec<T>;
