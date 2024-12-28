@@ -558,12 +558,12 @@ mod tests {
     fn pad() {
         assert_eq!(
             NumericSeq::new(vec![1, 2, 3]).pad(4, 1),
-            NumericSeq::new(vec![4, 1, 2, 3])
+            &NumericSeq::new(vec![4, 1, 2, 3])
         );
 
         assert_eq!(
             NumericSeq::new(vec![1, 2, 3]).pad(2, 4),
-            NumericSeq::new(vec![2, 2, 2, 2, 1, 2, 3])
+            &NumericSeq::new(vec![2, 2, 2, 2, 1, 2, 3])
         );
     }
 }
