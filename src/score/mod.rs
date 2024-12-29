@@ -74,11 +74,28 @@ where
 
         Some((min, max))
     }
+
+    pub fn volume_range(&self) -> Option<(u8, u8)> {
+        let min = self
+            .contents
+            .iter()
+            .filter_map(|m| m.min_volume())
+            .min_by(|a, b| a.partial_cmp(b).unwrap())?;
+        let max = self
+            .contents
+            .iter()
+            .filter_map(|m| m.max_volume())
+            .max_by(|a, b| a.partial_cmp(b).unwrap())?;
+
+        Some((min, max))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::entities::timing::DurationalEventTiming;
+    use crate::sequences::melody::MelodyMember;
 
     #[test]
     fn pitch_range() {
@@ -94,6 +111,36 @@ mod tests {
             ])
             .pitch_range(),
             Some((1, 8))
+        );
+    }
+
+    macro_rules! mmv {
+        ($p:expr, $v:expr) => {
+            MelodyMember {
+                values: $p,
+                timing: DurationalEventTiming::default(),
+                volume: $v,
+                before: MetadataList::new(vec![]),
+            }
+        };
+    }
+
+    #[test]
+    fn volume_range() {
+        assert!(Score::new(vec![Melody::<i32>::new(vec![])])
+            .volume_range()
+            .is_none());
+
+        assert_eq!(
+            Score::new(vec![
+                Melody::try_from(vec![mmv!(vec![1], 40), mmv!(vec![], 80), mmv!(vec![2], 60)])
+                    .unwrap(),
+                Melody::<i32>::new(vec![]),
+                Melody::try_from(vec![mmv!(vec![1], 50), mmv!(vec![], 30), mmv!(vec![2], 70)])
+                    .unwrap(),
+            ])
+            .volume_range(),
+            Some((40, 70))
         );
     }
 }

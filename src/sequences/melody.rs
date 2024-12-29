@@ -17,10 +17,10 @@ pub const DEFAULT_VOLUME: u8 = 64;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct MelodyMember<T> {
-    values: Vec<T>,
-    timing: DurationalEventTiming,
-    volume: u8,
-    before: MetadataList,
+    pub values: Vec<T>,
+    pub timing: DurationalEventTiming,
+    pub volume: u8,
+    pub before: MetadataList,
 }
 
 impl<T> Default for MelodyMember<T> {
@@ -92,6 +92,17 @@ pub struct Melody<T> {
 #[derive(Debug, PartialEq)]
 pub enum MelodyError {
     InvalidValues,
+}
+
+impl<T> TryFrom<Vec<MelodyMember<T>>> for Melody<T>
+where
+    T: Clone + Copy + Num + Debug + PartialOrd + Bounded,
+{
+    type Error = MelodyError;
+
+    fn try_from(what: Vec<MelodyMember<T>>) -> Result<Self, Self::Error> {
+        Ok(Self::new(what))
+    }
 }
 
 impl<T> TryFrom<Vec<Vec<T>>> for Melody<T>
@@ -403,10 +414,26 @@ mod tests {
     }
 
     #[test]
-    fn try_from_vec_vec() {
+    fn try_from_vec_of_vecs() {
         assert_eq!(
             Melody::try_from(vec![vec![5], vec![], vec![12, 16]]),
             Ok(Melody::new(vec![
+                MelodyMember::from(vec![5]),
+                MelodyMember::from(vec![]),
+                MelodyMember::from(vec![12, 16]),
+            ]))
+        );
+    }
+
+    #[test]
+    fn try_from_vec_of_members() {
+        assert_eq!(
+            Melody::<i32>::try_from(vec![
+                MelodyMember::from(vec![5]),
+                MelodyMember::from(vec![]),
+                MelodyMember::from(vec![12, 16]),
+            ]),
+            Ok(Melody::<i32>::new(vec![
                 MelodyMember::from(vec![5]),
                 MelodyMember::from(vec![]),
                 MelodyMember::from(vec![12, 16]),
