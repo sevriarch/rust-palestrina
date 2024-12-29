@@ -34,7 +34,10 @@ impl<T> Default for MelodyMember<T> {
     }
 }
 
-impl<T> From<T> for MelodyMember<T> {
+impl<T> From<T> for MelodyMember<T>
+where
+    T: Copy + Clone + Num,
+{
     fn from(what: T) -> Self {
         MelodyMember {
             values: vec![what],
@@ -43,7 +46,10 @@ impl<T> From<T> for MelodyMember<T> {
     }
 }
 
-impl<T> From<Vec<T>> for MelodyMember<T> {
+impl<T> From<Vec<T>> for MelodyMember<T>
+where
+    T: Copy + Clone + Num,
+{
     fn from(what: Vec<T>) -> Self {
         MelodyMember {
             values: what,
@@ -52,21 +58,29 @@ impl<T> From<Vec<T>> for MelodyMember<T> {
     }
 }
 
-impl<T> MelodyMember<T> {
-    fn with_event(mut self, e: Metadata) -> Self {
-        self.before = self.before.append(e);
+impl<T> MelodyMember<T>
+where
+    T: Copy + Clone + Num,
+{
+    pub fn with_event(&mut self, e: &Metadata) -> &mut Self {
+        self.before.append(e.clone());
 
         self
     }
 
-    fn last_tick(&self, curr: u32) -> Result<u32, String> {
+    pub fn last_tick(&self, curr: u32) -> Result<u32, String> {
         let end_of_note = self.timing.end_tick(curr)?;
         let last_metadata = self.before.last_tick(curr).unwrap_or(curr);
 
         Ok(end_of_note.max(last_metadata))
     }
 
-    fn mutate_exact_tick(&mut self, f: impl Fn(&mut u32)) -> &mut Self {
+    pub fn with_exact_tick(&mut self, d: u32) -> &mut Self {
+        self.timing.with_exact_tick(d);
+        self
+    }
+
+    pub fn mutate_exact_tick(&mut self, f: impl Fn(&mut u32)) -> &mut Self {
         for m in self.before.contents.iter_mut() {
             m.mutate_exact_tick(&f);
         }
@@ -75,7 +89,12 @@ impl<T> MelodyMember<T> {
         self
     }
 
-    fn mutate_offset(&mut self, f: impl Fn(&mut i32)) -> &mut Self {
+    pub fn with_offset(&mut self, d: i32) -> &mut Self {
+        self.timing.with_offset(d);
+        self
+    }
+
+    pub fn mutate_offset(&mut self, f: impl Fn(&mut i32)) -> &mut Self {
         for m in self.before.contents.iter_mut() {
             m.mutate_offset(&f);
         }
@@ -84,7 +103,12 @@ impl<T> MelodyMember<T> {
         self
     }
 
-    fn mutate_duration(&mut self, f: impl Fn(&mut u32)) -> &mut Self {
+    pub fn with_duration(&mut self, d: u32) -> &mut Self {
+        self.timing.with_duration(d);
+        self
+    }
+
+    pub fn mutate_duration(&mut self, f: impl Fn(&mut u32)) -> &mut Self {
         self.timing.mutate_duration(f);
         self
     }
@@ -214,7 +238,7 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
 
 impl<T> Melody<T>
 where
-    T: Bounded + Clone + Num + Debug + PartialOrd,
+    T: Bounded + Clone + Copy + Num + Debug + PartialOrd,
 {
     pub fn to_volume(&self) -> Vec<u8> {
         self.contents.iter().map(|m| m.volume).collect()
@@ -345,7 +369,7 @@ where
 
     pub fn with_event_at(&mut self, ix: &[i32], evt: Metadata) -> Result<&Self, String> {
         self.mutate_indices(ix, |m| {
-            *m = m.clone().with_event(evt.clone());
+            m.with_event(&evt.clone());
         })
     }
 
@@ -410,13 +434,115 @@ mod tests {
     fn mel_member_with_event() {
         assert_eq!(
             MelodyMember::from(vec![12, 16])
-                .with_event(Metadata::try_from(("text", "test text")).unwrap()),
-            MelodyMember {
+                .with_event(&Metadata::try_from(("text", "test text")).unwrap()),
+            &MelodyMember {
                 values: vec![12, 16],
                 timing: DurationalEventTiming::default(),
                 volume: DEFAULT_VOLUME,
                 before: MetadataList::new(vec![Metadata::try_from(("text", "test text")).unwrap()])
             }
+        );
+    }
+
+    #[test]
+    fn mel_member_last_tick() {
+        assert_eq!(
+            MelodyMember::from(vec![12, 16])
+                .with_duration(64)
+                .last_tick(96),
+            Ok(160),
+            "duration only"
+        );
+
+        assert_eq!(
+            MelodyMember::from(vec![12, 16])
+                .with_duration(64)
+                .with_exact_tick(80)
+                .last_tick(0),
+            Ok(144),
+            "duration and exact tick"
+        );
+
+        assert_eq!(
+            MelodyMember::from(vec![12, 16])
+                .with_duration(64)
+                .with_exact_tick(80)
+                .last_tick(96),
+            Ok(144),
+            "duration and exact tick"
+        );
+
+        assert_eq!(
+            MelodyMember::from(vec![12, 16])
+                .with_duration(64)
+                .with_event(&Metadata::try_from(("tempo", 120)).unwrap())
+                .last_tick(0),
+            Ok(64),
+            "duration, untimed event"
+        );
+
+        assert_eq!(
+            MelodyMember::from(vec![12, 16])
+                .with_duration(64)
+                .with_event(
+                    Metadata::try_from(("tempo", 120))
+                        .unwrap()
+                        .with_exact_tick(80)
+                )
+                .last_tick(0),
+            Ok(80),
+            "duration, event with exact tick, event after note ends"
+        );
+
+        assert_eq!(
+            MelodyMember::from(vec![12, 16])
+                .with_duration(64)
+                .with_event(
+                    Metadata::try_from(("tempo", 120))
+                        .unwrap()
+                        .with_exact_tick(80)
+                )
+                .last_tick(120),
+            Ok(184),
+            "duration, event with exact tick, event before note ends"
+        );
+
+        assert_eq!(
+            MelodyMember::from(vec![12, 16])
+                .with_duration(64)
+                .with_event(Metadata::try_from(("tempo", 120)).unwrap().with_offset(80))
+                .with_event(
+                    Metadata::try_from(("tempo", 120))
+                        .unwrap()
+                        .with_exact_tick(160)
+                )
+                .last_tick(0),
+            Ok(160),
+            "duration, events with exact tick and offset, exact tick event last"
+        );
+
+        assert_eq!(
+            MelodyMember::from(vec![12, 16])
+                .with_duration(128)
+                .with_event(Metadata::try_from(("tempo", 120)).unwrap().with_offset(80))
+                .with_event(
+                    Metadata::try_from(("tempo", 120))
+                        .unwrap()
+                        .with_exact_tick(160)
+                )
+                .last_tick(100),
+            Ok(228),
+            "duration, events with exact tick and offset, note ends last"
+        );
+
+        assert_eq!(
+            MelodyMember::from(vec![12, 16])
+                .with_duration(64)
+                .with_offset(16)
+                .with_exact_tick(80)
+                .last_tick(96),
+            Ok(160),
+            "duration, offset and last tick"
         );
     }
 

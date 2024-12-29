@@ -12,7 +12,7 @@ impl MetadataList {
     }
 
     // TODO: is this needed?
-    pub fn append(mut self, md: Metadata) -> Self {
+    pub fn append(&mut self, md: Metadata) -> &Self {
         self.contents.push(md);
         self
     }
