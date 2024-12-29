@@ -59,6 +59,13 @@ impl<T> MelodyMember<T> {
         self
     }
 
+    fn last_tick(&self, curr: u32) -> Result<u32, String> {
+        let end_of_note = self.timing.end_tick(curr)?;
+        let last_metadata = self.before.last_tick(curr).unwrap_or(curr);
+
+        Ok(end_of_note.max(last_metadata))
+    }
+
     fn mutate_exact_tick(&mut self, f: impl Fn(&mut u32)) -> &mut Self {
         for m in self.before.contents.iter_mut() {
             m.mutate_exact_tick(&f);
@@ -258,6 +265,18 @@ where
                 Ok(end)
             })
             .collect()
+    }
+
+    pub fn last_tick(&self) -> Result<u32, String> {
+        let mut last = 0;
+        let mut curr = 0;
+
+        for m in self.contents.iter() {
+            last = m.last_tick(curr)?;
+            curr = m.timing.next_tick(curr)?;
+        }
+
+        Ok(last)
     }
 
     pub fn max_volume(&self) -> Option<u8> {

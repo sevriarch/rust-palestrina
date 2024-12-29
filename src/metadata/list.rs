@@ -17,6 +17,13 @@ impl MetadataList {
         self
     }
 
+    pub fn last_tick(&self, curr: u32) -> Option<u32> {
+        self.contents
+            .iter()
+            .map(|m| m.timing.start_tick(curr).unwrap_or(curr))
+            .min()
+    }
+
     pub fn mutate_exact_tick(&mut self, f: impl Fn(&mut u32)) -> &Self {
         for m in self.contents.iter_mut() {
             m.timing.mutate_exact_tick(&f);
