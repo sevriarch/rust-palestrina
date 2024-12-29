@@ -203,21 +203,21 @@ mod tests {
     }
 
     #[test]
-    fn min() {
-        assert!(NumericSeq::<i64>::new(vec![]).min().is_none());
-        assert_eq!(NumericSeq::new(vec![4, 2, 5, 6, 3]).min(), Some(2));
+    fn min_value() {
+        assert!(NumericSeq::<i64>::new(vec![]).min_value().is_none());
+        assert_eq!(NumericSeq::new(vec![4, 2, 5, 6, 3]).min_value(), Some(2));
         assert_eq!(
-            NumericSeq::new(vec![4.1, 2.8, 5.4, 6.3, 3.0]).min(),
+            NumericSeq::new(vec![4.1, 2.8, 5.4, 6.3, 3.0]).min_value(),
             Some(2.8)
         );
     }
 
     #[test]
-    fn max() {
-        assert!(NumericSeq::<i64>::new(vec![]).max().is_none());
-        assert_eq!(NumericSeq::new(vec![4, 2, 5, 6, 3]).max(), Some(6));
+    fn max_value() {
+        assert!(NumericSeq::<i64>::new(vec![]).max_value().is_none());
+        assert_eq!(NumericSeq::new(vec![4, 2, 5, 6, 3]).max_value(), Some(6));
         assert_eq!(
-            NumericSeq::new(vec![4.1, 2.8, 5.4, 6.3, 3.0]).max(),
+            NumericSeq::new(vec![4.1, 2.8, 5.4, 6.3, 3.0]).max_value(),
             Some(6.3)
         );
     }

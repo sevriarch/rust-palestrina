@@ -36,14 +36,14 @@ pub trait Sequence<
     fn to_numeric_values(&self) -> Result<Vec<PitchType>, String>;
     fn to_optional_numeric_values(&self) -> Result<Vec<Option<PitchType>>, String>;
 
-    fn min(&self) -> Option<PitchType> {
+    fn min_value(&self) -> Option<PitchType> {
         self.to_flat_pitches()
             .iter()
             .copied()
             .min_by(|a, b| a.partial_cmp(b).unwrap())
     }
 
-    fn max(&self) -> Option<PitchType> {
+    fn max_value(&self) -> Option<PitchType> {
         self.to_flat_pitches()
             .iter()
             .copied()
@@ -64,7 +64,7 @@ pub trait Sequence<
     }
 
     fn range(&self) -> Option<PitchType> {
-        if let (Some(min), Some(max)) = (self.min(), self.max()) {
+        if let (Some(min), Some(max)) = (self.min_value(), self.max_value()) {
             Some(max - min)
         } else {
             None
@@ -96,14 +96,14 @@ pub trait Sequence<
     }
 
     fn transpose_to_min(&mut self, t: PitchType) -> Result<&Self, String> {
-        match self.min() {
+        match self.min_value() {
             Some(m) => self.transpose(t - m),
             None => Ok(self),
         }
     }
 
     fn transpose_to_max(&mut self, t: PitchType) -> Result<&Self, String> {
-        match self.max() {
+        match self.max_value() {
             Some(m) => self.transpose(t - m),
             None => Ok(self),
         }
