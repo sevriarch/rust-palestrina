@@ -17,11 +17,21 @@ impl MetadataList {
         self
     }
 
-    pub fn last_tick(&self, curr: u32) -> Option<u32> {
-        self.contents
-            .iter()
-            .map(|m| m.timing.start_tick(curr).unwrap_or(curr))
-            .min()
+    pub fn last_tick(&self, curr: u32) -> Result<u32, String> {
+        if self.contents.is_empty() {
+            return Ok(curr);
+        }
+
+        let mut max = curr;
+        for m in self.contents.iter() {
+            let c = m.timing.start_tick(curr)?;
+
+            if c > max {
+                max = c;
+            }
+        }
+
+        Ok(max)
     }
 
     pub fn mutate_exact_tick(&mut self, f: impl Fn(&mut u32)) -> &Self {
@@ -138,6 +148,58 @@ mod tests {
                     }
                 }]
             }
+        );
+    }
+
+    #[test]
+    fn last_tick() {
+        assert_eq!(MetadataList::default().last_tick(0), Ok(0));
+        assert_eq!(MetadataList::default().last_tick(128), Ok(128));
+
+        assert_eq!(
+            MetadataList {
+                contents: vec![
+                    Metadata {
+                        data: MetadataData::Text("test text".to_string()),
+                        timing: EventTiming {
+                            tick: None,
+                            offset: 50
+                        },
+                    },
+                    Metadata {
+                        data: MetadataData::Text("test text".to_string()),
+                        timing: EventTiming {
+                            tick: Some(100),
+                            offset: 25
+                        },
+                    },
+                ],
+            }
+            .last_tick(0),
+            Ok(125)
+        );
+
+        assert_eq!(
+            MetadataList {
+                contents: vec![
+                    Metadata {
+                        data: MetadataData::Text("test text".to_string()),
+                        timing: EventTiming {
+                            tick: None,
+                            offset: 50
+                        },
+                    },
+                    Metadata {
+                        data: MetadataData::Text("test text".to_string()),
+                        timing: EventTiming {
+                            tick: Some(100),
+                            offset: 50
+                        },
+                    },
+                ],
+            }
+            .last_tick(200),
+            Ok(250)
         );
     }
 
