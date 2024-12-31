@@ -89,6 +89,18 @@ where
 
         Some((min, max))
     }
+
+    pub fn last_tick(&self) -> u32 {
+        let metalast = self.metadata.last_tick(0).unwrap_or(0);
+
+        self.contents
+            .iter()  // Create an iterator over the vector
+            .fold(metalast, |max, m| {
+                let result = m.last_tick().unwrap_or(0);
+
+                if result > max { result } else { max }
+            })
+    }
 }
 
 #[cfg(test)]

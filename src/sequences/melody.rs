@@ -292,11 +292,14 @@ where
     }
 
     pub fn last_tick(&self) -> Result<u32, String> {
-        let mut last = 0;
+        let mut last = self.metadata.last_tick(0)?;
         let mut curr = 0;
 
         for m in self.contents.iter() {
-            last = m.last_tick(curr)?;
+            let thislast = m.last_tick(curr)?;
+            if thislast > last {
+                last = thislast;
+            }
             curr = m.timing.next_tick(curr)?;
         }
 
