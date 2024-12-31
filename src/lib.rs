@@ -6,3 +6,4 @@ pub mod imports;
 pub mod metadata;
 pub mod score;
 pub mod sequences;
+pub mod midi;
