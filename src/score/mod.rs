@@ -94,12 +94,44 @@ where
         let metalast = self.metadata.last_tick(0).unwrap_or(0);
 
         self.contents
-            .iter()  // Create an iterator over the vector
+            .iter()
             .fold(metalast, |max, m| {
-                let result = m.last_tick().unwrap_or(0);
+                let ret = m.last_tick().unwrap_or(0);
 
-                if result > max { result } else { max }
+                if ret > max { ret } else { max }
             })
+    }
+
+    pub fn with_all_ticks_exact(&self) -> &Self {
+        todo!();
+    }
+
+    pub fn to_canvas(&self) -> String {
+        todo!();
+    }
+
+    pub fn to_midi_bytes(&self) -> &[u8] {
+        todo!();
+    }
+
+    pub fn to_data_uri(&self) -> String {
+        todo!();
+    }
+    
+    pub fn to_hash(&self) -> String {
+        todo!();
+    }
+
+    pub fn expect_hash(&self) -> Result<(), String> {
+        todo!();
+    }
+
+    pub fn write_canvas(&self) -> Result<(), String> {
+        todo!();
+    }
+
+    pub fn write_midi(&self) -> Result<(), String> {
+        todo!();
     }
 }
 
