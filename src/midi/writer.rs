@@ -1,8 +1,14 @@
-use crate::entities::timing::Timing;
+use crate::entities::{key_signature, timing::Timing};
 use crate::metadata::data::{Metadata, MetadataData};
 
+use super::constants::*;
+
+pub trait ToMidiBytes {
+    fn try_to_midi_bytes(&self) -> Result<Vec<u8>, String>;
+}
+
 pub trait ToTimedMidiBytes {
-    fn try_to_midi_bytes(&self, curr: u32) -> Result<(u32, Vec<u8>), String>;
+    fn try_to_timed_midi_bytes(&self, curr: u32) -> Result<(u32, Vec<u8>), String>;
 }
 
 fn try_number_to_fixed_bytes(num: u32, size: usize) -> Result<Vec<u8>, String> {
@@ -57,46 +63,81 @@ fn try_string_to_variable_bytes(str: &str) -> Result<Vec<u8>, String> {
     Ok(ret)
 }
 
-fn try_metadata_to_midi_bytes(d: &MetadataData) -> Result<Vec<u8>, String> {
-    match d {
-        MetadataData::EndTrack => Ok(vec![0xff, 0x2f, 0x00]),
-        MetadataData::Tempo(f32) => {
-            let mut ret = vec![0xff, 0x51, 0x03];
-            ret.append(&mut try_number_to_fixed_bytes(
-                (6e7 / f32).round() as u32,
-                3,
-            )?);
+/*
+macro_rules! build_text_event {
+    ($type:expr) => {
+        let mut ret = $type.to_vec();
+        ret.append(&mut try_string_to_variable_bytes(txt))
+    };
+}
+*/
 
-            Ok(ret)
-        }
-        MetadataData::Text(txt) => {
-            let mut ret = vec![0xff, 0x01];
-            ret.append(&mut try_string_to_variable_bytes(txt)?);
+impl ToMidiBytes for MetadataData {
+    fn try_to_midi_bytes(&self) -> Result<Vec<u8>, String> {
+        match self {
+            MetadataData::EndTrack => Ok(END_TRACK_EVENT.to_vec()),
+            MetadataData::Tempo(t) => {
+                let mut ret = TEMPO_EVENT.to_vec();
+                ret.append(&mut try_number_to_fixed_bytes((6e7 / t).round() as u32, 3)?);
 
-            Ok(ret)
+                Ok(ret)
+            }
+            MetadataData::Text(txt) => {
+                let mut ret = TEXT_EVENT.to_vec();
+                ret.append(&mut try_string_to_variable_bytes(txt)?);
+
+                Ok(ret)
+            }
+            //MetadataData::Copyright(txt) => build_text_event!(COPYRIGHT_EVENT),
+            MetadataData::Sustain(val) => Ok(vec![
+                CONTROLLER_BYTE,
+                SUSTAIN_CONTROLLER,
+                if *val {
+                    EVENT_ON_VALUE
+                } else {
+                    EVENT_OFF_VALUE
+                },
+            ]),
+            MetadataData::KeySignature(val) => Ok(key_signature::to_midi_bytes(val)?.to_vec()),
+            /*
+            TEXT_EVENT:            [ 0xff, 0x01 ],
+            COPYRIGHT_EVENT:       [ 0xff, 0x02 ],
+            TRACK_NAME_EVENT:      [ 0xff, 0x03 ],
+            INSTRUMENT_NAME_EVENT: [ 0xff, 0x04 ],
+            LYRIC_EVENT:           [ 0xff, 0x05 ],
+            MARKER_EVENT:          [ 0xff, 0x06 ],
+            CUE_POINT_EVENT:       [ 0xff, 0x07 ],
+            TEMPO_EVENT:           [ 0xff, 0x51, 0x03 ],
+            TIME_SIGNATURE_EVENT:  [ 0xff, 0x58, 0x04 ],
+            KEY_SIGNATURE_EVENT:   [ 0xff, 0x59, 0x02 ],
+            END_TRACK_EVENT:       [ 0xff, 0x2f, 0x00 ],
+            HEADER_CHUNK:          [ 0x4d, 0x54, 0x68, 0x64 ],
+            HEADER_LENGTH:         [ 0x00, 0x00, 0x00, 0x06 ],
+            HEADER_FORMAT:         [ 0x00, 0x01 ],
+            TRACK_HEADER_CHUNK:    [ 0x4d, 0x54, 0x72, 0x6b ],
+                    */
+                    /*
+                    MetadataData::KeySignature(String),
+                    MetadataData::TimeSignature(String),
+                    MetadataData::Instrument(String),
+                    MetadataData::Lyric(String),
+                    MetadataData::Marker(String),
+                    MetadataData::CuePoint(String),
+                    MetadataData::Copyright(String),
+                    MetadataData::TrackName(String),
+                    MetadataData::Volume(i16),
+                    MetadataData::Pan(i16),
+                    MetadataData::Balance(i16),
+                    MetadataData::PitchBend(i16),
+                    */
+            _ => Err("invalid metadata".to_string()),
         }
-        /*
-        MetadataData::Sustain(bool) => Ok(vec![ ])
-        MetadataData::KeySignature(String),
-        MetadataData::TimeSignature(String),
-        MetadataData::Instrument(String),
-        MetadataData::Lyric(String),
-        MetadataData::Marker(String),
-        MetadataData::CuePoint(String),
-        MetadataData::Copyright(String),
-        MetadataData::TrackName(String),
-        MetadataData::Volume(i16),
-        MetadataData::Pan(i16),
-        MetadataData::Balance(i16),
-        MetadataData::PitchBend(i16),
-        */
-        _ => Err("invalid metadata".to_string()),
     }
 }
 
 impl ToTimedMidiBytes for Metadata {
-    fn try_to_midi_bytes(&self, curr: u32) -> Result<(u32, Vec<u8>), String> {
-        let databytes = try_metadata_to_midi_bytes(&self.data)?;
+    fn try_to_timed_midi_bytes(&self, curr: u32) -> Result<(u32, Vec<u8>), String> {
+        let databytes = self.data.try_to_midi_bytes()?;
 
         Ok((self.timing.start_tick(curr)?, databytes))
     }
@@ -105,6 +146,9 @@ impl ToTimedMidiBytes for Metadata {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use crate::entities::timing::EventTiming;
+    use crate::midi::writer::{ToMidiBytes, ToTimedMidiBytes};
 
     #[test]
     fn test_try_number_to_fixed_bytes() {
@@ -180,20 +224,99 @@ mod tests {
     }
 
     #[test]
-    fn test_try_metadata_to_midi_bytes() {
+    fn try_to_midi_bytes() {
         assert_eq!(
-            try_metadata_to_midi_bytes(&MetadataData::EndTrack),
+            MetadataData::EndTrack.try_to_midi_bytes(),
             Ok(vec![0xff, 0x2f, 0x00]),
         );
 
         assert_eq!(
-            try_metadata_to_midi_bytes(&MetadataData::Tempo(144.0)),
+            MetadataData::Tempo(144.0).try_to_midi_bytes(),
             Ok(vec![0xff, 0x51, 0x03, 0x06, 0x5b, 0x9b]),
         );
 
         assert_eq!(
-            try_metadata_to_midi_bytes(&MetadataData::Tempo(60.0)),
+            MetadataData::Tempo(60.0).try_to_midi_bytes(),
             Ok(vec![0xff, 0x51, 0x03, 0x0f, 0x42, 0x40]),
+        );
+
+        assert_eq!(
+            MetadataData::Sustain(true).try_to_midi_bytes(),
+            Ok(vec![0xb0, 0x40, 0x7f]),
+        );
+
+        assert_eq!(
+            MetadataData::Sustain(false).try_to_midi_bytes(),
+            Ok(vec![0xb0, 0x40, 0x00]),
+        );
+
+        macro_rules! test_key_sig {
+            ($k:expr, $bytes: expr) => {
+                assert_eq!(
+                    MetadataData::KeySignature($k.to_string()).try_to_midi_bytes(),
+                    Ok($bytes.to_vec())
+                )
+            };
+        }
+
+        test_key_sig!("C", [0xff, 0x59, 0x02, 0x00, 0x00]);
+        test_key_sig!("G", [0xff, 0x59, 0x02, 0x01, 0x00]);
+        test_key_sig!("D", [0xff, 0x59, 0x02, 0x02, 0x00]);
+        test_key_sig!("A", [0xff, 0x59, 0x02, 0x03, 0x00]);
+        test_key_sig!("E", [0xff, 0x59, 0x02, 0x04, 0x00]);
+        test_key_sig!("B", [0xff, 0x59, 0x02, 0x05, 0x00]);
+        test_key_sig!("Cb", [0xff, 0x59, 0x02, 0xf9, 0x00]);
+        test_key_sig!("F#", [0xff, 0x59, 0x02, 0x06, 0x00]);
+        test_key_sig!("Gb", [0xff, 0x59, 0x02, 0xfa, 0x00]);
+        test_key_sig!("C#", [0xff, 0x59, 0x02, 0x07, 0x00]);
+        test_key_sig!("Db", [0xff, 0x59, 0x02, 0xfb, 0x00]);
+        test_key_sig!("Ab", [0xff, 0x59, 0x02, 0xfc, 0x00]);
+        test_key_sig!("Eb", [0xff, 0x59, 0x02, 0xfd, 0x00]);
+        test_key_sig!("Bb", [0xff, 0x59, 0x02, 0xfe, 0x00]);
+        test_key_sig!("F", [0xff, 0x59, 0x02, 0xff, 0x00]);
+        test_key_sig!("c", [0xff, 0x59, 0x02, 0xfd, 0x01]);
+        test_key_sig!("g", [0xff, 0x59, 0x02, 0xfe, 0x01]);
+        test_key_sig!("d", [0xff, 0x59, 0x02, 0xff, 0x01]);
+        test_key_sig!("a", [0xff, 0x59, 0x02, 0x00, 0x01]);
+        test_key_sig!("e", [0xff, 0x59, 0x02, 0x01, 0x01]);
+        test_key_sig!("b", [0xff, 0x59, 0x02, 0x02, 0x01]);
+        test_key_sig!("f#", [0xff, 0x59, 0x02, 0x03, 0x01]);
+        test_key_sig!("c#", [0xff, 0x59, 0x02, 0x04, 0x01]);
+        test_key_sig!("g#", [0xff, 0x59, 0x02, 0x05, 0x01]);
+        test_key_sig!("ab", [0xff, 0x59, 0x02, 0xf9, 0x01]);
+        test_key_sig!("d#", [0xff, 0x59, 0x02, 0x06, 0x01]);
+        test_key_sig!("eb", [0xff, 0x59, 0x02, 0xfa, 0x01]);
+        test_key_sig!("a#", [0xff, 0x59, 0x02, 0x07, 0x01]);
+        test_key_sig!("bb", [0xff, 0x59, 0x02, 0xfb, 0x01]);
+        test_key_sig!("f", [0xff, 0x59, 0x02, 0xfc, 0x01]);
+    }
+
+    #[test]
+    // For this method, only test a sample as the methods it relies upon have been
+    // tested more thoroughly elsewhere
+    fn try_to_timed_midi_bytes() {
+        assert_eq!(
+            Metadata {
+                data: MetadataData::EndTrack,
+                timing: EventTiming {
+                    tick: None,
+                    offset: 32
+                }
+            }
+            .try_to_timed_midi_bytes(64),
+            Ok((96, vec![0xff, 0x2f, 0x00]))
+        );
+
+        assert_eq!(
+            Metadata {
+                data: MetadataData::Tempo(60.0),
+                timing: EventTiming {
+                    tick: Some(128),
+                    offset: 32
+                }
+            }
+            .try_to_timed_midi_bytes(64),
+            Ok((160, vec![0xff, 0x51, 0x03, 0x0f, 0x42, 0x40]))
         );
     }
 }
