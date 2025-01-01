@@ -1,5 +1,9 @@
 use crate::entities::{key_signature, time_signature, timing::Timing};
-use crate::metadata::data::{Metadata, MetadataData};
+use crate::metadata::{
+    data::{Metadata, MetadataData},
+    list::MetadataList,
+};
+use crate::sequences::melody::MelodyMember;
 
 use super::constants::*;
 
@@ -9,6 +13,10 @@ pub trait ToMidiBytes {
 
 pub trait ToTimedMidiBytes {
     fn try_to_timed_midi_bytes(&self, curr: u32) -> Result<(u32, Vec<u8>), String>;
+}
+
+pub trait ToVecTimedMidiBytes {
+    fn try_to_vec_timed_midi_bytes(&self, curr: u32) -> Result<Vec<(u32, Vec<u8>)>, String>;
 }
 
 fn try_number_to_fixed_bytes(num: u32, size: usize) -> Result<Vec<u8>, String> {
@@ -120,6 +128,46 @@ impl ToTimedMidiBytes for Metadata {
         Ok((self.timing.start_tick(curr)?, databytes))
     }
 }
+
+impl ToVecTimedMidiBytes for MetadataList {
+    fn try_to_vec_timed_midi_bytes(&self, curr: u32) -> Result<Vec<(u32, Vec<u8>)>, String> {
+        self.contents
+            .iter()
+            .map(|m| m.try_to_timed_midi_bytes(curr))
+            .collect()
+    }
+}
+
+macro_rules! impl_melody_member_to_vec_timed_midi_bytes {
+    (for $($t:ty)*) => ($(
+        impl ToVecTimedMidiBytes for MelodyMember<$t> {
+            fn try_to_vec_timed_midi_bytes(
+                &self,
+                curr: u32,
+            ) -> Result<Vec<(u32, Vec<u8>)>, String> {
+                let start = self.timing.start_tick(curr)?;
+                let end = self.timing.end_tick(curr)?;
+
+                let mut ret = self.before.try_to_vec_timed_midi_bytes(start)?;
+
+                for p in self.values.iter() {
+                    if *p <= 0 || *p > 127 {
+                        return Err("pitch out of range".to_string());
+                    }
+
+                    ret.append(&mut vec![
+                        (start, vec![0x90, *p as u8]),
+                        (end, vec![0x80, *p as u8]),
+                    ]);
+                }
+
+                Ok(ret)
+            }
+        }
+    )*)
+}
+
+impl_melody_member_to_vec_timed_midi_bytes!(for u8 u16 u32 u64 usize i16 i32 i64);
 
 #[cfg(test)]
 mod tests {
@@ -331,6 +379,38 @@ mod tests {
             }
             .try_to_timed_midi_bytes(64),
             Ok((160, vec![0xff, 0x51, 0x03, 0x0f, 0x42, 0x40]))
+        );
+    }
+
+    #[test]
+    fn try_to_vec_timed_midi_bytes() {
+        assert_eq!(
+            MetadataList::default().try_to_vec_timed_midi_bytes(0),
+            Ok(vec![])
+        );
+
+        assert_eq!(
+            MetadataList::new(vec![
+                Metadata {
+                    data: MetadataData::Tempo(60.0),
+                    timing: EventTiming {
+                        tick: Some(128),
+                        offset: 32
+                    }
+                },
+                Metadata {
+                    data: MetadataData::Text("test".to_string()),
+                    timing: EventTiming {
+                        tick: None,
+                        offset: 64,
+                    }
+                }
+            ])
+            .try_to_vec_timed_midi_bytes(16),
+            Ok(vec![
+                (160, vec![0xff, 0x51, 0x03, 0x0f, 0x42, 0x40]),
+                (80, vec![0xff, 0x01, 0x04, 0x74, 0x65, 0x73, 0x74])
+            ])
         );
     }
 }
