@@ -138,7 +138,7 @@ impl ToVecTimedMidiBytes for MetadataList {
     }
 }
 
-macro_rules! impl_melody_member_to_vec_timed_midi_bytes {
+macro_rules! impl_int_melody_member_to_vec_timed_midi_bytes {
     (for $($t:ty)*) => ($(
         impl ToVecTimedMidiBytes for MelodyMember<$t> {
             fn try_to_vec_timed_midi_bytes(
@@ -167,7 +167,47 @@ macro_rules! impl_melody_member_to_vec_timed_midi_bytes {
     )*)
 }
 
-impl_melody_member_to_vec_timed_midi_bytes!(for u8 u16 u32 u64 usize i16 i32 i64);
+impl_int_melody_member_to_vec_timed_midi_bytes!(for u8 u16 u32 u64 usize i16 i32 i64);
+
+macro_rules! impl_float_melody_member_to_vec_timed_midi_bytes {
+    (for $($t:ty)*) => ($(
+        impl ToVecTimedMidiBytes for MelodyMember<$t> {
+            fn try_to_vec_timed_midi_bytes(
+                &self,
+                curr: u32,
+            ) -> Result<Vec<(u32, Vec<u8>)>, String> {
+                let start = self.timing.start_tick(curr)?;
+                let end = self.timing.end_tick(curr)?;
+
+                let mut ret = self.before.try_to_vec_timed_midi_bytes(start)?;
+
+                for p in self.values.iter() {
+                    if *p <= 0.0 || *p > 127.0 {
+                        return Err("pitch out of range".to_string());
+                    }
+
+                    let mut f = (p.fract() * 4096.0).round() as i32;
+                    if f != 0 {
+                        f -= 8192;
+                        ret.append(&mut vec![
+                            (start, vec![0xe0, (f % 0x7f) as u8, (f >> 7 & 0x7f) as u8 ]),
+                            (end - 2, vec![0xe0, 0x00, 0x00 ]),
+                        ]);
+                    }
+
+                    ret.append(&mut vec![
+                        (start, vec![0x90, *p as u8]),
+                        (end, vec![0x80, *p as u8]),
+                    ]);
+                }
+
+                Ok(ret)
+            }
+        }
+    )*)
+}
+
+impl_float_melody_member_to_vec_timed_midi_bytes!(for f32 f64);
 
 #[cfg(test)]
 mod tests {
