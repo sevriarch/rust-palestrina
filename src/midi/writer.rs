@@ -1,4 +1,4 @@
-use crate::entities::{key_signature, timing::Timing};
+use crate::entities::{key_signature, time_signature, timing::Timing};
 use crate::metadata::data::{Metadata, MetadataData};
 
 use super::constants::*;
@@ -63,14 +63,15 @@ fn try_string_to_variable_bytes(str: &str) -> Result<Vec<u8>, String> {
     Ok(ret)
 }
 
-/*
 macro_rules! build_text_event {
-    ($type:expr) => {
-        let mut ret = $type.to_vec();
-        ret.append(&mut try_string_to_variable_bytes(txt))
+    ($type:expr, $txt:expr) => {
+        Ok($type
+            .iter()
+            .chain(try_string_to_variable_bytes($txt)?.iter())
+            .cloned()
+            .collect())
     };
 }
-*/
 
 impl ToMidiBytes for MetadataData {
     fn try_to_midi_bytes(&self) -> Result<Vec<u8>, String> {
@@ -82,13 +83,13 @@ impl ToMidiBytes for MetadataData {
 
                 Ok(ret)
             }
-            MetadataData::Text(txt) => {
-                let mut ret = TEXT_EVENT.to_vec();
-                ret.append(&mut try_string_to_variable_bytes(txt)?);
-
-                Ok(ret)
-            }
-            //MetadataData::Copyright(txt) => build_text_event!(COPYRIGHT_EVENT),
+            MetadataData::Text(txt) => build_text_event!(TEXT_EVENT, txt),
+            MetadataData::Copyright(txt) => build_text_event!(COPYRIGHT_EVENT, txt),
+            MetadataData::TrackName(txt) => build_text_event!(TRACK_NAME_EVENT, txt),
+            MetadataData::Instrument(txt) => build_text_event!(INSTRUMENT_NAME_EVENT, txt),
+            MetadataData::Lyric(txt) => build_text_event!(LYRIC_EVENT, txt),
+            MetadataData::Marker(txt) => build_text_event!(MARKER_EVENT, txt),
+            MetadataData::CuePoint(txt) => build_text_event!(CUE_POINT_EVENT, txt),
             MetadataData::Sustain(val) => Ok(vec![
                 CONTROLLER_BYTE,
                 SUSTAIN_CONTROLLER,
@@ -99,37 +100,14 @@ impl ToMidiBytes for MetadataData {
                 },
             ]),
             MetadataData::KeySignature(val) => Ok(key_signature::to_midi_bytes(val)?.to_vec()),
+            MetadataData::TimeSignature(val) => Ok(time_signature::to_midi_bytes(val)?.to_vec()),
             /*
-            TEXT_EVENT:            [ 0xff, 0x01 ],
-            COPYRIGHT_EVENT:       [ 0xff, 0x02 ],
-            TRACK_NAME_EVENT:      [ 0xff, 0x03 ],
-            INSTRUMENT_NAME_EVENT: [ 0xff, 0x04 ],
-            LYRIC_EVENT:           [ 0xff, 0x05 ],
-            MARKER_EVENT:          [ 0xff, 0x06 ],
-            CUE_POINT_EVENT:       [ 0xff, 0x07 ],
-            TEMPO_EVENT:           [ 0xff, 0x51, 0x03 ],
-            TIME_SIGNATURE_EVENT:  [ 0xff, 0x58, 0x04 ],
-            KEY_SIGNATURE_EVENT:   [ 0xff, 0x59, 0x02 ],
-            END_TRACK_EVENT:       [ 0xff, 0x2f, 0x00 ],
-            HEADER_CHUNK:          [ 0x4d, 0x54, 0x68, 0x64 ],
-            HEADER_LENGTH:         [ 0x00, 0x00, 0x00, 0x06 ],
-            HEADER_FORMAT:         [ 0x00, 0x01 ],
-            TRACK_HEADER_CHUNK:    [ 0x4d, 0x54, 0x72, 0x6b ],
-                    */
-                    /*
-                    MetadataData::KeySignature(String),
-                    MetadataData::TimeSignature(String),
-                    MetadataData::Instrument(String),
-                    MetadataData::Lyric(String),
-                    MetadataData::Marker(String),
-                    MetadataData::CuePoint(String),
-                    MetadataData::Copyright(String),
-                    MetadataData::TrackName(String),
-                    MetadataData::Volume(i16),
-                    MetadataData::Pan(i16),
-                    MetadataData::Balance(i16),
-                    MetadataData::PitchBend(i16),
-                    */
+            MetadataData::Instrument(String),
+            MetadataData::Volume(i16),
+            MetadataData::Pan(i16),
+            MetadataData::Balance(i16),
+            MetadataData::PitchBend(i16),
+            */
             _ => Err("invalid metadata".to_string()),
         }
     }
@@ -250,6 +228,23 @@ mod tests {
             Ok(vec![0xb0, 0x40, 0x00]),
         );
 
+        macro_rules! test_text {
+            ($k:ident, $byte:expr) => {
+                assert_eq!(
+                    MetadataData::$k("test".to_string()).try_to_midi_bytes(),
+                    Ok(vec![0xff, $byte, 0x04, 0x74, 0x65, 0x73, 0x74])
+                );
+            };
+        }
+
+        test_text!(Text, 0x01);
+        test_text!(Copyright, 0x02);
+        test_text!(TrackName, 0x03);
+        test_text!(Instrument, 0x04);
+        test_text!(Lyric, 0x05);
+        test_text!(Marker, 0x06);
+        test_text!(CuePoint, 0x07);
+
         macro_rules! test_key_sig {
             ($k:expr, $bytes: expr) => {
                 assert_eq!(
@@ -289,6 +284,25 @@ mod tests {
         test_key_sig!("a#", [0xff, 0x59, 0x02, 0x07, 0x01]);
         test_key_sig!("bb", [0xff, 0x59, 0x02, 0xfb, 0x01]);
         test_key_sig!("f", [0xff, 0x59, 0x02, 0xfc, 0x01]);
+
+        assert!(MetadataData::TimeSignature("0/8".to_string())
+            .try_to_midi_bytes()
+            .is_err());
+
+        assert!(MetadataData::TimeSignature("4/6".to_string())
+            .try_to_midi_bytes()
+            .is_err());
+
+        assert_eq!(
+            MetadataData::TimeSignature("2/4".to_string()).try_to_midi_bytes(),
+            Ok(vec![0xff, 0x58, 0x04, 0x02, 0x02, 0x18, 0x08])
+        );
+
+        assert_eq!(
+            MetadataData::TimeSignature("9/16".to_string()).try_to_midi_bytes(),
+            Ok(vec![0xff, 0x58, 0x04, 0x09, 0x04, 0x18, 0x08])
+        );
+        //[ { event: 'time-signature', value: '9/16' }, undefined, [ 0xff, 0x58, 0x04, 0x09, 0x04, 0x18, 0x08 ] ],
     }
 
     #[test]
