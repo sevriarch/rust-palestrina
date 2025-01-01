@@ -156,8 +156,8 @@ macro_rules! impl_int_melody_member_to_vec_timed_midi_bytes {
                     }
 
                     ret.append(&mut vec![
-                        (start, vec![0x90, *p as u8]),
-                        (end, vec![0x80, *p as u8]),
+                        (start, vec![0x90, *p as u8, self.volume]),
+                        (end, vec![0x80, *p as u8, self.volume]),
                     ]);
                 }
 
@@ -190,14 +190,14 @@ macro_rules! impl_float_melody_member_to_vec_timed_midi_bytes {
                     if f != 0 {
                         f -= 8192;
                         ret.append(&mut vec![
-                            (start, vec![0xe0, (f % 0x7f) as u8, (f >> 7 & 0x7f) as u8 ]),
-                            (end - 2, vec![0xe0, 0x00, 0x00 ]),
+                            (start, vec![0xe0, (f & 0x7f) as u8, (f >> 7 & 0x7f) as u8 ]),
+                            (end - 2, vec![0xe0, 0x00, 0x40 ]),
                         ]);
                     }
 
                     ret.append(&mut vec![
-                        (start, vec![0x90, *p as u8]),
-                        (end, vec![0x80, *p as u8]),
+                        (start, vec![0x90, *p as u8, self.volume]),
+                        (end, vec![0x80, *p as u8, self.volume]),
                     ]);
                 }
 
@@ -213,7 +213,7 @@ impl_float_melody_member_to_vec_timed_midi_bytes!(for f32 f64);
 mod tests {
     use super::*;
 
-    use crate::entities::timing::EventTiming;
+    use crate::entities::timing::{DurationalEventTiming, EventTiming};
     use crate::midi::writer::{ToMidiBytes, ToTimedMidiBytes};
 
     #[test]
@@ -450,6 +450,146 @@ mod tests {
             Ok(vec![
                 (160, vec![0xff, 0x51, 0x03, 0x0f, 0x42, 0x40]),
                 (80, vec![0xff, 0x01, 0x04, 0x74, 0x65, 0x73, 0x74])
+            ])
+        );
+
+        macro_rules! metadata {
+            ($data:expr) => {
+                Metadata {
+                    data: $data,
+                    timing: EventTiming {
+                        tick: None,
+                        offset: 0,
+                    },
+                }
+            };
+
+            ($data:expr, $offset:expr) => {
+                Metadata {
+                    data: $data,
+                    timing: EventTiming {
+                        tick: None,
+                        offset: $offset,
+                    },
+                }
+            };
+
+            ($data:expr, $tick:expr, $offset:expr) => {
+                Metadata {
+                    data: $data,
+                    timing: EventTiming {
+                        tick: Some($tick),
+                        offset: $offset,
+                    },
+                }
+            };
+        }
+
+        assert_eq!(
+            MelodyMember {
+                values: vec![60.0, 63.5, 67.0],
+                timing: DurationalEventTiming {
+                    tick: None,
+                    offset: 0,
+                    duration: 32,
+                },
+                volume: 64,
+                before: MetadataList::new(vec![
+                    metadata!(MetadataData::Sustain(true), 32, 0),
+                    metadata!(MetadataData::Text("test".to_string()), 48),
+                ])
+            }
+            .try_to_vec_timed_midi_bytes(0),
+            Ok(vec![
+                (32, vec![0xb0, 0x40, 0x7f]),
+                (48, vec![0xff, 0x01, 0x04, 0x74, 0x65, 0x73, 0x74]),
+                (0, vec![0x90, 0x3c, 0x40]),
+                (32, vec![0x80, 0x3c, 0x40]),
+                (0, vec![0xe0, 0x0, 0x50]),
+                (30, vec![0xe0, 0x0, 0x40]),
+                (0, vec![0x90, 0x3f, 0x40]),
+                (32, vec![0x80, 0x3f, 0x40]),
+                (0, vec![0x90, 0x43, 0x40]),
+                (32, vec![0x80, 0x43, 0x40]),
+            ])
+        );
+
+        assert_eq!(
+            MelodyMember {
+                values: vec![60.0, 63.5, 67.0],
+                timing: DurationalEventTiming {
+                    tick: None,
+                    offset: 0,
+                    duration: 32,
+                },
+                volume: 64,
+                before: MetadataList::new(vec![
+                    metadata!(MetadataData::Sustain(true), 32, 0),
+                    metadata!(MetadataData::Text("test".to_string()), 48),
+                ])
+            }
+            .try_to_vec_timed_midi_bytes(160),
+            Ok(vec![
+                (32, vec![0xb0, 0x40, 0x7f]),
+                (208, vec![0xff, 0x01, 0x04, 0x74, 0x65, 0x73, 0x74]),
+                (160, vec![0x90, 0x3c, 0x40]),
+                (192, vec![0x80, 0x3c, 0x40]),
+                (160, vec![0xe0, 0x0, 0x50]),
+                (190, vec![0xe0, 0x0, 0x40]),
+                (160, vec![0x90, 0x3f, 0x40]),
+                (192, vec![0x80, 0x3f, 0x40]),
+                (160, vec![0x90, 0x43, 0x40]),
+                (192, vec![0x80, 0x43, 0x40]),
+            ])
+        );
+
+        assert_eq!(
+            MelodyMember {
+                values: vec![60, 67],
+                timing: DurationalEventTiming {
+                    tick: None,
+                    offset: 72,
+                    duration: 32,
+                },
+                volume: 64,
+                before: MetadataList::new(vec![
+                    metadata!(MetadataData::Sustain(true), 32, 0),
+                    metadata!(MetadataData::Text("test".to_string()), 48),
+                ])
+            }
+            .try_to_vec_timed_midi_bytes(160),
+            Ok(vec![
+                (32, vec![0xb0, 0x40, 0x7f]),
+                (280, vec![0xff, 0x01, 0x04, 0x74, 0x65, 0x73, 0x74]),
+                (232, vec![0x90, 0x3c, 0x40]),
+                (264, vec![0x80, 0x3c, 0x40]),
+                (232, vec![0x90, 0x43, 0x40]),
+                (264, vec![0x80, 0x43, 0x40]),
+            ])
+        );
+
+        assert_eq!(
+            MelodyMember {
+                values: vec![60, 67],
+                timing: DurationalEventTiming {
+                    tick: Some(100),
+                    offset: 72,
+                    duration: 32,
+                },
+                volume: 64,
+                before: MetadataList::new(vec![
+                    metadata!(MetadataData::Sustain(true), 32, 0),
+                    metadata!(MetadataData::Text("test".to_string()), 48),
+                ])
+            }
+            .try_to_vec_timed_midi_bytes(160),
+            Ok(vec![
+                (32, vec![0xb0, 0x40, 0x7f]),
+                (220, vec![0xff, 0x01, 0x04, 0x74, 0x65, 0x73, 0x74]),
+                (172, vec![0x90, 0x3c, 0x40]),
+                (204, vec![0x80, 0x3c, 0x40]),
+                (172, vec![0x90, 0x43, 0x40]),
+                (204, vec![0x80, 0x43, 0x40]),
             ])
         );
     }

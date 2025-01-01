@@ -93,13 +93,15 @@ where
     pub fn last_tick(&self) -> u32 {
         let metalast = self.metadata.last_tick(0).unwrap_or(0);
 
-        self.contents
-            .iter()
-            .fold(metalast, |max, m| {
-                let ret = m.last_tick().unwrap_or(0);
+        self.contents.iter().fold(metalast, |max, m| {
+            let ret = m.last_tick().unwrap_or(0);
 
-                if ret > max { ret } else { max }
-            })
+            if ret > max {
+                ret
+            } else {
+                max
+            }
+        })
     }
 
     pub fn with_all_ticks_exact(&self) -> &Self {
@@ -117,7 +119,7 @@ where
     pub fn to_data_uri(&self) -> String {
         todo!();
     }
-    
+
     pub fn to_hash(&self) -> String {
         todo!();
     }
