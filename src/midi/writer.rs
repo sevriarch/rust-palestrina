@@ -229,6 +229,47 @@ macro_rules! impl_melody_to_vec_timed_midi_bytes {
     )*)
 }
 
+/*
+macro_rules! impl_melody_to_midi_bytes {
+    (for $($t:ty)*) => ($(
+        impl ToMidiBytes for Melody<$t> {
+            fn try_to_midi_bytes(&self, curr: u32) -> Result<Vec<u8>, String> {
+                let list = self.try_to_vec_timed_midi_bytes(curr).sort(|a,b| a.0 > b.0);
+
+                for m in list {
+
+                }
+            }
+        }
+    )*)
+}
+*/
+
+impl ToMidiBytes for Melody<i32> {
+    fn try_to_midi_bytes(&self) -> Result<Vec<u8>, String> {
+        let mut ret: Vec<u8> = vec![];
+        let mut curr = 0;
+
+        let mut list = self.try_to_vec_timed_midi_bytes(0)?;
+        list.append(&mut self.metadata.try_to_vec_timed_midi_bytes(0)?);
+        list.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+
+        for mut val in list {
+            ret.append(&mut try_number_to_variable_bytes(val.0 - curr)?);
+            ret.append(&mut val.1);
+
+            curr = val.0;
+        }
+
+        let mut chunk = TRACK_HEADER_CHUNK.to_vec();
+
+        chunk.append(&mut try_number_to_fixed_bytes(ret.len() as u32, 4)?);
+        chunk.append(&mut ret);
+
+        Ok(chunk)
+    }
+}
+
 impl_melody_to_vec_timed_midi_bytes!(for u8 u16 u32 u64 usize i16 i32 i64 f32 f64);
 
 #[cfg(test)]
@@ -681,6 +722,83 @@ mod tests {
                 (124, vec![0x90, 0x3f, 0x40]),
                 (156, vec![0x80, 0x3f, 0x40]),
                 (156, vec![0xff, 0x2f, 0x00]),
+            ])
+        );
+
+        assert_eq!(
+            Melody {
+                contents: vec![],
+                metadata: MetadataList::default()
+            }
+            .try_to_midi_bytes(),
+            Ok(vec![
+                0x4d, 0x54, 0x72, 0x6b, // header
+                0x00, 0x00, 0x00, 0x04, // length
+                0x00, 0xff, 0x2f, 0x00 // end track
+            ])
+        );
+
+        assert_eq!(
+            Melody {
+                contents: vec![
+                    MelodyMember {
+                        values: vec![60, 67],
+                        timing: DurationalEventTiming {
+                            tick: None,
+                            offset: 72,
+                            duration: 32,
+                        },
+                        volume: 64,
+                        before: MetadataList::default(),
+                    },
+                    MelodyMember {
+                        values: vec![61],
+                        timing: DurationalEventTiming {
+                            tick: None,
+                            offset: 0,
+                            duration: 32,
+                        },
+                        volume: 64,
+                        before: MetadataList::default(),
+                    },
+                    MelodyMember {
+                        values: vec![62],
+                        timing: DurationalEventTiming {
+                            tick: Some(60),
+                            offset: 16,
+                            duration: 64,
+                        },
+                        volume: 64,
+                        before: MetadataList::default(),
+                    },
+                    MelodyMember {
+                        values: vec![63],
+                        timing: DurationalEventTiming {
+                            tick: None,
+                            offset: 0,
+                            duration: 32,
+                        },
+                        volume: 64,
+                        before: MetadataList::default(),
+                    },
+                ],
+                metadata: MetadataList::default(),
+            }
+            .try_to_midi_bytes(),
+            Ok(vec![
+                0x4d, 0x54, 0x72, 0x6b, // track header chunk
+                0x00, 0x00, 0x00, 0x2c, // length chunk
+                0x20, 0x90, 0x3d, 0x40, // first note on
+                0x20, 0x80, 0x3d, 0x40, // first note off
+                0x08, 0x90, 0x3c, 0x40, // second note on
+                0x00, 0x90, 0x43, 0x40, // third note on
+                0x04, 0x90, 0x3e, 0x40, // fourth note on
+                0x1c, 0x80, 0x3c, 0x40, // second note off
+                0x00, 0x80, 0x43, 0x40, // third note off
+                0x14, 0x90, 0x3f, 0x40, // last note on
+                0x10, 0x80, 0x3e, 0x40, // fourth note off
+                0x10, 0x80, 0x3f, 0x40, // last note off
+                0x00, 0xff, 0x2f, 0x00, // end track
             ])
         );
     }
