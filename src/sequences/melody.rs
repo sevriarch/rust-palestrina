@@ -116,8 +116,8 @@ where
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Melody<T> {
-    contents: Vec<MelodyMember<T>>,
-    metadata: MetadataList,
+    pub contents: Vec<MelodyMember<T>>,
+    pub metadata: MetadataList,
 }
 
 #[derive(Debug, PartialEq)]

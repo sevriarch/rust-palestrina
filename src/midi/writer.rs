@@ -3,7 +3,7 @@ use crate::metadata::{
     data::{Metadata, MetadataData},
     list::MetadataList,
 };
-use crate::sequences::melody::MelodyMember;
+use crate::sequences::melody::{Melody, MelodyMember};
 
 use super::constants::*;
 
@@ -208,6 +208,28 @@ macro_rules! impl_float_melody_member_to_vec_timed_midi_bytes {
 }
 
 impl_float_melody_member_to_vec_timed_midi_bytes!(for f32 f64);
+
+macro_rules! impl_melody_to_vec_timed_midi_bytes {
+    (for $($t:ty)*) => ($(
+        impl ToVecTimedMidiBytes for Melody<$t> {
+            fn try_to_vec_timed_midi_bytes(&self, curr: u32) -> Result<Vec<(u32, Vec<u8>)>, String> {
+                let mut curr = curr;
+                let mut ret = self.metadata.try_to_vec_timed_midi_bytes(curr)?;
+
+                for m in self.contents.iter() {
+                    ret.append(&mut m.try_to_vec_timed_midi_bytes(curr)?);
+                    curr = m.timing.next_tick(curr)?;
+                }
+
+                ret.push((self.last_tick()?, END_TRACK_EVENT.to_vec()));
+
+                Ok(ret)
+            }
+        }
+    )*)
+}
+
+impl_melody_to_vec_timed_midi_bytes!(for u8 u16 u32 u64 usize i16 i32 i64 f32 f64);
 
 #[cfg(test)]
 mod tests {
@@ -590,6 +612,75 @@ mod tests {
                 (204, vec![0x80, 0x3c, 0x40]),
                 (172, vec![0x90, 0x43, 0x40]),
                 (204, vec![0x80, 0x43, 0x40]),
+            ])
+        );
+
+        assert_eq!(
+            Melody::try_from(vec![66; 0])
+                .unwrap()
+                .try_to_vec_timed_midi_bytes(0),
+            Ok(vec![(0, vec![0xff, 0x2f, 0x00])]),
+        );
+
+        assert_eq!(
+            Melody {
+                contents: vec![
+                    MelodyMember {
+                        values: vec![60, 67],
+                        timing: DurationalEventTiming {
+                            tick: None,
+                            offset: 72,
+                            duration: 32,
+                        },
+                        volume: 64,
+                        before: MetadataList::default(),
+                    },
+                    MelodyMember {
+                        values: vec![61],
+                        timing: DurationalEventTiming {
+                            tick: None,
+                            offset: 0,
+                            duration: 32,
+                        },
+                        volume: 64,
+                        before: MetadataList::default(),
+                    },
+                    MelodyMember {
+                        values: vec![62],
+                        timing: DurationalEventTiming {
+                            tick: Some(60),
+                            offset: 16,
+                            duration: 64,
+                        },
+                        volume: 64,
+                        before: MetadataList::default(),
+                    },
+                    MelodyMember {
+                        values: vec![63],
+                        timing: DurationalEventTiming {
+                            tick: None,
+                            offset: 0,
+                            duration: 32,
+                        },
+                        volume: 64,
+                        before: MetadataList::default(),
+                    },
+                ],
+                metadata: MetadataList::default(),
+            }
+            .try_to_vec_timed_midi_bytes(0),
+            Ok(vec![
+                (72, vec![0x90, 0x3c, 0x40]),
+                (104, vec![0x80, 0x3c, 0x40]),
+                (72, vec![0x90, 0x43, 0x40]),
+                (104, vec![0x80, 0x43, 0x40]),
+                (32, vec![0x90, 0x3d, 0x40]),
+                (64, vec![0x80, 0x3d, 0x40]),
+                (76, vec![0x90, 0x3e, 0x40]),
+                (140, vec![0x80, 0x3e, 0x40]),
+                (124, vec![0x90, 0x3f, 0x40]),
+                (156, vec![0x80, 0x3f, 0x40]),
+                (156, vec![0xff, 0x2f, 0x00]),
             ])
         );
     }
