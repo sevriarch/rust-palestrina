@@ -6,11 +6,18 @@ use crate::metadata::{
 };
 use crate::score::Score;
 use crate::sequences::melody::{Melody, MelodyMember};
+use anyhow::{anyhow, Result};
+use std::fs::File;
+use std::io::Write;
 
 use super::constants::*;
 
 pub trait ToMidiBytes {
     fn try_to_midi_bytes(&self) -> Result<Vec<u8>, String>;
+}
+
+pub trait WriteMidiBytes {
+    fn try_to_write_midi_bytes(&self, file: &str) -> Result<()>;
 }
 
 pub trait ToTimedMidiBytes {
@@ -278,6 +285,22 @@ macro_rules! impl_score_to_midi_bytes {
                 }
 
                 Ok(ret)
+            }
+        }
+
+        impl WriteMidiBytes for Score<$t> {
+            fn try_to_write_midi_bytes(&self, file: &str) -> Result<()> {
+                let mut f = File::create(file)?;
+
+                let bytes = self.try_to_midi_bytes();
+
+                if bytes.is_err() {
+                    return Err(anyhow!("Error getting MIDI bytes"));
+                }
+
+                f.write_all(&bytes.unwrap())?;
+
+                Ok(())
             }
         }
     )*)
@@ -906,5 +929,59 @@ mod tests {
                 0x00, 0xff, 0x2f, 0x00, // end track
             ])
         );
+    }
+
+    #[test]
+    fn try_to_write_midi_bytes() {
+        assert!(Score {
+            contents: vec![Melody {
+                contents: vec![
+                    MelodyMember {
+                        values: vec![60, 67],
+                        timing: DurationalEventTiming {
+                            tick: None,
+                            offset: 72,
+                            duration: 96,
+                        },
+                        volume: 64,
+                        before: MetadataList::default(),
+                    },
+                    MelodyMember {
+                        values: vec![61],
+                        timing: DurationalEventTiming {
+                            tick: None,
+                            offset: 0,
+                            duration: 96,
+                        },
+                        volume: 64,
+                        before: MetadataList::default(),
+                    },
+                    MelodyMember {
+                        values: vec![62],
+                        timing: DurationalEventTiming {
+                            tick: Some(60),
+                            offset: 16,
+                            duration: 192,
+                        },
+                        volume: 64,
+                        before: MetadataList::default(),
+                    },
+                    MelodyMember {
+                        values: vec![63],
+                        timing: DurationalEventTiming {
+                            tick: None,
+                            offset: 0,
+                            duration: 96,
+                        },
+                        volume: 64,
+                        before: MetadataList::default(),
+                    },
+                ],
+                metadata: MetadataList::default(),
+            }],
+            metadata: MetadataList::default()
+        }
+        .try_to_write_midi_bytes("foo.midi")
+        .is_ok());
     }
 }
