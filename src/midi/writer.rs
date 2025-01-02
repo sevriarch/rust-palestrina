@@ -1,8 +1,10 @@
+use crate::collections::traits::Collection;
 use crate::entities::{key_signature, time_signature, timing::Timing};
 use crate::metadata::{
     data::{Metadata, MetadataData},
     list::MetadataList,
 };
+use crate::score::Score;
 use crate::sequences::melody::{Melody, MelodyMember};
 
 use super::constants::*;
@@ -166,7 +168,6 @@ macro_rules! impl_int_melody_member_to_vec_timed_midi_bytes {
         }
     )*)
 }
-
 impl_int_melody_member_to_vec_timed_midi_bytes!(for u8 u16 u32 u64 usize i16 i32 i64);
 
 macro_rules! impl_float_melody_member_to_vec_timed_midi_bytes {
@@ -206,7 +207,6 @@ macro_rules! impl_float_melody_member_to_vec_timed_midi_bytes {
         }
     )*)
 }
-
 impl_float_melody_member_to_vec_timed_midi_bytes!(for f32 f64);
 
 macro_rules! impl_melody_to_vec_timed_midi_bytes {
@@ -228,24 +228,11 @@ macro_rules! impl_melody_to_vec_timed_midi_bytes {
         }
     )*)
 }
+impl_melody_to_vec_timed_midi_bytes!(for u16 u32 u64 usize i16 i32 i64 f32 f64);
 
-/*
 macro_rules! impl_melody_to_midi_bytes {
     (for $($t:ty)*) => ($(
-        impl ToMidiBytes for Melody<$t> {
-            fn try_to_midi_bytes(&self, curr: u32) -> Result<Vec<u8>, String> {
-                let list = self.try_to_vec_timed_midi_bytes(curr).sort(|a,b| a.0 > b.0);
-
-                for m in list {
-
-                }
-            }
-        }
-    )*)
-}
-*/
-
-impl ToMidiBytes for Melody<i32> {
+impl ToMidiBytes for Melody<$t> {
     fn try_to_midi_bytes(&self) -> Result<Vec<u8>, String> {
         let mut ret: Vec<u8> = vec![];
         let mut curr = 0;
@@ -269,8 +256,33 @@ impl ToMidiBytes for Melody<i32> {
         Ok(chunk)
     }
 }
+)*)
+}
+impl_melody_to_midi_bytes!(for u16 u32 u64 usize i16 i32 i64 f32 f64);
 
-impl_melody_to_vec_timed_midi_bytes!(for u8 u16 u32 u64 usize i16 i32 i64 f32 f64);
+macro_rules! impl_score_to_midi_bytes {
+    (for $($t:ty)*) => ($(
+        impl ToMidiBytes for Score<$t> {
+            fn try_to_midi_bytes(&self) -> Result<Vec<u8>, String> {
+                let mut ret: Vec<u8> = HEADER_CHUNK.to_vec();
+                ret.append(&mut HEADER_LENGTH.to_vec());
+                ret.append(&mut HEADER_FORMAT.to_vec());
+                ret.append(&mut try_number_to_fixed_bytes(self.length() as u32, 2)?);
+
+                // Need to fix this up
+                ret.append(&mut try_number_to_fixed_bytes(/*self.ticks_per_quarter()*/192, 2)?);
+
+                // Need to apply score metadata to first track (but only first track)
+                for m in self.cts_ref() {
+                    ret.append(&mut m.try_to_midi_bytes()?);
+                }
+
+                Ok(ret)
+            }
+        }
+    )*)
+}
+impl_score_to_midi_bytes!(for u16 u32 u64 usize i16 i32 i64 f32 f64);
 
 #[cfg(test)]
 mod tests {
@@ -726,14 +738,14 @@ mod tests {
         );
 
         assert_eq!(
-            Melody {
+            Melody::<i32> {
                 contents: vec![],
                 metadata: MetadataList::default()
             }
             .try_to_midi_bytes(),
             Ok(vec![
-                0x4d, 0x54, 0x72, 0x6b, // header
-                0x00, 0x00, 0x00, 0x04, // length
+                0x4d, 0x54, 0x72, 0x6b, // track header chunk
+                0x00, 0x00, 0x00, 0x04, // length chunk
                 0x00, 0xff, 0x2f, 0x00 // end track
             ])
         );
@@ -788,6 +800,99 @@ mod tests {
             Ok(vec![
                 0x4d, 0x54, 0x72, 0x6b, // track header chunk
                 0x00, 0x00, 0x00, 0x2c, // length chunk
+                0x20, 0x90, 0x3d, 0x40, // first note on
+                0x20, 0x80, 0x3d, 0x40, // first note off
+                0x08, 0x90, 0x3c, 0x40, // second note on
+                0x00, 0x90, 0x43, 0x40, // third note on
+                0x04, 0x90, 0x3e, 0x40, // fourth note on
+                0x1c, 0x80, 0x3c, 0x40, // second note off
+                0x00, 0x80, 0x43, 0x40, // third note off
+                0x14, 0x90, 0x3f, 0x40, // last note on
+                0x10, 0x80, 0x3e, 0x40, // fourth note off
+                0x10, 0x80, 0x3f, 0x40, // last note off
+                0x00, 0xff, 0x2f, 0x00, // end track
+            ])
+        );
+
+        assert_eq!(
+            Score {
+                contents: vec![Melody::<i32> {
+                    contents: vec![],
+                    metadata: MetadataList::default()
+                }],
+                metadata: MetadataList::default(),
+            }
+            .try_to_midi_bytes(),
+            Ok(vec![
+                0x4d, 0x54, 0x68, 0x64, // file header chunk
+                0x00, 0x00, 0x00, 0x06, // header length
+                0x00, 0x01, // midi version
+                0x00, 0x01, // number of tracks
+                0x00, 0xc0, // ticks per quarter note
+                0x4d, 0x54, 0x72, 0x6b, // track header chunk
+                0x00, 0x00, 0x00, 0x04, // track length
+                0x00, 0xff, 0x2f, 0x00 // end track
+            ])
+        );
+
+        assert_eq!(
+            Score {
+                contents: vec![Melody {
+                    contents: vec![
+                        MelodyMember {
+                            values: vec![60, 67],
+                            timing: DurationalEventTiming {
+                                tick: None,
+                                offset: 72,
+                                duration: 32,
+                            },
+                            volume: 64,
+                            before: MetadataList::default(),
+                        },
+                        MelodyMember {
+                            values: vec![61],
+                            timing: DurationalEventTiming {
+                                tick: None,
+                                offset: 0,
+                                duration: 32,
+                            },
+                            volume: 64,
+                            before: MetadataList::default(),
+                        },
+                        MelodyMember {
+                            values: vec![62],
+                            timing: DurationalEventTiming {
+                                tick: Some(60),
+                                offset: 16,
+                                duration: 64,
+                            },
+                            volume: 64,
+                            before: MetadataList::default(),
+                        },
+                        MelodyMember {
+                            values: vec![63],
+                            timing: DurationalEventTiming {
+                                tick: None,
+                                offset: 0,
+                                duration: 32,
+                            },
+                            volume: 64,
+                            before: MetadataList::default(),
+                        },
+                    ],
+                    metadata: MetadataList::default(),
+                }],
+                metadata: MetadataList::default()
+            }
+            .try_to_midi_bytes(),
+            Ok(vec![
+                0x4d, 0x54, 0x68, 0x64, // file header chunk
+                0x00, 0x00, 0x00, 0x06, // header length
+                0x00, 0x01, // midi version
+                0x00, 0x01, // number of tracks
+                0x00, 0xc0, // ticks per quarter note
+                0x4d, 0x54, 0x72, 0x6b, // track header chunk
+                0x00, 0x00, 0x00, 0x2c, // track length
                 0x20, 0x90, 0x3d, 0x40, // first note on
                 0x20, 0x80, 0x3d, 0x40, // first note off
                 0x08, 0x90, 0x3c, 0x40, // second note on

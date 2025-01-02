@@ -13,8 +13,8 @@ pub struct Score<T>
 where
     T: Clone + Copy + Debug,
 {
-    contents: Vec<Melody<T>>,
-    metadata: MetadataList,
+    pub contents: Vec<Melody<T>>,
+    pub metadata: MetadataList,
 }
 
 impl<T> From<Vec<Melody<T>>> for Score<T>
@@ -102,6 +102,10 @@ where
                 max
             }
         })
+    }
+
+    pub fn ticks_per_quarter(&self) -> u32 {
+        192
     }
 
     pub fn with_all_ticks_exact(&self) -> &Self {
