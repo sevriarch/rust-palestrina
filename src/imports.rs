@@ -1,3 +1,5 @@
+use std::f64::consts::PI;
+
 fn is_prime(n: i64) -> bool {
     let max = (n as f64).sqrt() as i64 + 1;
 
@@ -262,6 +264,24 @@ pub fn constant<T: Clone>(n: usize, v: T) -> Vec<T> {
     vec![v; n]
 }
 
+pub fn sinusoidal<T: Into<f64>>(n: usize, width: T, first_angle: T, last_angle: T) -> Vec<i32> {
+    let width: f64 = width.into();
+    let last_angle: f64 = last_angle.into();
+    let first_angle: f64 = first_angle.into();
+    let gradiant = (last_angle - first_angle) / (n - 1) as f64;
+    let pi180 = PI / 180.0;
+
+    (0..n)
+        .map(|v| {
+            let angle: f64 = pi180 * (first_angle + (v as f64 * gradiant));
+
+            println!("angle: {} (sin={}), width: {}", angle, angle.sin(), width);
+
+            (width * angle.sin()).round() as i32
+        })
+        .collect()
+}
+
 #[cfg(test)]
 #[allow(unused_imports)]
 mod tests {
@@ -495,5 +515,26 @@ mod tests {
         assert_eq!(constant(0, 1.5), vec![]);
         assert_eq!(constant(1, 6), vec![6]);
         assert_eq!(constant(3, 1.5), vec![1.5, 1.5, 1.5]);
+    }
+
+    #[test]
+    fn test_sinusoidal() {
+        assert_eq!(sinusoidal(2, 10, 0, 0), vec![0, 0]);
+        assert_eq!(sinusoidal(2, 10, 0, 180), vec![0, 0]);
+        assert_eq!(sinusoidal(3, 10, 0, 180), vec![0, 10, 0]);
+        assert_eq!(sinusoidal(5, 10, 0, 360), vec![0, 10, 0, -10, 0]);
+        assert_eq!(sinusoidal(5, 10, 90, 450), vec![10, 0, -10, 0, 10]);
+        assert_eq!(
+            sinusoidal(9, 40, 0, 360),
+            vec![0, 28, 40, 28, 0, -28, -40, -28, 0]
+        );
+        assert_eq!(
+            sinusoidal(9, 80, 45, 225),
+            vec![57, 74, 80, 74, 57, 31, 0, -31, -57]
+        );
+        assert_eq!(
+            sinusoidal(9, 80.0, 225.0, 45.0),
+            vec![-57, -31, 0, 31, 57, 74, 80, 74, 57]
+        );
     }
 }
