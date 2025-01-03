@@ -275,10 +275,18 @@ pub fn sinusoidal<T: Into<f64>>(n: usize, width: T, first_angle: T, last_angle: 
         .map(|v| {
             let angle: f64 = pi180 * (first_angle + (v as f64 * gradiant));
 
-            println!("angle: {} (sin={}), width: {}", angle, angle.sin(), width);
-
             (width * angle.sin()).round() as i32
         })
+        .collect()
+}
+
+pub fn linear<T: Into<f64>>(n: usize, first_value: T, last_value: T) -> Vec<i32> {
+    let first_value: f64 = first_value.into();
+    let last_value: f64 = last_value.into();
+    let gradiant = (last_value - first_value) / (n - 1) as f64;
+
+    (0..n)
+        .map(|v| (first_value + gradiant * v as f64).floor() as i32)
         .collect()
 }
 
@@ -535,6 +543,19 @@ mod tests {
         assert_eq!(
             sinusoidal(9, 80.0, 225.0, 45.0),
             vec![-57, -31, 0, 31, 57, 74, 80, 74, 57]
+        );
+    }
+
+    #[test]
+    fn test_linear() {
+        assert_eq!(linear(2, 1, 1), vec![1, 1]);
+        assert_eq!(linear(2, 1, 2), vec![1, 2]);
+        assert_eq!(linear(3, 1, 0), vec![1, 0, 0]);
+        assert_eq!(linear(3, 0, 1), vec![0, 0, 1]);
+        assert_eq!(linear(3, -1, 0), vec![-1, -1, 0]);
+        assert_eq!(
+            linear(11, 10, 25),
+            vec![10, 11, 13, 14, 16, 17, 19, 20, 22, 23, 25]
         );
     }
 }
