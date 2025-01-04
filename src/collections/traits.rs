@@ -300,6 +300,21 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
+    fn set_slice(&mut self, start: i32, end: i32, val: T) -> Result<&Self, String> {
+        let first = self.index(start)?;
+        let last = self.index_inclusive(end)?;
+
+        if last < first {
+            return Err("last index was before first one".to_string());
+        }
+
+        Ok(self.mutate_contents(|c| {
+            for m in c.iter_mut().take(last).skip(first) {
+                *m = val.clone();
+            }
+        }))
+    }
+
     fn empty(&mut self) -> Result<&Self, String> {
         Ok(self.mutate_contents(|c| c.truncate(0)))
     }
@@ -752,6 +767,14 @@ mod tests {
             coll.clone().mutate_slice(2, -1, |v| *v += 10),
             vec![0, 2, 13, 14, 15, 6]
         );
+    }
+
+    #[test]
+    fn set_slice() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+
+        assert!(coll.clone().set_slice(-1, 2, 10).is_err());
+        assert_contents_eq!(coll.clone().set_slice(2, -1, 10), vec![0, 2, 10, 10, 10, 6]);
     }
 
     #[test]
