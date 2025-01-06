@@ -21,6 +21,11 @@ macro_rules! default_collection_methods {
             self
         }
 
+        fn mutate_each_indexed<F: Fn((usize, &mut $type))>(&mut self, f: F) -> &Self {
+            self.contents.iter_mut().enumerate().for_each(f);
+            self
+        }
+
         // Call closure to mutate self.contents, return ref to self
         fn mutate_contents<F: FnOnce(&mut Vec<$type>)>(&mut self, f: F) -> &Self {
             f(&mut self.contents);
@@ -84,6 +89,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
     fn new(contents: Vec<T>) -> Self;
 
     fn mutate_each<F: Fn(&mut T)>(&mut self, f: F) -> &Self;
+    fn mutate_each_indexed<F: Fn((usize, &mut T))>(&mut self, f: F) -> &Self;
     fn mutate_contents<F: FnOnce(&mut Vec<T>)>(&mut self, f: F) -> &Self;
     fn mutate_contents_with_result<F: FnOnce(&mut Vec<T>) -> Result<(), String>>(
         &mut self,
@@ -295,6 +301,26 @@ pub trait Collection<T: Clone + Debug>: Sized {
 
         Ok(self.mutate_contents(|c| {
             for m in c.iter_mut().take(last).skip(first) {
+                f(m);
+            }
+        }))
+    }
+
+    fn mutate_slice_indexed(
+        &mut self,
+        start: i32,
+        end: i32,
+        f: impl Fn((usize, &mut T)),
+    ) -> Result<&Self, String> {
+        let first = self.index(start)?;
+        let last = self.index_inclusive(end)?;
+
+        if last < first {
+            return Err("last index was before first one".to_string());
+        }
+
+        Ok(self.mutate_contents(|c| {
+            for m in c.iter_mut().enumerate().take(last).skip(first) {
                 f(m);
             }
         }))
@@ -766,6 +792,21 @@ mod tests {
         assert_contents_eq!(
             coll.clone().mutate_slice(2, -1, |v| *v += 10),
             vec![0, 2, 13, 14, 15, 6]
+        );
+    }
+
+    #[test]
+    fn mutate_slice_indexed() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+
+        assert!(coll
+            .clone()
+            .mutate_slice_indexed(-1, 2, |(i, v)| *v += i as i32)
+            .is_err());
+        assert_contents_eq!(
+            coll.clone()
+                .mutate_slice_indexed(2, -1, |(i, v)| *v += i as i32),
+            vec![0, 2, 5, 7, 9, 6]
         );
     }
 
