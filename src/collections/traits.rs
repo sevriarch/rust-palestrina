@@ -60,7 +60,7 @@ macro_rules! default_collection_methods {
         }
 
         // Call closure to calculate new contents, replace existing contents, return ref to self
-        fn replace_contents<F: FnOnce(&mut Vec<$type>) -> Vec<$type>>(&mut self, f: F) -> &Self {
+        fn replace_contents<F: FnOnce(&mut Vec<$type>) -> Vec<$type>>(mut self, f: F) -> Self {
             self.contents = f(&mut self.contents);
             self
         }
@@ -108,7 +108,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         self,
         f: F,
     ) -> Result<Self, String>;
-    fn replace_contents<F: FnOnce(&mut Vec<T>) -> Vec<T>>(&mut self, f: F) -> &Self;
+    fn replace_contents<F: FnOnce(&mut Vec<T>) -> Vec<T>>(self, f: F) -> Self;
     fn with_contents(&mut self, contents: Vec<T>) -> &Self; // TODO: Probably should be in Sequence?
     fn cts_ref(&self) -> &Vec<T>;
 
@@ -232,13 +232,13 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn keep_indices(&mut self, indices: &[i32]) -> Result<&Self, String> {
+    fn keep_indices(self, indices: &[i32]) -> Result<Self, String> {
         let ix = self.indices(indices)?;
 
         Ok(self.replace_contents(|c| ix.iter().map(|i| c[*i].clone()).collect()))
     }
 
-    fn keep_nth(&mut self, n: usize) -> Result<&Self, String> {
+    fn keep_nth(self, n: usize) -> Result<Self, String> {
         if n == 0 {
             Err("cannot keep every 0th member".to_string())
         } else {
@@ -364,7 +364,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         })
     }
 
-    fn filter_indexed(&mut self, f: fn(&(usize, &mut T)) -> bool) -> &Self {
+    fn filter_indexed(self, f: fn(&(usize, &mut T)) -> bool) -> Self {
         self.replace_contents(|c| {
             c.iter_mut()
                 .enumerate()
@@ -508,7 +508,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         self.mutate_contents(|c| c.append(&mut items.to_vec()))
     }
 
-    fn prepend(&mut self, coll: &Self) -> &Self {
+    fn prepend(self, coll: &Self) -> Self {
         self.replace_contents(|c| {
             let mut cts = coll.clone_contents();
 
@@ -517,7 +517,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         })
     }
 
-    fn prepend_items(&mut self, items: &[T]) -> &Self {
+    fn prepend_items(self, items: &[T]) -> Self {
         self.replace_contents(|c| {
             let mut cts = items.to_vec();
 
@@ -852,12 +852,12 @@ mod tests {
     fn filter_indexed() {
         assert_eq!(
             TestColl::new(vec![0, 2, 3, 4, 5, 6]).filter_indexed(|(_, v)| **v % 2 == 0),
-            &TestColl::new(vec![0, 2, 4, 6])
+            TestColl::new(vec![0, 2, 4, 6])
         );
 
         assert_eq!(
             TestColl::new(vec![0, 2, 3, 4, 5, 6]).filter_indexed(|(i, _)| (i % 2) == 0),
-            &TestColl::new(vec![0, 3, 5])
+            TestColl::new(vec![0, 3, 5])
         );
     }
 
@@ -1015,7 +1015,7 @@ mod tests {
     fn prepend() {
         assert_eq!(
             TestColl::new(vec![0, 2, 3, 4, 5, 6]).prepend(&TestColl::new(vec![9, 11, 13])),
-            &TestColl::new(vec![9, 11, 13, 0, 2, 3, 4, 5, 6])
+            TestColl::new(vec![9, 11, 13, 0, 2, 3, 4, 5, 6])
         );
     }
 
@@ -1023,7 +1023,7 @@ mod tests {
     fn prepend_items() {
         assert_eq!(
             TestColl::new(vec![0, 2, 3, 4, 5, 6]).prepend_items(&[9, 11, 13]),
-            &TestColl::new(vec![9, 11, 13, 0, 2, 3, 4, 5, 6])
+            TestColl::new(vec![9, 11, 13, 0, 2, 3, 4, 5, 6])
         );
     }
 
