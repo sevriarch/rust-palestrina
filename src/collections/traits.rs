@@ -345,10 +345,19 @@ pub trait Collection<T: Clone + Debug>: Sized {
         Ok(self.mutate_contents(|c| c.truncate(0)))
     }
 
-    // TODO: rewrite
     fn filter(&mut self, f: fn(&T) -> bool) -> &Self {
         self.mutate_contents(|c| {
             c.retain(f);
+        })
+    }
+
+    fn filter_indexed(&mut self, f: fn(&(usize, &mut T)) -> bool) -> &Self {
+        self.replace_contents(|c| {
+            c.iter_mut()
+                .enumerate()
+                .filter(f)
+                .map(|(_, v)| v.clone())
+                .collect()
         })
     }
 
@@ -831,6 +840,19 @@ mod tests {
         assert_eq!(
             TestColl::new(vec![0, 2, 3, 4, 5, 6]).filter(|v| v % 2 == 0),
             &TestColl::new(vec![0, 2, 4, 6])
+        );
+    }
+
+    #[test]
+    fn filter_indexed() {
+        assert_eq!(
+            TestColl::new(vec![0, 2, 3, 4, 5, 6]).filter_indexed(|(_, v)| **v % 2 == 0),
+            &TestColl::new(vec![0, 2, 4, 6])
+        );
+
+        assert_eq!(
+            TestColl::new(vec![0, 2, 3, 4, 5, 6]).filter_indexed(|(i, _)| (i % 2) == 0),
+            &TestColl::new(vec![0, 3, 5])
         );
     }
 
