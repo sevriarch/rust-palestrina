@@ -32,13 +32,19 @@ macro_rules! default_collection_methods {
         }
 
         // Call closure to mutate self.contents, return ref to self
-        fn mutate_contents<F: FnOnce(&mut Vec<$type>)>(&mut self, f: F) -> &Self {
+        fn mutate_contents<F: FnOnce(&mut Vec<$type>)>(mut self, f: F) -> Self {
+            f(&mut self.contents);
+            self
+        }
+
+        // Call closure to mutate self.contents, return ref to self
+        fn mutate_contents_ref<F: FnOnce(&mut Vec<$type>)>(&mut self, f: F) -> &Self {
             f(&mut self.contents);
             self
         }
 
         // Call closure to mutate self.contents, return result containing ref to self
-        fn mutate_contents_with_result<F: FnOnce(&mut Vec<$type>) -> Result<(), String>>(
+        fn mutate_contents_ref_with_result<F: FnOnce(&mut Vec<$type>) -> Result<(), String>>(
             &mut self,
             f: F,
         ) -> Result<&Self, String> {
@@ -96,8 +102,9 @@ pub trait Collection<T: Clone + Debug>: Sized {
     fn mutate_each<F: Fn(&mut T)>(self, f: F) -> Self;
     fn mutate_each_ref<F: Fn(&mut T)>(&mut self, f: F) -> &Self;
     fn mutate_each_ref_indexed<F: Fn((usize, &mut T))>(&mut self, f: F) -> &Self;
-    fn mutate_contents<F: FnOnce(&mut Vec<T>)>(&mut self, f: F) -> &Self;
-    fn mutate_contents_with_result<F: FnOnce(&mut Vec<T>) -> Result<(), String>>(
+    fn mutate_contents<F: FnOnce(&mut Vec<T>)>(self, f: F) -> Self;
+    fn mutate_contents_ref<F: FnOnce(&mut Vec<T>)>(&mut self, f: F) -> &Self;
+    fn mutate_contents_ref_with_result<F: FnOnce(&mut Vec<T>) -> Result<(), String>>(
         &mut self,
         f: F,
     ) -> Result<&Self, String>;
@@ -193,7 +200,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         (0..self.length()).filter(|i| f(&contents[*i])).collect()
     }
 
-    fn keep_slice(&mut self, start: i32, end: i32) -> Result<&Self, String> {
+    fn keep_slice(self, start: i32, end: i32) -> Result<Self, String> {
         let first = self.index(start)?;
         let last = self.index_inclusive(end)?;
 
@@ -207,7 +214,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn keep(&mut self, num: usize) -> Result<&Self, String> {
+    fn keep(self, num: usize) -> Result<Self, String> {
         let len = self.length();
         let last = if num > len { len } else { num };
 
@@ -216,7 +223,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn keep_right(&mut self, num: usize) -> Result<&Self, String> {
+    fn keep_right(self, num: usize) -> Result<Self, String> {
         let len = self.length();
         let first = len.saturating_sub(num);
 
@@ -240,7 +247,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }
     }
 
-    fn drop_slice(&mut self, start: i32, end: i32) -> Result<&Self, String> {
+    fn drop_slice(self, start: i32, end: i32) -> Result<Self, String> {
         let first = self.index(start)?;
         let last = self.index_inclusive(end)?;
 
@@ -253,7 +260,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn drop(&mut self, num: usize) -> Result<&Self, String> {
+    fn drop(self, num: usize) -> Result<Self, String> {
         let len = self.length();
         let first = if num > len { len } else { num };
 
@@ -262,7 +269,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn drop_right(&mut self, num: usize) -> Result<&Self, String> {
+    fn drop_right(self, num: usize) -> Result<Self, String> {
         let len = self.length();
         let last = len.saturating_sub(num);
 
@@ -271,7 +278,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn drop_indices(&mut self, indices: &[i32]) -> Result<&Self, String> {
+    fn drop_indices(self, indices: &[i32]) -> Result<Self, String> {
         let mut ix = self.indices_sorted(indices)?;
 
         ix.dedup();
@@ -283,7 +290,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn drop_nth(&mut self, n: usize) -> Result<&Self, String> {
+    fn drop_nth(self, n: usize) -> Result<Self, String> {
         if n == 0 {
             return Err("cannot keep every 0th member".to_string());
         }
@@ -297,7 +304,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn mutate_slice(&mut self, start: i32, end: i32, f: impl Fn(&mut T)) -> Result<&Self, String> {
+    fn mutate_slice(self, start: i32, end: i32, f: impl Fn(&mut T)) -> Result<Self, String> {
         let first = self.index(start)?;
         let last = self.index_inclusive(end)?;
 
@@ -313,11 +320,11 @@ pub trait Collection<T: Clone + Debug>: Sized {
     }
 
     fn mutate_slice_indexed(
-        &mut self,
+        self,
         start: i32,
         end: i32,
         f: impl Fn((usize, &mut T)),
-    ) -> Result<&Self, String> {
+    ) -> Result<Self, String> {
         let first = self.index(start)?;
         let last = self.index_inclusive(end)?;
 
@@ -332,7 +339,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn set_slice(&mut self, start: i32, end: i32, val: T) -> Result<&Self, String> {
+    fn set_slice(self, start: i32, end: i32, val: T) -> Result<Self, String> {
         let first = self.index(start)?;
         let last = self.index_inclusive(end)?;
 
@@ -347,11 +354,11 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn empty(&mut self) -> Result<&Self, String> {
+    fn empty(self) -> Result<Self, String> {
         Ok(self.mutate_contents(|c| c.truncate(0)))
     }
 
-    fn filter(&mut self, f: fn(&T) -> bool) -> &Self {
+    fn filter(self, f: fn(&T) -> bool) -> Self {
         self.mutate_contents(|c| {
             c.retain(f);
         })
@@ -367,7 +374,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         })
     }
 
-    fn insert_before(&mut self, indices: &[i32], values: &[T]) -> Result<&Self, String> {
+    fn insert_before(self, indices: &[i32], values: &[T]) -> Result<Self, String> {
         let ix = self.indices_sorted(indices)?;
 
         Ok(self.mutate_contents(|c| {
@@ -377,7 +384,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn insert_after(&mut self, indices: &[i32], values: &[T]) -> Result<&Self, String> {
+    fn insert_after(self, indices: &[i32], values: &[T]) -> Result<Self, String> {
         let ix = self.indices_sorted(indices)?;
 
         Ok(self.mutate_contents(|c| {
@@ -387,7 +394,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn replace_indices(&mut self, indices: &[i32], values: &[T]) -> Result<&Self, String> {
+    fn replace_indices(self, indices: &[i32], values: &[T]) -> Result<Self, String> {
         let mut ix = self.indices_sorted(indices)?;
 
         ix.dedup();
@@ -399,7 +406,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn mutate_indices(&mut self, indices: &[i32], f: impl Fn(&mut T)) -> Result<&Self, String> {
+    fn mutate_indices(self, indices: &[i32], f: impl Fn(&mut T)) -> Result<Self, String> {
         let ix = self.indices(indices)?;
 
         Ok(self.mutate_contents(|c| {
@@ -409,7 +416,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn replace_first(&mut self, finder: fn(&T) -> bool, val: T) -> Result<&Self, String> {
+    fn replace_first(self, finder: fn(&T) -> bool, val: T) -> Result<Self, String> {
         if let Some(i) = self.find_first_index(finder) {
             Ok(self.mutate_contents(|c| {
                 c[i] = val;
@@ -419,7 +426,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }
     }
 
-    fn replace_last(&mut self, finder: fn(&T) -> bool, val: T) -> Result<&Self, String> {
+    fn replace_last(self, finder: fn(&T) -> bool, val: T) -> Result<Self, String> {
         if let Some(i) = self.find_last_index(finder) {
             Ok(self.mutate_contents(|c| {
                 c[i] = val;
@@ -429,7 +436,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }
     }
 
-    fn map_indices(&mut self, indices: &[i32], f: fn(&T) -> T) -> Result<&Self, String> {
+    fn map_indices(self, indices: &[i32], f: fn(&T) -> T) -> Result<Self, String> {
         let mut ix = self.indices(indices)?;
 
         ix.dedup();
@@ -441,7 +448,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn map_first(&mut self, finder: fn(&T) -> bool, f: fn(&T) -> T) -> Result<&Self, String> {
+    fn map_first(self, finder: fn(&T) -> bool, f: fn(&T) -> T) -> Result<Self, String> {
         if let Some(i) = self.find_first_index(finder) {
             Ok(self.mutate_contents(|c| {
                 c[i] = f(&c[i]);
@@ -451,7 +458,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }
     }
 
-    fn map_last(&mut self, finder: fn(&T) -> bool, f: fn(&T) -> T) -> Result<&Self, String> {
+    fn map_last(self, finder: fn(&T) -> bool, f: fn(&T) -> T) -> Result<Self, String> {
         if let Some(i) = self.find_last_index(finder) {
             Ok(self.mutate_contents(|c| {
                 c[i] = f(&c[i]);
@@ -461,7 +468,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }
     }
 
-    fn flat_map_indices(&mut self, indices: &[i32], f: fn(&T) -> Vec<T>) -> Result<&Self, String> {
+    fn flat_map_indices(self, indices: &[i32], f: fn(&T) -> Vec<T>) -> Result<Self, String> {
         let mut ix = self.indices_sorted(indices)?;
 
         ix.dedup();
@@ -473,11 +480,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn flat_map_first(
-        &mut self,
-        finder: fn(&T) -> bool,
-        f: fn(&T) -> Vec<T>,
-    ) -> Result<&Self, String> {
+    fn flat_map_first(self, finder: fn(&T) -> bool, f: fn(&T) -> Vec<T>) -> Result<Self, String> {
         if let Some(i) = self.find_first_index(finder) {
             Ok(self.mutate_contents(|c| {
                 c.splice(i..i + 1, f(&c[i]));
@@ -487,11 +490,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }
     }
 
-    fn flat_map_last(
-        &mut self,
-        finder: fn(&T) -> bool,
-        f: fn(&T) -> Vec<T>,
-    ) -> Result<&Self, String> {
+    fn flat_map_last(self, finder: fn(&T) -> bool, f: fn(&T) -> Vec<T>) -> Result<Self, String> {
         if let Some(i) = self.find_last_index(finder) {
             Ok(self.mutate_contents(|c| {
                 c.splice(i..i + 1, f(&c[i]));
@@ -501,11 +500,11 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }
     }
 
-    fn append(&mut self, coll: &Self) -> &Self {
+    fn append(self, coll: &Self) -> Self {
         self.mutate_contents(|c| c.append(&mut coll.clone_contents()))
     }
 
-    fn append_items(&mut self, items: &[T]) -> &Self {
+    fn append_items(self, items: &[T]) -> Self {
         self.mutate_contents(|c| c.append(&mut items.to_vec()))
     }
 
@@ -527,13 +526,13 @@ pub trait Collection<T: Clone + Debug>: Sized {
         })
     }
 
-    fn retrograde(&mut self) -> Result<&Self, String> {
+    fn retrograde(self) -> Result<Self, String> {
         Ok(self.mutate_contents(|c| {
             c.reverse();
         }))
     }
 
-    fn swap(&mut self, (i1, i2): (i32, i32)) -> Result<&Self, String> {
+    fn swap(self, (i1, i2): (i32, i32)) -> Result<Self, String> {
         let ix1 = self.index(i1)?;
         let ix2 = self.index(i2)?;
 
@@ -545,7 +544,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
     fn swap_many(&mut self, tup: &[(i32, i32)]) -> Result<&Self, String> {
         let len = self.length() as i32;
 
-        self.mutate_contents_with_result(|c| {
+        self.mutate_contents_ref_with_result(|c| {
             for (i1, i2) in tup.iter() {
                 let ix1 = collection_index(*i1, len)?;
                 let ix2 = collection_index(*i2, len)?;
@@ -837,7 +836,7 @@ mod tests {
     fn empty() {
         assert_eq!(
             TestColl::new(vec![2, 3, 4]).empty().unwrap(),
-            &TestColl::new(vec![])
+            TestColl::new(vec![])
         );
     }
 
@@ -845,7 +844,7 @@ mod tests {
     fn filter() {
         assert_eq!(
             TestColl::new(vec![0, 2, 3, 4, 5, 6]).filter(|v| v % 2 == 0),
-            &TestColl::new(vec![0, 2, 4, 6])
+            TestColl::new(vec![0, 2, 4, 6])
         );
     }
 
@@ -896,23 +895,23 @@ mod tests {
 
     #[test]
     fn replace_first() {
-        let mut coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
-        let new = coll.replace_first(|v| *v > 10, 10);
+        let new = coll.clone().replace_first(|v| *v > 10, 10);
         assert_contents_eq!(new, vec![0, 2, 3, 4, 5, 6]);
 
-        let new = coll.replace_first(|v| *v % 2 == 1, 10);
+        let new = coll.clone().replace_first(|v| *v % 2 == 1, 10);
         assert_contents_eq!(new, vec![0, 2, 10, 4, 5, 6]);
     }
 
     #[test]
     fn replace_last() {
-        let mut coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
-        let new = coll.replace_last(|v| *v > 10, 10);
+        let new = coll.clone().replace_last(|v| *v > 10, 10);
         assert_contents_eq!(new, vec![0, 2, 3, 4, 5, 6]);
 
-        let new = coll.replace_last(|v| *v % 2 == 1, 10);
+        let new = coll.clone().replace_last(|v| *v % 2 == 1, 10);
         assert_contents_eq!(new, vec![0, 2, 3, 4, 10, 6]);
     }
 
@@ -926,30 +925,30 @@ mod tests {
 
     #[test]
     fn map_first() {
-        let mut coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
         assert_contents_eq!(
-            coll.map_first(|v| *v > 10, |v| *v + 10),
+            coll.clone().map_first(|v| *v > 10, |v| *v + 10),
             vec![0, 2, 3, 4, 5, 6]
         );
 
         assert_contents_eq!(
-            coll.map_first(|v| *v % 2 == 1, |v| *v + 10),
+            coll.clone().map_first(|v| *v % 2 == 1, |v| *v + 10),
             vec![0, 2, 13, 4, 5, 6]
         );
     }
 
     #[test]
     fn map_last() {
-        let mut coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
         assert_contents_eq!(
-            coll.map_last(|v| *v > 10, |v| *v + 10),
+            coll.clone().map_last(|v| *v > 10, |v| *v + 10),
             vec![0, 2, 3, 4, 5, 6]
         );
 
         assert_contents_eq!(
-            coll.map_last(|v| *v % 2 == 1, |v| *v + 10),
+            coll.clone().map_last(|v| *v % 2 == 1, |v| *v + 10),
             vec![0, 2, 3, 4, 15, 6]
         );
     }
@@ -968,23 +967,31 @@ mod tests {
 
     #[test]
     fn flat_map_first() {
-        let mut coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
-        let new = coll.flat_map_first(|v| *v > 10, |v| vec![*v + 10, *v, *v - 10]);
+        let new = coll
+            .clone()
+            .flat_map_first(|v| *v > 10, |v| vec![*v + 10, *v, *v - 10]);
         assert_contents_eq!(new, vec![0, 2, 3, 4, 5, 6]);
 
-        let new = coll.flat_map_first(|v| *v % 2 == 1, |v| vec![*v + 10, *v, *v - 10]);
+        let new = coll
+            .clone()
+            .flat_map_first(|v| *v % 2 == 1, |v| vec![*v + 10, *v, *v - 10]);
         assert_contents_eq!(new, vec![0, 2, 13, 3, -7, 4, 5, 6]);
     }
 
     #[test]
     fn flat_map_last() {
-        let mut coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
-        let new = coll.flat_map_last(|v| *v > 10, |v| vec![*v + 10, *v, *v - 10]);
+        let new = coll
+            .clone()
+            .flat_map_last(|v| *v > 10, |v| vec![*v + 10, *v, *v - 10]);
         assert_contents_eq!(new, vec![0, 2, 3, 4, 5, 6]);
 
-        let new = coll.flat_map_last(|v| v % 2 == 1, |v| vec![*v + 10, *v, *v - 10]);
+        let new = coll
+            .clone()
+            .flat_map_last(|v| v % 2 == 1, |v| vec![*v + 10, *v, *v - 10]);
         assert_contents_eq!(new, vec![0, 2, 3, 4, 15, 5, -5, 6]);
     }
 
@@ -992,7 +999,7 @@ mod tests {
     fn append() {
         assert_eq!(
             TestColl::new(vec![0, 2, 3, 4, 5, 6]).append(&TestColl::new(vec![9, 11, 13])),
-            &TestColl::new(vec![0, 2, 3, 4, 5, 6, 9, 11, 13])
+            TestColl::new(vec![0, 2, 3, 4, 5, 6, 9, 11, 13])
         );
     }
 
@@ -1000,7 +1007,7 @@ mod tests {
     fn append_items() {
         assert_eq!(
             TestColl::new(vec![0, 2, 3, 4, 5, 6]).append_items(&[9, 11, 13]),
-            &TestColl::new(vec![0, 2, 3, 4, 5, 6, 9, 11, 13]),
+            TestColl::new(vec![0, 2, 3, 4, 5, 6, 9, 11, 13]),
         );
     }
 
