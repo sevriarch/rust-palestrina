@@ -25,19 +25,13 @@ macro_rules! default_collection_methods {
             self
         }
 
-        // Call closure to mutate self.contents, return ref to self
+        // Call closure to mutate self.contents, return self
         fn mutate_contents<F: FnOnce(&mut Vec<$type>)>(mut self, f: F) -> Self {
             f(&mut self.contents);
             self
         }
 
-        // Call closure to mutate self.contents, return ref to self
-        fn mutate_contents_ref<F: FnOnce(&mut Vec<$type>)>(&mut self, f: F) -> &Self {
-            f(&mut self.contents);
-            self
-        }
-
-        // Call closure to mutate self.contents, return result containing ref to self
+        // Call closure to mutate self.contents, return result containing self
         fn mutate_contents_with_result<F: FnOnce(&mut Vec<$type>) -> Result<(), String>>(
             mut self,
             f: F,
@@ -96,7 +90,6 @@ pub trait Collection<T: Clone + Debug>: Sized {
     fn mutate_each<F: Fn(&mut T)>(self, f: F) -> Self;
     fn mutate_each_indexed<F: Fn((usize, &mut T))>(self, f: F) -> Self;
     fn mutate_contents<F: FnOnce(&mut Vec<T>)>(self, f: F) -> Self;
-    fn mutate_contents_ref<F: FnOnce(&mut Vec<T>)>(&mut self, f: F) -> &Self;
     fn mutate_contents_with_result<F: FnOnce(&mut Vec<T>) -> Result<(), String>>(
         self,
         f: F,

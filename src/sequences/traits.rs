@@ -257,8 +257,8 @@ pub trait Sequence<
         Ok(self.with_contents(ret))
     }
 
-    fn pad(&mut self, val: T, num: usize) -> &Self {
-        self.mutate_contents_ref(|c| {
+    fn pad(self, val: T, num: usize) -> Self {
+        self.mutate_contents(|c| {
             c.splice(0..0, std::iter::repeat(val).take(num));
         })
     }

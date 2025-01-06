@@ -402,8 +402,8 @@ where
     // Join consecutive chords together if the passed function is true for
     // (chord a, chord a + 1); if chords are joined non-pitch information
     // about the second chord will be lost.
-    pub fn join_if(&mut self, f: fn(&MelodyMember<T>, &MelodyMember<T>) -> bool) -> &Self {
-        self.mutate_contents_ref(|c| {
+    pub fn join_if(self, f: fn(&MelodyMember<T>, &MelodyMember<T>) -> bool) -> Self {
+        self.mutate_contents(|c| {
             for i in (0..c.len() - 1).rev() {
                 if f(&c[i], &c[i + 1]) {
                     c[i].timing.duration += c[i + 1].timing.duration;
@@ -415,7 +415,7 @@ where
 
     // Join consecutive chords together if they are identical; if chords are
     // joined non-pitch information about the second chord will be lost.
-    pub fn join_repeats(&mut self) -> &Self {
+    pub fn join_repeats(self) -> Self {
         self.join_if(|a, b| a.values == b.values)
     }
 }
@@ -1202,7 +1202,7 @@ mod tests {
                 mmvdv!(12, 128, 70)
             ])
             .join_if(|a, b| a.values == b.values),
-            &Melody::new(vec![
+            Melody::new(vec![
                 mmvdv!(12, 96, 20),
                 mmvdv!(16, 32, 40),
                 mmvdv!(12, 224, 50)
@@ -1222,7 +1222,7 @@ mod tests {
                 mmvdv!(12, 128, 70)
             ])
             .join_repeats(),
-            &Melody::new(vec![
+            Melody::new(vec![
                 mmvdv!(12, 96, 20),
                 mmvdv!(16, 32, 40),
                 mmvdv!(12, 224, 50)
