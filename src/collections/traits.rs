@@ -26,7 +26,7 @@ macro_rules! default_collection_methods {
             self
         }
 
-        fn mutate_each_ref_indexed<F: Fn((usize, &mut $type))>(&mut self, f: F) -> &Self {
+        fn mutate_each_indexed<F: Fn((usize, &mut $type))>(mut self, f: F) -> Self {
             self.contents.iter_mut().enumerate().for_each(f);
             self
         }
@@ -101,7 +101,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
 
     fn mutate_each<F: Fn(&mut T)>(self, f: F) -> Self;
     fn mutate_each_ref<F: Fn(&mut T)>(&mut self, f: F) -> &Self;
-    fn mutate_each_ref_indexed<F: Fn((usize, &mut T))>(&mut self, f: F) -> &Self;
+    fn mutate_each_indexed<F: Fn((usize, &mut T))>(self, f: F) -> Self;
     fn mutate_contents<F: FnOnce(&mut Vec<T>)>(self, f: F) -> Self;
     fn mutate_contents_ref<F: FnOnce(&mut Vec<T>)>(&mut self, f: F) -> &Self;
     fn mutate_contents_ref_with_result<F: FnOnce(&mut Vec<T>) -> Result<(), String>>(
