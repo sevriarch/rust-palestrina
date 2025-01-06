@@ -44,10 +44,10 @@ macro_rules! default_collection_methods {
         }
 
         // Call closure to mutate self.contents, return result containing ref to self
-        fn mutate_contents_ref_with_result<F: FnOnce(&mut Vec<$type>) -> Result<(), String>>(
-            &mut self,
+        fn mutate_contents_with_result<F: FnOnce(&mut Vec<$type>) -> Result<(), String>>(
+            mut self,
             f: F,
-        ) -> Result<&Self, String> {
+        ) -> Result<Self, String> {
             match f(&mut self.contents) {
                 Err(str) => Err(str),
                 Ok(()) => Ok(self),
@@ -104,10 +104,10 @@ pub trait Collection<T: Clone + Debug>: Sized {
     fn mutate_each_indexed<F: Fn((usize, &mut T))>(self, f: F) -> Self;
     fn mutate_contents<F: FnOnce(&mut Vec<T>)>(self, f: F) -> Self;
     fn mutate_contents_ref<F: FnOnce(&mut Vec<T>)>(&mut self, f: F) -> &Self;
-    fn mutate_contents_ref_with_result<F: FnOnce(&mut Vec<T>) -> Result<(), String>>(
-        &mut self,
+    fn mutate_contents_with_result<F: FnOnce(&mut Vec<T>) -> Result<(), String>>(
+        self,
         f: F,
-    ) -> Result<&Self, String>;
+    ) -> Result<Self, String>;
     fn replace_contents<F: FnOnce(&mut Vec<T>) -> Vec<T>>(&mut self, f: F) -> &Self;
     fn with_contents(&mut self, contents: Vec<T>) -> &Self; // TODO: Probably should be in Sequence?
     fn cts_ref(&self) -> &Vec<T>;
@@ -541,10 +541,10 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn swap_many(&mut self, tup: &[(i32, i32)]) -> Result<&Self, String> {
+    fn swap_many(self, tup: &[(i32, i32)]) -> Result<Self, String> {
         let len = self.length() as i32;
 
-        self.mutate_contents_ref_with_result(|c| {
+        self.mutate_contents_with_result(|c| {
             for (i1, i2) in tup.iter() {
                 let ix1 = collection_index(*i1, len)?;
                 let ix2 = collection_index(*i2, len)?;
@@ -1046,7 +1046,7 @@ mod tests {
 
     #[test]
     fn swap_many() {
-        let mut coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
         assert!(coll.clone().swap_many(&[(0, 6)]).is_err());
         assert!(coll.clone().swap_many(&[(1, 2), (-7, 0)]).is_err());
