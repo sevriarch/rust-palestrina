@@ -208,7 +208,7 @@ pub trait Sequence<
         }))
     }
 
-    fn filter_in_position(&mut self, f: fn(&T) -> bool, default: T) -> Result<&Self, String> {
+    fn filter_in_position(self, f: fn(&T) -> bool, default: T) -> Result<Self, String> {
         Ok(self.mutate_each(|m| {
             if !f(m) {
                 *m = default.clone();

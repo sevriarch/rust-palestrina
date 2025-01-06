@@ -90,7 +90,7 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Seq
     }
 
     fn mutate_pitches_ref<F: Fn(&mut T)>(&mut self, f: F) -> &Self {
-        self.mutate_each(f)
+        self.mutate_each_ref(f)
     }
 
     fn to_flat_pitches(&self) -> Vec<T> {
@@ -515,7 +515,7 @@ mod tests {
             NumericSeq::new(vec![1, 2, 3, 4, 5])
                 .filter_in_position(|v| v % 2 == 0, 8)
                 .unwrap(),
-            &NumericSeq::new(vec![8, 2, 8, 4, 8])
+            NumericSeq::new(vec![8, 2, 8, 4, 8])
         );
     }
 

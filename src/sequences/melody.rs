@@ -204,7 +204,7 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
     }
 
     fn mutate_pitches_ref<F: Fn(&mut T)>(&mut self, f: F) -> &Self {
-        self.mutate_each(|m| {
+        self.mutate_each_ref(|m| {
             for p in m.values.iter_mut() {
                 f(p)
             }
@@ -331,7 +331,7 @@ where
             .map(|r| r.volume)
     }
 
-    pub fn with_volume(&mut self, vel: u8) -> &Self {
+    pub fn with_volume(self, vel: u8) -> Self {
         self.mutate_each(|m| m.volume = vel)
     }
 
@@ -355,7 +355,7 @@ where
         self.mutate_indices(ix, move |m| m.volume = vel)
     }
 
-    pub fn with_duration(&mut self, dur: u32) -> &Self {
+    pub fn with_duration(self, dur: u32) -> Self {
         self.mutate_each(|m| m.timing.duration = dur)
     }
 
@@ -385,7 +385,7 @@ where
         })
     }
 
-    pub fn augment_rhythm(&mut self, a: u32) -> Result<&Self, String> {
+    pub fn augment_rhythm(self, a: u32) -> Result<Self, String> {
         let fi32 = algorithms::augment(&a);
         let fu32 = algorithms::augment(&a);
 
@@ -396,7 +396,7 @@ where
         }))
     }
 
-    pub fn diminish_rhythm(&mut self, a: u32) -> Result<&Self, String> {
+    pub fn diminish_rhythm(self, a: u32) -> Result<Self, String> {
         let fi32 = algorithms::diminish(&a)?;
         let fu32 = algorithms::diminish(&a)?;
 
@@ -902,7 +902,7 @@ mod tests {
     fn with_volume() {
         assert_eq!(
             Melody::try_from(vec![12, 16]).unwrap().with_volume(25),
-            &Melody::new(vec![
+            Melody::new(vec![
                 MelodyMember {
                     values: vec![12],
                     timing: DurationalEventTiming::default(),
@@ -971,7 +971,7 @@ mod tests {
     fn with_duration() {
         assert_eq!(
             Melody::try_from(vec![12, 16]).unwrap().with_duration(25),
-            &Melody::new(vec![
+            Melody::new(vec![
                 MelodyMember {
                     values: vec![12],
                     timing: DurationalEventTiming::default().with_duration(25),
@@ -1093,7 +1093,7 @@ mod tests {
             ])
             .augment_rhythm(3)
             .unwrap(),
-            &Melody::new(vec![
+            Melody::new(vec![
                 MelodyMember {
                     values: vec![12],
                     timing: DurationalEventTiming::default()
@@ -1158,7 +1158,7 @@ mod tests {
             ])
             .diminish_rhythm(3)
             .unwrap(),
-            &Melody::new(vec![
+            Melody::new(vec![
                 MelodyMember {
                     values: vec![12],
                     timing: DurationalEventTiming::default()

@@ -81,7 +81,7 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Seq
     }
 
     fn mutate_pitches_ref<F: Fn(&mut T)>(&mut self, f: F) -> &Self {
-        self.mutate_each(|m| {
+        self.mutate_each_ref(|m| {
             for p in m.iter_mut() {
                 f(p)
             }
