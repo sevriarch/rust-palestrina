@@ -528,7 +528,7 @@ mod tests {
                     w
                 })
                 .unwrap(),
-            &NumericSeq::new(vec![2, 1, 3, 2, 4, 3, 5, 4])
+            NumericSeq::new(vec![2, 1, 3, 2, 4, 3, 5, 4])
         );
 
         assert_eq!(
@@ -538,7 +538,7 @@ mod tests {
                     w
                 })
                 .unwrap(),
-            &NumericSeq::new(vec![3, 2, 1, 5, 4, 3])
+            NumericSeq::new(vec![3, 2, 1, 5, 4, 3])
         );
     }
 
@@ -548,14 +548,14 @@ mod tests {
             NumericSeq::new(vec![1, 2, 3, 4, 5])
                 .filter_windows(2, 1, |w| w[0] > 1)
                 .unwrap(),
-            &NumericSeq::new(vec![2, 3, 3, 4, 4, 5])
+            NumericSeq::new(vec![2, 3, 3, 4, 4, 5])
         );
 
         assert_eq!(
             NumericSeq::new(vec![1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1])
                 .filter_windows(3, 2, |w| w[0] > 2)
                 .unwrap(),
-            &NumericSeq::new(vec![3, 4, 5, 5, 6, 5, 5, 4, 3, 3, 2, 1])
+            NumericSeq::new(vec![3, 4, 5, 5, 6, 5, 5, 4, 3, 3, 2, 1])
         );
     }
 

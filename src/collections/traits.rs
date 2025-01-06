@@ -66,7 +66,7 @@ macro_rules! default_collection_methods {
         }
 
         // Set value of contents, return ref to self
-        fn with_contents(&mut self, contents: Vec<$type>) -> &Self {
+        fn with_contents(mut self, contents: Vec<$type>) -> Self {
             self.contents = contents;
             self
         }
@@ -109,7 +109,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         f: F,
     ) -> Result<Self, String>;
     fn replace_contents<F: FnOnce(&mut Vec<T>) -> Vec<T>>(self, f: F) -> Self;
-    fn with_contents(&mut self, contents: Vec<T>) -> &Self; // TODO: Probably should be in Sequence?
+    fn with_contents(self, contents: Vec<T>) -> Self; // TODO: Probably should be in Sequence?
     fn cts_ref(&self) -> &Vec<T>;
 
     fn map(self, f: fn(T) -> T) -> Self;
