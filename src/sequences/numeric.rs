@@ -84,7 +84,12 @@ impl<T: Clone + Num + Debug + PartialOrd + Bounded> Collection<T> for NumericSeq
 impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Sequence<T, T>
     for NumericSeq<T>
 {
-    fn mutate_pitches<F: Fn(&mut T)>(&mut self, f: F) -> &Self {
+    fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
+        self.contents.iter_mut().for_each(f);
+        self
+    }
+
+    fn mutate_pitches_ref<F: Fn(&mut T)>(&mut self, f: F) -> &Self {
         self.mutate_each(f)
     }
 
@@ -285,7 +290,7 @@ mod tests {
     fn transpose() {
         assert_eq!(
             NumericSeq::new(vec![1, 6, 4]).transpose(2).unwrap(),
-            &NumericSeq::new(vec![3, 8, 6])
+            NumericSeq::new(vec![3, 8, 6])
         );
 
         assert_contents_f64_near!(
@@ -300,11 +305,11 @@ mod tests {
     fn transpose_to_min() {
         assert_eq!(
             NumericSeq::<i32>::new(vec![]).transpose_to_min(44).unwrap(),
-            &NumericSeq::<i32>::new(vec![])
+            NumericSeq::<i32>::new(vec![])
         );
         assert_eq!(
             NumericSeq::new(vec![1, 6, 4]).transpose_to_min(2).unwrap(),
-            &NumericSeq::new(vec![2, 7, 5])
+            NumericSeq::new(vec![2, 7, 5])
         );
 
         assert_contents_f64_near!(
@@ -319,11 +324,11 @@ mod tests {
     fn transpose_to_max() {
         assert_eq!(
             NumericSeq::new(vec![]).transpose_to_max(44).unwrap(),
-            &NumericSeq::new(vec![])
+            NumericSeq::new(vec![])
         );
         assert_eq!(
             NumericSeq::new(vec![1, 6, 4]).transpose_to_max(2).unwrap(),
-            &NumericSeq::new(vec![-3, 2, 0])
+            NumericSeq::new(vec![-3, 2, 0])
         );
 
         assert_contents_f64_near!(
@@ -338,7 +343,7 @@ mod tests {
     fn invert() {
         assert_eq!(
             NumericSeq::new(vec![1, 6, 4]).invert(2).unwrap(),
-            &NumericSeq::new(vec![3, -2, 0])
+            NumericSeq::new(vec![3, -2, 0])
         );
 
         assert_contents_f64_near!(
@@ -351,7 +356,7 @@ mod tests {
     fn augment() {
         assert_eq!(
             NumericSeq::new(vec![1, 6, 4]).augment(2).unwrap(),
-            &NumericSeq::new(vec![2, 12, 8])
+            NumericSeq::new(vec![2, 12, 8])
         );
 
         assert_contents_f64_near!(
@@ -365,7 +370,7 @@ mod tests {
         assert!(NumericSeq::new(vec![1, 6, 4]).diminish(0).is_err());
         assert_eq!(
             NumericSeq::new(vec![1, 6, 4]).diminish(2).unwrap(),
-            &NumericSeq::new(vec![0, 3, 2])
+            NumericSeq::new(vec![0, 3, 2])
         );
 
         assert_contents_f64_near!(
@@ -379,7 +384,7 @@ mod tests {
         assert!(NumericSeq::new(vec![-1, 6, 4]).modulus(0).is_err());
         assert_eq!(
             NumericSeq::new(vec![-1, 6, 4]).modulus(3).unwrap(),
-            &NumericSeq::new(vec![2, 0, 1])
+            NumericSeq::new(vec![2, 0, 1])
         );
 
         assert_contents_f64_near!(
@@ -392,7 +397,7 @@ mod tests {
     fn trim() {
         assert_eq!(
             NumericSeq::new(vec![1, 2, 5, 6, 4]).trim(2, 5).unwrap(),
-            &NumericSeq::new(vec![2, 2, 5, 5, 4])
+            NumericSeq::new(vec![2, 2, 5, 5, 4])
         );
 
         assert_contents_f64_near!(
@@ -405,7 +410,7 @@ mod tests {
     fn trim_min() {
         assert_eq!(
             NumericSeq::new(vec![1, 2, 5, 6, 4]).trim_min(2).unwrap(),
-            &NumericSeq::new(vec![2, 2, 5, 6, 4])
+            NumericSeq::new(vec![2, 2, 5, 6, 4])
         );
 
         assert_contents_f64_near!(
@@ -418,7 +423,7 @@ mod tests {
     fn trim_max() {
         assert_eq!(
             NumericSeq::new(vec![1, 2, 5, 6, 4]).trim_max(5).unwrap(),
-            &NumericSeq::new(vec![1, 2, 5, 5, 4])
+            NumericSeq::new(vec![1, 2, 5, 5, 4])
         );
 
         assert_contents_f64_near!(
@@ -435,7 +440,7 @@ mod tests {
             ])
             .bounce(7, 10)
             .unwrap(),
-            &NumericSeq::new(vec![
+            NumericSeq::new(vec![
                 8, 7, 8, 9, 10, 9, 8, 7, 8, 9, 10, 9, 8, 7, 8, 9, 10, 9
             ])
         );
@@ -452,7 +457,7 @@ mod tests {
     fn bounce_min() {
         assert_eq!(
             NumericSeq::new(vec![1, 2, 5, 6, 4]).bounce_min(2).unwrap(),
-            &NumericSeq::new(vec![3, 2, 5, 6, 4])
+            NumericSeq::new(vec![3, 2, 5, 6, 4])
         );
 
         assert_contents_f64_near!(
@@ -467,7 +472,7 @@ mod tests {
     fn bounce_max() {
         assert_eq!(
             NumericSeq::new(vec![1, 2, 5, 6, 4]).bounce_max(5).unwrap(),
-            &NumericSeq::new(vec![1, 2, 5, 4, 4])
+            NumericSeq::new(vec![1, 2, 5, 4, 4])
         );
 
         assert_contents_f64_near!(
@@ -487,12 +492,12 @@ mod tests {
 
         assert_eq!(
             NumericSeq::new(v64.clone()).scale(chromatic, 60).unwrap(),
-            &NumericSeq::new((40..80).collect::<Vec<i64>>())
+            NumericSeq::new((40..80).collect::<Vec<i64>>())
         );
 
         assert_eq!(
             NumericSeq::new(v64).scale(lydian.clone(), 60).unwrap(),
-            &NumericSeq::new(vec![
+            NumericSeq::new(vec![
                 26, 28, 30, 31, 33, 35, 36, 38, 40, 42, 43, 45, 47, 48, 50, 52, 54, 55, 57, 59, 60,
                 62, 64, 66, 67, 69, 71, 72, 74, 76, 78, 79, 81, 83, 84, 86, 88, 90, 91, 93
             ])
@@ -500,7 +505,7 @@ mod tests {
 
         assert_eq!(
             NumericSeq::new(vec![-1, 0, 1]).scale(lydian, 20).unwrap(),
-            &NumericSeq::new(vec![19, 20, 22])
+            NumericSeq::new(vec![19, 20, 22])
         );
     }
 
@@ -565,5 +570,22 @@ mod tests {
             NumericSeq::new(vec![1, 2, 3]).pad(2, 4),
             &NumericSeq::new(vec![2, 2, 2, 2, 1, 2, 3])
         );
+    }
+
+    #[test]
+    fn test_chaining() {
+        fn chained_methods() -> Result<NumericSeq<i32>, String> {
+            let ret = NumericSeq::new(vec![1, 2, 3])
+                .augment(3)?
+                .transpose(1)?
+                .invert(13)?;
+
+            Ok(ret)
+        }
+
+        assert_eq!(
+            chained_methods().unwrap(),
+            NumericSeq::new(vec![22, 19, 16])
+        )
     }
 }

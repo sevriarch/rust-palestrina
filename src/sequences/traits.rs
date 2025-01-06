@@ -30,7 +30,8 @@ pub trait Sequence<
     PitchType: Clone + Copy + Debug + Num + PartialOrd + Sum + From<i32>,
 >: Collection<T>
 {
-    fn mutate_pitches<F: Fn(&mut PitchType)>(&mut self, f: F) -> &Self;
+    fn mutate_pitches<F: Fn(&mut PitchType)>(self, f: F) -> Self;
+    fn mutate_pitches_ref<F: Fn(&mut PitchType)>(&mut self, f: F) -> &Self;
     fn to_flat_pitches(&self) -> Vec<PitchType>;
     fn to_pitches(&self) -> Vec<Vec<PitchType>>;
     fn to_numeric_values(&self) -> Result<Vec<PitchType>, String>;
@@ -91,36 +92,36 @@ pub trait Sequence<
             .collect()
     }
 
-    fn transpose(&mut self, t: PitchType) -> Result<&Self, String> {
+    fn transpose(self, t: PitchType) -> Result<Self, String> {
         Ok(self.mutate_pitches(algorithms::transpose(&t)))
     }
 
-    fn transpose_to_min(&mut self, t: PitchType) -> Result<&Self, String> {
+    fn transpose_to_min(self, t: PitchType) -> Result<Self, String> {
         match self.min_value() {
             Some(m) => self.transpose(t - m),
             None => Ok(self),
         }
     }
 
-    fn transpose_to_max(&mut self, t: PitchType) -> Result<&Self, String> {
+    fn transpose_to_max(self, t: PitchType) -> Result<Self, String> {
         match self.max_value() {
             Some(m) => self.transpose(t - m),
             None => Ok(self),
         }
     }
 
-    fn invert(&mut self, t: PitchType) -> Result<&Self, String> {
+    fn invert(self, t: PitchType) -> Result<Self, String> {
         Ok(self.mutate_pitches(algorithms::invert(&t)))
     }
 
-    fn augment<MT>(&mut self, t: MT) -> Result<&Self, String>
+    fn augment<MT>(self, t: MT) -> Result<Self, String>
     where
         MT: algorithms::AugDim<PitchType>,
     {
         Ok(self.mutate_pitches(algorithms::augment(&t)))
     }
 
-    fn diminish<MT>(&mut self, t: MT) -> Result<&Self, String>
+    fn diminish<MT>(self, t: MT) -> Result<Self, String>
     where
         MT: algorithms::AugDim<PitchType> + Num,
     {
@@ -130,21 +131,21 @@ pub trait Sequence<
         }
     }
 
-    fn modulus(&mut self, t: PitchType) -> Result<&Self, String> {
+    fn modulus(self, t: PitchType) -> Result<Self, String> {
         match algorithms::modulus(&t) {
             Ok(f) => Ok(self.mutate_pitches(f)),
             Err(e) => Err(e),
         }
     }
 
-    fn trim(&mut self, min: PitchType, max: PitchType) -> Result<&Self, String> {
+    fn trim(self, min: PitchType, max: PitchType) -> Result<Self, String> {
         match algorithms::trim(Some(&min), Some(&max)) {
             Ok(f) => Ok(self.mutate_pitches(f)),
             Err(e) => Err(e),
         }
     }
 
-    fn trim_min(&mut self, min: PitchType) -> Result<&Self, String> {
+    fn trim_min(self, min: PitchType) -> Result<Self, String> {
         Ok(self.mutate_pitches(|v| {
             if *v < min {
                 *v = min;
@@ -152,7 +153,7 @@ pub trait Sequence<
         }))
     }
 
-    fn trim_max(&mut self, max: PitchType) -> Result<&Self, String> {
+    fn trim_max(self, max: PitchType) -> Result<Self, String> {
         Ok(self.mutate_pitches(|v| {
             if *v > max {
                 *v = max;
@@ -160,7 +161,7 @@ pub trait Sequence<
         }))
     }
 
-    fn bounce(&mut self, min: PitchType, max: PitchType) -> Result<&Self, String> {
+    fn bounce(self, min: PitchType, max: PitchType) -> Result<Self, String> {
         let diff = max - min;
 
         if diff < PitchType::from(0) {
@@ -191,7 +192,7 @@ pub trait Sequence<
         }))
     }
 
-    fn bounce_min(&mut self, min: PitchType) -> Result<&Self, String> {
+    fn bounce_min(self, min: PitchType) -> Result<Self, String> {
         Ok(self.mutate_pitches(|v| {
             if *v < min {
                 *v = min + min - *v;
@@ -199,7 +200,7 @@ pub trait Sequence<
         }))
     }
 
-    fn bounce_max(&mut self, max: PitchType) -> Result<&Self, String> {
+    fn bounce_max(self, max: PitchType) -> Result<Self, String> {
         Ok(self.mutate_pitches(|v| {
             if *v > max {
                 *v = max + max - *v;
@@ -263,7 +264,7 @@ pub trait Sequence<
         })
     }
 
-    fn scale(&mut self, scale: Scale<PitchType>, zeroval: PitchType) -> Result<&Self, String>
+    fn scale(self, scale: Scale<PitchType>, zeroval: PitchType) -> Result<Self, String>
     where
         PitchType: PrimInt
             + From<i32>

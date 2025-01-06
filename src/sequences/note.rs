@@ -88,7 +88,16 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded> Collection<Option<T>>
 impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Sequence<Option<T>, T>
     for NoteSeq<T>
 {
-    fn mutate_pitches<F: Fn(&mut T)>(&mut self, f: F) -> &Self {
+    fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
+        self.contents.iter_mut().for_each(|m| {
+            if let Some(p) = m {
+                f(p);
+            }
+        });
+        self
+    }
+
+    fn mutate_pitches_ref<F: Fn(&mut T)>(&mut self, f: F) -> &Self {
         self.mutate_each(|m| {
             if let Some(p) = m {
                 f(p);
