@@ -77,7 +77,7 @@ macro_rules! default_collection_methods {
         }
 
         // Iterate (without consuming) over each member of this entity, return ref to self
-        fn each<F: FnMut(&$type)>(&self, f: F) -> &Self {
+        fn each<F: FnMut(&$type)>(self, f: F) -> Self {
             self.contents.iter().for_each(f);
             self
         }
@@ -113,7 +113,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
     fn cts_ref(&self) -> &Vec<T>;
 
     fn map(self, f: fn(T) -> T) -> Self;
-    fn each<F: FnMut(&T)>(&self, f: F) -> &Self;
+    fn each<F: FnMut(&T)>(self, f: F) -> Self;
 
     fn clone_contents(&self) -> Vec<T>;
     fn length(&self) -> usize;
