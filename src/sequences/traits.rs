@@ -31,7 +31,6 @@ pub trait Sequence<
 >: Collection<T>
 {
     fn mutate_pitches<F: Fn(&mut PitchType)>(self, f: F) -> Self;
-    fn mutate_pitches_ref<F: Fn(&mut PitchType)>(&mut self, f: F) -> &Self;
     fn to_flat_pitches(&self) -> Vec<PitchType>;
     fn to_pitches(&self) -> Vec<Vec<PitchType>>;
     fn to_numeric_values(&self) -> Result<Vec<PitchType>, String>;

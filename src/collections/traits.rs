@@ -20,12 +20,6 @@ macro_rules! default_collection_methods {
             self
         }
 
-        // Call closure to mutate each member of self.contents, return ref to self
-        fn mutate_each_ref<F: Fn(&mut $type)>(&mut self, f: F) -> &Self {
-            self.contents.iter_mut().for_each(f);
-            self
-        }
-
         fn mutate_each_indexed<F: Fn((usize, &mut $type))>(mut self, f: F) -> Self {
             self.contents.iter_mut().enumerate().for_each(f);
             self
@@ -100,7 +94,6 @@ pub trait Collection<T: Clone + Debug>: Sized {
     fn new(contents: Vec<T>) -> Self;
 
     fn mutate_each<F: Fn(&mut T)>(self, f: F) -> Self;
-    fn mutate_each_ref<F: Fn(&mut T)>(&mut self, f: F) -> &Self;
     fn mutate_each_indexed<F: Fn((usize, &mut T))>(self, f: F) -> Self;
     fn mutate_contents<F: FnOnce(&mut Vec<T>)>(self, f: F) -> Self;
     fn mutate_contents_ref<F: FnOnce(&mut Vec<T>)>(&mut self, f: F) -> &Self;

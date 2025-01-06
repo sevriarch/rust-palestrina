@@ -203,14 +203,6 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
         self
     }
 
-    fn mutate_pitches_ref<F: Fn(&mut T)>(&mut self, f: F) -> &Self {
-        self.mutate_each_ref(|m| {
-            for p in m.values.iter_mut() {
-                f(p)
-            }
-        })
-    }
-
     fn to_flat_pitches(&self) -> Vec<T> {
         self.contents
             .iter()
