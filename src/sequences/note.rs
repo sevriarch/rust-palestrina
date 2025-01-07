@@ -27,9 +27,9 @@ impl<T> TryFrom<Vec<T>> for NoteSeq<T>
 where
     T: Copy + Clone + Num + Debug + PartialOrd + Bounded,
 {
-    type Error = NoteSeqError;
+    type Error = anyhow::Error;
 
-    fn try_from(what: Vec<T>) -> Result<Self, Self::Error> {
+    fn try_from(what: Vec<T>) -> Result<Self> {
         Ok(Self::new(what.iter().map(|v| Some(*v)).collect()))
     }
 }
@@ -38,9 +38,9 @@ impl<T> TryFrom<Vec<Vec<T>>> for NoteSeq<T>
 where
     T: Copy + Clone + Num + Debug + PartialOrd + Bounded,
 {
-    type Error = NoteSeqError;
+    type Error = anyhow::Error;
 
-    fn try_from(what: Vec<Vec<T>>) -> Result<Self, Self::Error> {
+    fn try_from(what: Vec<Vec<T>>) -> Result<Self> {
         let len = what.len();
         let cts: Vec<Option<T>> = what
             .into_iter()
@@ -52,7 +52,7 @@ where
             .collect();
 
         if cts.len() != len {
-            Err(NoteSeqError::InvalidValues)
+            Err(anyhow!("invalid values in vault"))
         } else {
             Ok(Self::new(cts))
         }
@@ -65,12 +65,12 @@ macro_rules! try_from_seq {
         where
             T: Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
         {
-            type Error = NoteSeqError;
+            type Error = anyhow::Error;
 
             fn try_from(what: $type) -> Result<Self, Self::Error> {
                 match what.to_optional_numeric_values() {
                     Ok(vals) => Ok(Self::new(vals)),
-                    Err(_) => Err(NoteSeqError::InvalidValues),
+                    Err(_) => Err(anyhow!("invalid values in vault")),
                 }
             }
         }
@@ -140,8 +140,8 @@ mod tests {
     #[test]
     fn try_from_vec() {
         assert_eq!(
-            NoteSeq::try_from(vec![1, 2, 3]),
-            Ok(NoteSeq::new(vec![Some(1), Some(2), Some(3)]))
+            NoteSeq::try_from(vec![1, 2, 3]).unwrap(),
+            NoteSeq::new(vec![Some(1), Some(2), Some(3)])
         );
     }
 
@@ -150,8 +150,8 @@ mod tests {
         assert!(NoteSeq::try_from(vec![vec![1, 2, 3]]).is_err());
 
         assert_eq!(
-            NoteSeq::try_from(vec![vec![1], vec![], vec![2], vec![3]]),
-            Ok(NoteSeq::new(vec![Some(1), None, Some(2), Some(3)]))
+            NoteSeq::try_from(vec![vec![1], vec![], vec![2], vec![3]]).unwrap(),
+            NoteSeq::new(vec![Some(1), None, Some(2), Some(3)])
         );
     }
 
@@ -160,8 +160,9 @@ mod tests {
         assert!(NoteSeq::try_from(Melody::try_from(vec![vec![1, 2, 3]]).unwrap()).is_err());
 
         assert_eq!(
-            NoteSeq::try_from(Melody::try_from(vec![vec![1], vec![], vec![2], vec![3]]).unwrap()),
-            Ok(NoteSeq::new(vec![Some(1), None, Some(2), Some(3)]))
+            NoteSeq::try_from(Melody::try_from(vec![vec![1], vec![], vec![2], vec![3]]).unwrap())
+                .unwrap(),
+            NoteSeq::new(vec![Some(1), None, Some(2), Some(3)])
         );
     }
 
@@ -170,16 +171,16 @@ mod tests {
         assert!(NoteSeq::try_from(ChordSeq::new(vec![vec![1, 2, 3]])).is_err());
 
         assert_eq!(
-            NoteSeq::try_from(ChordSeq::new(vec![vec![1], vec![], vec![2], vec![3]])),
-            Ok(NoteSeq::new(vec![Some(1), None, Some(2), Some(3)])),
+            NoteSeq::try_from(ChordSeq::new(vec![vec![1], vec![], vec![2], vec![3]])).unwrap(),
+            NoteSeq::new(vec![Some(1), None, Some(2), Some(3)])
         );
     }
 
     #[test]
     fn try_from_numseq() {
         assert_eq!(
-            NoteSeq::try_from(NumericSeq::new(vec![1, 2, 3])),
-            Ok(NoteSeq::new(vec![Some(1), Some(2), Some(3)])),
+            NoteSeq::try_from(NumericSeq::new(vec![1, 2, 3])).unwrap(),
+            NoteSeq::new(vec![Some(1), Some(2), Some(3)])
         );
     }
 
