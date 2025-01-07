@@ -1,5 +1,6 @@
 // Traits common to all collections within Palestrina
 
+use anyhow::{anyhow, Result};
 use std::collections::hash_map::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -32,10 +33,10 @@ macro_rules! default_collection_methods {
         }
 
         // Call closure to mutate self.contents, return result containing self
-        fn mutate_contents_with_result<F: FnOnce(&mut Vec<$type>) -> Result<(), String>>(
+        fn mutate_contents_with_result<F: FnOnce(&mut Vec<$type>) -> Result<()>>(
             mut self,
             f: F,
-        ) -> Result<Self, String> {
+        ) -> Result<Self> {
             match f(&mut self.contents) {
                 Err(str) => Err(str),
                 Ok(()) => Ok(self),
@@ -72,14 +73,14 @@ macro_rules! default_collection_methods {
     };
 }
 
-fn collection_index(i: i32, len: i32) -> Result<usize, String> {
+fn collection_index(i: i32, len: i32) -> Result<usize> {
     let ix = match i < 0 {
         false => i,
         true => len + i,
     };
 
     match ix < 0 || ix >= len {
-        true => Err("index out of bounds".to_string()),
+        true => Err(anyhow!("index out of bounds")),
         false => Ok(ix as usize),
     }
 }
@@ -90,10 +91,10 @@ pub trait Collection<T: Clone + Debug>: Sized {
     fn mutate_each<F: Fn(&mut T)>(self, f: F) -> Self;
     fn mutate_each_indexed<F: Fn((usize, &mut T))>(self, f: F) -> Self;
     fn mutate_contents<F: FnOnce(&mut Vec<T>)>(self, f: F) -> Self;
-    fn mutate_contents_with_result<F: FnOnce(&mut Vec<T>) -> Result<(), String>>(
+    fn mutate_contents_with_result<F: FnOnce(&mut Vec<T>) -> Result<()>>(
         self,
         f: F,
-    ) -> Result<Self, String>;
+    ) -> Result<Self>;
     fn replace_contents<F: FnOnce(&mut Vec<T>) -> Vec<T>>(self, f: F) -> Self;
     fn with_contents(self, contents: Vec<T>) -> Self; // TODO: Probably should be in Sequence?
     fn cts_ref(&self) -> &Vec<T>;
@@ -105,7 +106,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
     fn length(&self) -> usize;
     fn construct(&self, contents: Vec<T>) -> Self;
 
-    fn index(&self, i: i32) -> Result<usize, &str> {
+    fn index(&self, i: i32) -> Result<usize> {
         let len = self.length() as i32;
 
         let ix = match i < 0 {
@@ -114,12 +115,12 @@ pub trait Collection<T: Clone + Debug>: Sized {
         };
 
         match ix < 0 || ix >= len {
-            true => Err("index out of bounds"),
+            true => Err(anyhow!("index out of bounds")),
             false => Ok(ix as usize),
         }
     }
 
-    fn index_inclusive(&self, i: i32) -> Result<usize, &str> {
+    fn index_inclusive(&self, i: i32) -> Result<usize> {
         let len = self.length() as i32;
 
         let ix = match i < 0 {
@@ -128,31 +129,31 @@ pub trait Collection<T: Clone + Debug>: Sized {
         };
 
         match ix < 0 || ix > len {
-            true => Err("index out of bounds"),
+            true => Err(anyhow!("index out of bounds")),
             false => Ok(ix as usize),
         }
     }
 
-    fn indices(&self, indices: &[i32]) -> Result<Vec<usize>, &str> {
+    fn indices(&self, indices: &[i32]) -> Result<Vec<usize>> {
         indices.iter().map(|i| self.index(*i)).collect()
     }
 
     // Return the supplied indices sorted from right to left
-    fn indices_sorted(&self, indices: &[i32]) -> Result<Vec<usize>, &str> {
+    fn indices_sorted(&self, indices: &[i32]) -> Result<Vec<usize>> {
         let mut ix = self.indices(indices)?;
 
         ix.sort_unstable_by(|a, b| b.cmp(a));
         Ok(ix)
     }
 
-    fn indices_inclusive(&self, indices: Vec<i32>) -> Result<Vec<usize>, &str> {
+    fn indices_inclusive(&self, indices: Vec<i32>) -> Result<Vec<usize>> {
         indices
             .into_iter()
             .map(|i| self.index_inclusive(i))
             .collect()
     }
 
-    fn val_at(&self, index: i32) -> Result<T, &str> {
+    fn val_at(&self, index: i32) -> Result<T> {
         let ix = self.index(index)?;
 
         Ok(self.clone_contents()[ix].clone())
@@ -186,12 +187,12 @@ pub trait Collection<T: Clone + Debug>: Sized {
         (0..self.length()).filter(|i| f(&contents[*i])).collect()
     }
 
-    fn keep_slice(self, start: i32, end: i32) -> Result<Self, String> {
+    fn keep_slice(self, start: i32, end: i32) -> Result<Self> {
         let first = self.index(start)?;
         let last = self.index_inclusive(end)?;
 
         if last < first {
-            return Err("last index was before first one".to_string());
+            return Err(anyhow!("last index was before first one"));
         }
 
         Ok(self.mutate_contents(|c| {
@@ -200,7 +201,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn keep(self, num: usize) -> Result<Self, String> {
+    fn keep(self, num: usize) -> Result<Self> {
         let len = self.length();
         let last = if num > len { len } else { num };
 
@@ -209,7 +210,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn keep_right(self, num: usize) -> Result<Self, String> {
+    fn keep_right(self, num: usize) -> Result<Self> {
         let len = self.length();
         let first = len.saturating_sub(num);
 
@@ -218,36 +219,36 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn keep_indices(self, indices: &[i32]) -> Result<Self, String> {
+    fn keep_indices(self, indices: &[i32]) -> Result<Self> {
         let ix = self.indices(indices)?;
 
         Ok(self.replace_contents(|c| ix.iter().map(|i| c[*i].clone()).collect()))
     }
 
-    fn keep_nth(self, n: usize) -> Result<Self, String> {
+    fn keep_nth(self, n: usize) -> Result<Self> {
         if n == 0 {
-            Err("cannot keep every 0th member".to_string())
+            Err(anyhow!("cannot keep every 0th member"))
         } else {
             // Replace rather than filter as unless n = 1 this is a much smaller vector
             Ok(self.replace_contents(|c| c.iter().step_by(n).cloned().collect()))
         }
     }
 
-    fn keep_nth_from(self, n: usize, offset: usize) -> Result<Self, String> {
+    fn keep_nth_from(self, n: usize, offset: usize) -> Result<Self> {
         if n == 0 {
-            Err("cannot keep every 0th member".to_string())
+            Err(anyhow!("cannot keep every 0th member"))
         } else {
             // Replace rather than filter as unless n = 1 this is a much smaller vector
             Ok(self.replace_contents(|c| c.iter().skip(offset).step_by(n).cloned().collect()))
         }
     }
 
-    fn drop_slice(self, start: i32, end: i32) -> Result<Self, String> {
+    fn drop_slice(self, start: i32, end: i32) -> Result<Self> {
         let first = self.index(start)?;
         let last = self.index_inclusive(end)?;
 
         if last < first {
-            return Err("last index was before first one".to_string());
+            return Err(anyhow!("last index was before first one"));
         }
 
         Ok(self.mutate_contents(|c| {
@@ -255,7 +256,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn drop(self, num: usize) -> Result<Self, String> {
+    fn drop(self, num: usize) -> Result<Self> {
         let len = self.length();
         let first = if num > len { len } else { num };
 
@@ -264,7 +265,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn drop_right(self, num: usize) -> Result<Self, String> {
+    fn drop_right(self, num: usize) -> Result<Self> {
         let len = self.length();
         let last = len.saturating_sub(num);
 
@@ -273,7 +274,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn drop_indices(self, indices: &[i32]) -> Result<Self, String> {
+    fn drop_indices(self, indices: &[i32]) -> Result<Self> {
         let mut ix = self.indices_sorted(indices)?;
 
         ix.dedup();
@@ -285,9 +286,9 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn drop_nth(self, n: usize) -> Result<Self, String> {
+    fn drop_nth(self, n: usize) -> Result<Self> {
         if n == 0 {
-            return Err("cannot keep every 0th member".to_string());
+            return Err(anyhow!("cannot keep every 0th member"));
         }
 
         Ok(self.mutate_contents(|c| {
@@ -299,9 +300,9 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn drop_nth_from(self, n: usize, offset: usize) -> Result<Self, String> {
+    fn drop_nth_from(self, n: usize, offset: usize) -> Result<Self> {
         if n == 0 {
-            return Err("cannot keep every 0th member".to_string());
+            return Err(anyhow!("cannot keep every 0th member"));
         }
 
         let n = n as i32;
@@ -314,12 +315,12 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn mutate_slice(self, start: i32, end: i32, f: impl Fn(&mut T)) -> Result<Self, String> {
+    fn mutate_slice(self, start: i32, end: i32, f: impl Fn(&mut T)) -> Result<Self> {
         let first = self.index(start)?;
         let last = self.index_inclusive(end)?;
 
         if last < first {
-            return Err("last index was before first one".to_string());
+            return Err(anyhow!("last index was before first one"));
         }
 
         Ok(self.mutate_contents(|c| {
@@ -334,12 +335,12 @@ pub trait Collection<T: Clone + Debug>: Sized {
         start: i32,
         end: i32,
         f: impl Fn((usize, &mut T)),
-    ) -> Result<Self, String> {
+    ) -> Result<Self> {
         let first = self.index(start)?;
         let last = self.index_inclusive(end)?;
 
         if last < first {
-            return Err("last index was before first one".to_string());
+            return Err(anyhow!("last index was before first one"));
         }
 
         Ok(self.mutate_contents(|c| {
@@ -349,12 +350,12 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn set_slice(self, start: i32, end: i32, val: T) -> Result<Self, String> {
+    fn set_slice(self, start: i32, end: i32, val: T) -> Result<Self> {
         let first = self.index(start)?;
         let last = self.index_inclusive(end)?;
 
         if last < first {
-            return Err("last index was before first one".to_string());
+            return Err(anyhow!("last index was before first one"));
         }
 
         Ok(self.mutate_contents(|c| {
@@ -364,7 +365,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn empty(self) -> Result<Self, String> {
+    fn empty(self) -> Result<Self> {
         Ok(self.mutate_contents(|c| c.truncate(0)))
     }
 
@@ -384,7 +385,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         })
     }
 
-    fn insert_before(self, indices: &[i32], values: &[T]) -> Result<Self, String> {
+    fn insert_before(self, indices: &[i32], values: &[T]) -> Result<Self> {
         let ix = self.indices_sorted(indices)?;
 
         Ok(self.mutate_contents(|c| {
@@ -394,7 +395,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn insert_after(self, indices: &[i32], values: &[T]) -> Result<Self, String> {
+    fn insert_after(self, indices: &[i32], values: &[T]) -> Result<Self> {
         let ix = self.indices_sorted(indices)?;
 
         Ok(self.mutate_contents(|c| {
@@ -404,7 +405,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn replace_indices(self, indices: &[i32], values: &[T]) -> Result<Self, String> {
+    fn replace_indices(self, indices: &[i32], values: &[T]) -> Result<Self> {
         let mut ix = self.indices_sorted(indices)?;
 
         ix.dedup();
@@ -416,7 +417,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn mutate_indices(self, indices: &[i32], f: impl Fn(&mut T)) -> Result<Self, String> {
+    fn mutate_indices(self, indices: &[i32], f: impl Fn(&mut T)) -> Result<Self> {
         let ix = self.indices(indices)?;
 
         Ok(self.mutate_contents(|c| {
@@ -426,7 +427,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn replace_first(self, finder: fn(&T) -> bool, val: T) -> Result<Self, String> {
+    fn replace_first(self, finder: fn(&T) -> bool, val: T) -> Result<Self> {
         if let Some(i) = self.find_first_index(finder) {
             Ok(self.mutate_contents(|c| {
                 c[i] = val;
@@ -436,7 +437,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }
     }
 
-    fn replace_last(self, finder: fn(&T) -> bool, val: T) -> Result<Self, String> {
+    fn replace_last(self, finder: fn(&T) -> bool, val: T) -> Result<Self> {
         if let Some(i) = self.find_last_index(finder) {
             Ok(self.mutate_contents(|c| {
                 c[i] = val;
@@ -446,7 +447,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }
     }
 
-    fn map_indices(self, indices: &[i32], f: fn(&T) -> T) -> Result<Self, String> {
+    fn map_indices(self, indices: &[i32], f: fn(&T) -> T) -> Result<Self> {
         let mut ix = self.indices(indices)?;
 
         ix.dedup();
@@ -458,7 +459,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn map_first(self, finder: fn(&T) -> bool, f: fn(&T) -> T) -> Result<Self, String> {
+    fn map_first(self, finder: fn(&T) -> bool, f: fn(&T) -> T) -> Result<Self> {
         if let Some(i) = self.find_first_index(finder) {
             Ok(self.mutate_contents(|c| {
                 c[i] = f(&c[i]);
@@ -468,7 +469,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }
     }
 
-    fn map_last(self, finder: fn(&T) -> bool, f: fn(&T) -> T) -> Result<Self, String> {
+    fn map_last(self, finder: fn(&T) -> bool, f: fn(&T) -> T) -> Result<Self> {
         if let Some(i) = self.find_last_index(finder) {
             Ok(self.mutate_contents(|c| {
                 c[i] = f(&c[i]);
@@ -478,7 +479,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }
     }
 
-    fn flat_map_indices(self, indices: &[i32], f: fn(&T) -> Vec<T>) -> Result<Self, String> {
+    fn flat_map_indices(self, indices: &[i32], f: fn(&T) -> Vec<T>) -> Result<Self> {
         let mut ix = self.indices_sorted(indices)?;
 
         ix.dedup();
@@ -490,7 +491,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn flat_map_first(self, finder: fn(&T) -> bool, f: fn(&T) -> Vec<T>) -> Result<Self, String> {
+    fn flat_map_first(self, finder: fn(&T) -> bool, f: fn(&T) -> Vec<T>) -> Result<Self> {
         if let Some(i) = self.find_first_index(finder) {
             Ok(self.mutate_contents(|c| {
                 c.splice(i..i + 1, f(&c[i]));
@@ -500,7 +501,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }
     }
 
-    fn flat_map_last(self, finder: fn(&T) -> bool, f: fn(&T) -> Vec<T>) -> Result<Self, String> {
+    fn flat_map_last(self, finder: fn(&T) -> bool, f: fn(&T) -> Vec<T>) -> Result<Self> {
         if let Some(i) = self.find_last_index(finder) {
             Ok(self.mutate_contents(|c| {
                 c.splice(i..i + 1, f(&c[i]));
@@ -536,13 +537,13 @@ pub trait Collection<T: Clone + Debug>: Sized {
         })
     }
 
-    fn retrograde(self) -> Result<Self, String> {
+    fn retrograde(self) -> Result<Self> {
         Ok(self.mutate_contents(|c| {
             c.reverse();
         }))
     }
 
-    fn swap(self, (i1, i2): (i32, i32)) -> Result<Self, String> {
+    fn swap(self, (i1, i2): (i32, i32)) -> Result<Self> {
         let ix1 = self.index(i1)?;
         let ix2 = self.index(i2)?;
 
@@ -551,7 +552,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn swap_many(self, tup: &[(i32, i32)]) -> Result<Self, String> {
+    fn swap_many(self, tup: &[(i32, i32)]) -> Result<Self> {
         let len = self.length() as i32;
 
         self.mutate_contents_with_result(|c| {
@@ -567,7 +568,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
     }
 
     // TODO: is this needed?
-    fn split_contents_at(&self, indices: Vec<i32>) -> Result<Vec<Vec<T>>, &str> {
+    fn split_contents_at(&self, indices: Vec<i32>) -> Result<Vec<Vec<T>>> {
         let ix = self.indices_inclusive(indices)?;
 
         let cts = self.clone_contents();
@@ -584,7 +585,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         Ok(ret)
     }
 
-    fn split_at(&self, indices: Vec<i32>) -> Result<Vec<Self>, &str> {
+    fn split_at(&self, indices: Vec<i32>) -> Result<Vec<Self>> {
         let ix = self.indices_inclusive(indices)?;
 
         let cts = self.clone_contents();
@@ -601,7 +602,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         Ok(ret)
     }
 
-    fn partition(&self, f: fn(&T) -> bool) -> Result<(Self, Self), &str> {
+    fn partition(&self, f: fn(&T) -> bool) -> Result<(Self, Self)> {
         let (p1, p2): (Vec<T>, Vec<T>) = self.clone_contents().into_iter().partition(f);
 
         Ok((self.construct(p1), self.construct(p2)))
@@ -610,7 +611,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
     fn group_by<KeyType: Hash + Eq + PartialEq + Debug>(
         &self,
         f: fn(&T) -> KeyType,
-    ) -> Result<HashMap<KeyType, Self>, &str> {
+    ) -> Result<HashMap<KeyType, Self>> {
         let mut rets = HashMap::<KeyType, Vec<T>>::new();
 
         self.cts_ref().iter().for_each(|m| {
@@ -636,6 +637,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
 #[cfg(test)]
 mod tests {
     use crate::collections::traits::Collection;
+    use anyhow::Result;
 
     macro_rules! assert_contents_eq {
         ($val: expr, $expected: expr) => {
@@ -672,11 +674,11 @@ mod tests {
     fn index() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
-        assert_eq!(coll.index(0), Ok(0));
-        assert_eq!(coll.index(5), Ok(5));
+        assert_eq!(coll.index(0).unwrap(), 0);
+        assert_eq!(coll.index(5).unwrap(), 5);
         assert!(coll.index(6).is_err());
-        assert_eq!(coll.index(-1), Ok(5));
-        assert_eq!(coll.index(-6), Ok(0));
+        assert_eq!(coll.index(-1).unwrap(), 5);
+        assert_eq!(coll.index(-6).unwrap(), 0);
         assert!(coll.index(-7).is_err());
     }
 

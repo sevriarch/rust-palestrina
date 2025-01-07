@@ -8,6 +8,7 @@ use crate::sequences::numeric::NumericSeq;
 use crate::sequences::traits::Sequence;
 use crate::{default_collection_methods, default_sequence_methods};
 
+use anyhow::{anyhow, Result};
 use num_traits::{Bounded, Num};
 use std::convert::TryFrom;
 use std::fmt::Debug;
@@ -215,23 +216,23 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
         self.contents.iter().map(|v| v.values.clone()).collect()
     }
 
-    fn to_numeric_values(&self) -> Result<Vec<T>, String> {
+    fn to_numeric_values(&self) -> Result<Vec<T>> {
         self.contents
             .iter()
             .map(|v| match v.values.len() {
                 1 => Ok(v.values[0]),
-                _ => Err("must contain only one value".to_string()),
+                _ => Err(anyhow!("must contain only one value")),
             })
             .collect()
     }
 
-    fn to_optional_numeric_values(&self) -> Result<Vec<Option<T>>, String> {
+    fn to_optional_numeric_values(&self) -> Result<Vec<Option<T>>> {
         self.contents
             .iter()
             .map(|v| match v.values.len() {
                 0 => Ok(None),
                 1 => Ok(Some(v.values[0])),
-                _ => Err("must contain zero or one values".to_string()),
+                _ => Err(anyhow!("must contain zero or one values")),
             })
             .collect()
     }
@@ -343,7 +344,7 @@ where
         Ok(self)
     }
 
-    pub fn with_volume_at(self, ix: &[i32], vel: u8) -> Result<Self, String> {
+    pub fn with_volume_at(self, ix: &[i32], vel: u8) -> Result<Self> {
         self.mutate_indices(ix, move |m| m.volume = vel)
     }
 
@@ -367,11 +368,11 @@ where
         Ok(self)
     }
 
-    pub fn with_duration_at(self, ix: &[i32], dur: u32) -> Result<Self, String> {
+    pub fn with_duration_at(self, ix: &[i32], dur: u32) -> Result<Self> {
         self.mutate_indices(ix, move |m| m.timing.duration = dur)
     }
 
-    pub fn with_event_at(self, ix: &[i32], evt: Metadata) -> Result<Self, String> {
+    pub fn with_event_at(self, ix: &[i32], evt: Metadata) -> Result<Self> {
         self.mutate_indices(ix, |m| {
             m.with_event(&evt.clone());
         })
@@ -667,8 +668,9 @@ mod tests {
                 MelodyMember::from(vec![12]),
                 MelodyMember::from(vec![16]),
             ])
-            .to_numeric_values(),
-            Ok(vec![5, 12, 16])
+            .to_numeric_values()
+            .unwrap(),
+            vec![5, 12, 16]
         );
     }
 
@@ -684,8 +686,9 @@ mod tests {
                 MelodyMember::from(vec![12]),
                 MelodyMember::from(vec![16]),
             ])
-            .to_optional_numeric_values(),
-            Ok(vec![Some(5), None, Some(12), Some(16)])
+            .to_optional_numeric_values()
+            .unwrap(),
+            vec![Some(5), None, Some(12), Some(16)]
         );
     }
 

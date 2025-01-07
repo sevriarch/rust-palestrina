@@ -3,6 +3,7 @@ use crate::default_collection_methods;
 use crate::metadata::list::MetadataList;
 use crate::sequences::melody::Melody;
 use crate::sequences::traits::Sequence;
+use anyhow::Result;
 use num_traits::{Bounded, Num};
 use std::convert::From;
 use std::fmt::Debug;

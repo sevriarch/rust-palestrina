@@ -6,6 +6,7 @@ use crate::sequences::numeric::NumericSeq;
 use crate::sequences::traits::Sequence;
 use crate::{default_collection_methods, default_sequence_methods};
 
+use anyhow::{anyhow, Result};
 use num_traits::{Bounded, Num};
 use std::convert::TryFrom;
 use std::fmt::Debug;
@@ -112,17 +113,17 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Seq
             .collect()
     }
 
-    fn to_numeric_values(&self) -> Result<Vec<T>, String> {
+    fn to_numeric_values(&self) -> Result<Vec<T>> {
         let vals = self.to_flat_pitches();
 
         if vals.len() != self.contents.len() {
-            Err("at least one value was None".to_string())
+            Err(anyhow!("at least one value was None"))
         } else {
             Ok(vals)
         }
     }
 
-    fn to_optional_numeric_values(&self) -> Result<Vec<Option<T>>, String> {
+    fn to_optional_numeric_values(&self) -> Result<Vec<Option<T>>> {
         Ok(self.contents.clone())
     }
 }
@@ -201,15 +202,19 @@ mod tests {
         assert!(NoteSeq::<i32>::new(vec![None]).to_numeric_values().is_err());
 
         assert_eq!(
-            NoteSeq::new(vec![Some(1), Some(2), Some(3)]).to_numeric_values(),
-            Ok(vec![1, 2, 3])
+            NoteSeq::new(vec![Some(1), Some(2), Some(3)])
+                .to_numeric_values()
+                .unwrap(),
+            vec![1, 2, 3]
         );
     }
     #[test]
     fn to_optional_numeric_values() {
         assert_eq!(
-            NoteSeq::new(vec![Some(1), None, Some(2), Some(3)]).to_optional_numeric_values(),
-            Ok(vec![Some(1), None, Some(2), Some(3)])
+            NoteSeq::new(vec![Some(1), None, Some(2), Some(3)])
+                .to_optional_numeric_values()
+                .unwrap(),
+            vec![Some(1), None, Some(2), Some(3)]
         );
     }
 }

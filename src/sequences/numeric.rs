@@ -6,6 +6,7 @@ use crate::sequences::note::NoteSeq;
 use crate::sequences::traits::Sequence;
 use crate::{default_collection_methods, default_sequence_methods};
 
+use anyhow::Result;
 use num_traits::{Bounded, Num};
 use std::convert::TryFrom;
 use std::fmt::Debug;
@@ -97,11 +98,11 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Seq
         self.contents.clone().into_iter().map(|p| vec![p]).collect()
     }
 
-    fn to_numeric_values(&self) -> Result<Vec<T>, String> {
+    fn to_numeric_values(&self) -> Result<Vec<T>> {
         Ok(self.contents.clone())
     }
 
-    fn to_optional_numeric_values(&self) -> Result<Vec<Option<T>>, String> {
+    fn to_optional_numeric_values(&self) -> Result<Vec<Option<T>>> {
         Ok(self.contents.clone().into_iter().map(|p| Some(p)).collect())
     }
 }
@@ -125,7 +126,7 @@ mod tests {
     use crate::sequences::note::NoteSeq;
     use crate::sequences::numeric::NumericSeq;
     use crate::sequences::traits::Sequence;
-
+    use anyhow::Result;
     use assert_float_eq::assert_f64_near;
 
     #[test]
@@ -198,8 +199,10 @@ mod tests {
     #[test]
     fn to_numeric_values() {
         assert_eq!(
-            NumericSeq::new(vec![4, 2, 5, 6, 3]).to_numeric_values(),
-            Ok(vec![4, 2, 5, 6, 3])
+            NumericSeq::new(vec![4, 2, 5, 6, 3])
+                .to_numeric_values()
+                .unwrap(),
+            vec![4, 2, 5, 6, 3]
         );
     }
 
@@ -226,8 +229,10 @@ mod tests {
     #[test]
     fn to_optional_numeric_values() {
         assert_eq!(
-            NumericSeq::new(vec![4, 2, 5, 6, 3]).to_optional_numeric_values(),
-            Ok(vec![Some(4), Some(2), Some(5), Some(6), Some(3)])
+            NumericSeq::new(vec![4, 2, 5, 6, 3])
+                .to_optional_numeric_values()
+                .unwrap(),
+            vec![Some(4), Some(2), Some(5), Some(6), Some(3)]
         );
     }
 
@@ -570,7 +575,7 @@ mod tests {
 
     #[test]
     fn test_chaining() {
-        fn chained_methods() -> Result<NumericSeq<i32>, String> {
+        fn chained_methods() -> Result<NumericSeq<i32>> {
             let ret = NumericSeq::new(vec![1, 2, 3])
                 .augment(3)?
                 .transpose(1)?

@@ -1,6 +1,7 @@
 use crate::algorithms;
 use crate::collections::traits::Collection;
 use crate::entities::scale::Scale;
+use anyhow::{anyhow, Result};
 use num_traits::{Num, PrimInt};
 use std::fmt::Debug;
 use std::iter::Sum;
@@ -33,8 +34,8 @@ pub trait Sequence<
     fn mutate_pitches<F: Fn(&mut PitchType)>(self, f: F) -> Self;
     fn to_flat_pitches(&self) -> Vec<PitchType>;
     fn to_pitches(&self) -> Vec<Vec<PitchType>>;
-    fn to_numeric_values(&self) -> Result<Vec<PitchType>, String>;
-    fn to_optional_numeric_values(&self) -> Result<Vec<Option<PitchType>>, String>;
+    fn to_numeric_values(&self) -> Result<Vec<PitchType>>;
+    fn to_optional_numeric_values(&self) -> Result<Vec<Option<PitchType>>>;
 
     fn min_value(&self) -> Option<PitchType> {
         self.to_flat_pitches()
@@ -91,60 +92,60 @@ pub trait Sequence<
             .collect()
     }
 
-    fn transpose(self, t: PitchType) -> Result<Self, String> {
+    fn transpose(self, t: PitchType) -> Result<Self> {
         Ok(self.mutate_pitches(algorithms::transpose(&t)))
     }
 
-    fn transpose_to_min(self, t: PitchType) -> Result<Self, String> {
+    fn transpose_to_min(self, t: PitchType) -> Result<Self> {
         match self.min_value() {
             Some(m) => self.transpose(t - m),
             None => Ok(self),
         }
     }
 
-    fn transpose_to_max(self, t: PitchType) -> Result<Self, String> {
+    fn transpose_to_max(self, t: PitchType) -> Result<Self> {
         match self.max_value() {
             Some(m) => self.transpose(t - m),
             None => Ok(self),
         }
     }
 
-    fn invert(self, t: PitchType) -> Result<Self, String> {
+    fn invert(self, t: PitchType) -> Result<Self> {
         Ok(self.mutate_pitches(algorithms::invert(&t)))
     }
 
-    fn augment<MT>(self, t: MT) -> Result<Self, String>
+    fn augment<MT>(self, t: MT) -> Result<Self>
     where
         MT: algorithms::AugDim<PitchType>,
     {
         Ok(self.mutate_pitches(algorithms::augment(&t)))
     }
 
-    fn diminish<MT>(self, t: MT) -> Result<Self, String>
+    fn diminish<MT>(self, t: MT) -> Result<Self>
     where
         MT: algorithms::AugDim<PitchType> + Num,
     {
         match algorithms::diminish(&t) {
             Ok(f) => Ok(self.mutate_pitches(f)),
-            Err(e) => Err(e),
+            Err(e) => Err(anyhow!(e)),
         }
     }
 
-    fn modulus(self, t: PitchType) -> Result<Self, String> {
+    fn modulus(self, t: PitchType) -> Result<Self> {
         match algorithms::modulus(&t) {
             Ok(f) => Ok(self.mutate_pitches(f)),
-            Err(e) => Err(e),
+            Err(e) => Err(anyhow!(e)),
         }
     }
 
-    fn trim(self, min: PitchType, max: PitchType) -> Result<Self, String> {
+    fn trim(self, min: PitchType, max: PitchType) -> Result<Self> {
         match algorithms::trim(Some(&min), Some(&max)) {
             Ok(f) => Ok(self.mutate_pitches(f)),
-            Err(e) => Err(e),
+            Err(e) => Err(anyhow!(e)),
         }
     }
 
-    fn trim_min(self, min: PitchType) -> Result<Self, String> {
+    fn trim_min(self, min: PitchType) -> Result<Self> {
         Ok(self.mutate_pitches(|v| {
             if *v < min {
                 *v = min;

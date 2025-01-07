@@ -6,6 +6,7 @@ use crate::sequences::numeric::NumericSeq;
 use crate::sequences::traits::Sequence;
 use crate::{default_collection_methods, default_sequence_methods};
 
+use anyhow::{anyhow, Result};
 use num_traits::{Bounded, Num};
 use std::convert::TryFrom;
 use std::fmt::Debug;
@@ -92,23 +93,23 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Seq
         self.contents.clone()
     }
 
-    fn to_numeric_values(&self) -> Result<Vec<T>, String> {
+    fn to_numeric_values(&self) -> Result<Vec<T>> {
         self.contents
             .iter()
             .map(|v| match v.len() {
                 1 => Ok(v[0]),
-                _ => Err("must contain only one value".to_string()),
+                _ => Err(anyhow!("must contain only one value")),
             })
             .collect()
     }
 
-    fn to_optional_numeric_values(&self) -> Result<Vec<Option<T>>, String> {
+    fn to_optional_numeric_values(&self) -> Result<Vec<Option<T>>> {
         self.contents
             .iter()
             .map(|v| match v.len() {
                 0 => Ok(None),
                 1 => Ok(Some(v[0])),
-                _ => Err("must contain zero or one values".to_string()),
+                _ => Err(anyhow!("must contain zero or one values")),
             })
             .collect()
     }
@@ -188,8 +189,10 @@ mod tests {
             .to_numeric_values()
             .is_err());
         assert_eq!(
-            ChordSeq::new(vec![vec![5], vec![12], vec![16]]).to_numeric_values(),
-            Ok(vec![5, 12, 16])
+            ChordSeq::new(vec![vec![5], vec![12], vec![16]])
+                .to_numeric_values()
+                .unwrap(),
+            vec![5, 12, 16]
         );
     }
 
@@ -199,8 +202,10 @@ mod tests {
             .to_optional_numeric_values()
             .is_err());
         assert_eq!(
-            ChordSeq::new(vec![vec![5], vec![], vec![12], vec![16]]).to_optional_numeric_values(),
-            Ok(vec![Some(5), None, Some(12), Some(16)])
+            ChordSeq::new(vec![vec![5], vec![], vec![12], vec![16]])
+                .to_optional_numeric_values()
+                .unwrap(),
+            vec![Some(5), None, Some(12), Some(16)]
         );
     }
 }
