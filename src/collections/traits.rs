@@ -233,6 +233,15 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }
     }
 
+    fn keep_nth_from(self, n: usize, offset: usize) -> Result<Self, String> {
+        if n == 0 {
+            Err("cannot keep every 0th member".to_string())
+        } else {
+            // Replace rather than filter as unless n = 1 this is a much smaller vector
+            Ok(self.replace_contents(|c| c.iter().skip(offset).step_by(n).cloned().collect()))
+        }
+    }
+
     fn drop_slice(self, start: i32, end: i32) -> Result<Self, String> {
         let first = self.index(start)?;
         let last = self.index_inclusive(end)?;
@@ -286,6 +295,21 @@ pub trait Collection<T: Clone + Debug>: Sized {
             c.retain(|_| {
                 ct += 1;
                 ct % n != 0
+            });
+        }))
+    }
+
+    fn drop_nth_from(self, n: usize, offset: usize) -> Result<Self, String> {
+        if n == 0 {
+            return Err("cannot keep every 0th member".to_string());
+        }
+
+        let n = n as i32;
+        Ok(self.mutate_contents(|c| {
+            let mut ct = -1 - offset as i32;
+            c.retain(|_| {
+                ct += 1;
+                ct < 0 || ct % n != 0
             });
         }))
     }
@@ -735,6 +759,18 @@ mod tests {
     }
 
     #[test]
+    fn keep_nth_from() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+
+        assert!(coll.clone().keep_nth_from(0, 0).is_err());
+        assert_contents_eq!(coll.clone().keep_nth_from(1, 0), vec![0, 2, 3, 4, 5, 6]);
+        assert_contents_eq!(coll.clone().keep_nth_from(1, 2), vec![3, 4, 5, 6]);
+        assert_contents_eq!(coll.clone().keep_nth_from(1, 10), vec![]);
+        assert_contents_eq!(coll.clone().keep_nth_from(3, 0), vec![0, 4]);
+        assert_contents_eq!(coll.clone().keep_nth_from(3, 2), vec![3, 6]);
+    }
+
+    #[test]
     fn drop_slice() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
@@ -782,6 +818,18 @@ mod tests {
         assert!(coll.clone().drop_nth(0).is_err());
         assert_contents_eq!(coll.clone().drop_nth(1), vec![]);
         assert_contents_eq!(coll.clone().drop_nth(3), vec![2, 3, 5, 6]);
+    }
+
+    #[test]
+    fn drop_nth_from() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+
+        assert!(coll.clone().drop_nth_from(0, 0).is_err());
+        assert_contents_eq!(coll.clone().drop_nth_from(1, 0), vec![]);
+        assert_contents_eq!(coll.clone().drop_nth_from(1, 2), vec![0, 2]);
+        assert_contents_eq!(coll.clone().drop_nth_from(1, 10), vec![0, 2, 3, 4, 5, 6]);
+        assert_contents_eq!(coll.clone().drop_nth_from(3, 0), vec![2, 3, 5, 6]);
+        assert_contents_eq!(coll.clone().drop_nth_from(3, 2), vec![0, 2, 4, 5]);
     }
 
     #[test]
