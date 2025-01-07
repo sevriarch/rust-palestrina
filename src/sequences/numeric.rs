@@ -6,7 +6,7 @@ use crate::sequences::note::NoteSeq;
 use crate::sequences::traits::Sequence;
 use crate::{default_collection_methods, default_sequence_methods};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use num_traits::{Bounded, Num};
 use std::convert::TryFrom;
 use std::fmt::Debug;
@@ -27,9 +27,9 @@ impl<T> TryFrom<Vec<T>> for NumericSeq<T>
 where
     T: Copy + Clone + Num + Debug + PartialOrd + Bounded,
 {
-    type Error = NumSeqError;
+    type Error = anyhow::Error;
 
-    fn try_from(what: Vec<T>) -> Result<Self, Self::Error> {
+    fn try_from(what: Vec<T>) -> Result<Self> {
         Ok(NumericSeq::new(what))
     }
 }
@@ -38,9 +38,9 @@ impl<T> TryFrom<Vec<Vec<T>>> for NumericSeq<T>
 where
     T: Copy + Clone + Num + Debug + PartialOrd + Bounded,
 {
-    type Error = NumSeqError;
+    type Error = anyhow::Error;
 
-    fn try_from(what: Vec<Vec<T>>) -> Result<Self, Self::Error> {
+    fn try_from(what: Vec<Vec<T>>) -> Result<Self> {
         let len = what.len();
         let cts: Vec<T> = what
             .into_iter()
@@ -48,7 +48,7 @@ where
             .collect();
 
         if cts.len() != len {
-            Err(NumSeqError::InvalidValues)
+            Err(anyhow!("invalid values in input"))
         } else {
             Ok(NumericSeq::new(cts))
         }
@@ -61,12 +61,12 @@ macro_rules! try_from_seq {
         where
             T: Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
         {
-            type Error = NumSeqError;
+            type Error = anyhow::Error;
 
-            fn try_from(what: $type) -> Result<Self, Self::Error> {
+            fn try_from(what: $type) -> Result<Self> {
                 match what.to_numeric_values() {
                     Ok(vals) => Ok(NumericSeq::new(vals)),
-                    Err(_) => Err(NumSeqError::InvalidValues),
+                    Err(_) => Err(anyhow!("invalid values in input")),
                 }
             }
         }
@@ -154,8 +154,8 @@ mod tests {
         assert!(NumericSeq::try_from(Melody::try_from(vec![vec![1, 2, 3]]).unwrap()).is_err());
 
         assert_eq!(
-            NumericSeq::try_from(Melody::try_from(vec![1, 2, 3]).unwrap()),
-            Ok(NumericSeq::new(vec![1, 2, 3]))
+            NumericSeq::try_from(Melody::try_from(vec![1, 2, 3]).unwrap()).unwrap(),
+            NumericSeq::new(vec![1, 2, 3])
         );
     }
 
@@ -165,8 +165,8 @@ mod tests {
         assert!(NumericSeq::try_from(ChordSeq::new(vec![vec![1, 2, 3]])).is_err());
 
         assert_eq!(
-            NumericSeq::try_from(ChordSeq::new(vec![vec![1], vec![2], vec![3]])),
-            Ok(NumericSeq::new(vec![1, 2, 3]))
+            NumericSeq::try_from(ChordSeq::new(vec![vec![1], vec![2], vec![3]])).unwrap(),
+            NumericSeq::new(vec![1, 2, 3])
         );
     }
 
@@ -175,8 +175,8 @@ mod tests {
         assert!(NumericSeq::try_from(NoteSeq::<i32>::new(vec![None])).is_err());
 
         assert_eq!(
-            NumericSeq::try_from(NoteSeq::new(vec![Some(1), Some(2), Some(3)])),
-            Ok(NumericSeq::new(vec![1, 2, 3]))
+            NumericSeq::try_from(NoteSeq::new(vec![Some(1), Some(2), Some(3)])).unwrap(),
+            NumericSeq::new(vec![1, 2, 3])
         );
     }
 
