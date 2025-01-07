@@ -13,8 +13,8 @@ use std::iter::Sum;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct NumericSeq<T> {
-    contents: Vec<T>,
-    metadata: MetadataList,
+    pub contents: Vec<T>,
+    pub metadata: MetadataList,
 }
 
 #[derive(Debug, PartialEq)]
