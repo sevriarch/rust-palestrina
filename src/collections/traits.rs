@@ -350,6 +350,19 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
+    fn replace_slice(self, start: i32, end: i32, val: Vec<T>) -> Result<Self> {
+        let first = self.index(start)?;
+        let last = self.index_inclusive(end)?;
+
+        if last < first {
+            return Err(anyhow!("last index was before first one"));
+        }
+
+        Ok(self.mutate_contents(|c| {
+            c.splice(first..last, val);
+        }))
+    }
+
     fn set_slice(self, start: i32, end: i32, val: T) -> Result<Self> {
         let first = self.index(start)?;
         let last = self.index_inclusive(end)?;
@@ -857,6 +870,17 @@ mod tests {
             coll.clone()
                 .mutate_slice_indexed(2, -1, |(i, v)| *v += i as i32),
             vec![0, 2, 5, 7, 9, 6]
+        );
+    }
+
+    #[test]
+    fn replace_slice() {
+        let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
+
+        assert!(coll.clone().replace_slice(-1, 2, vec![10, 11]).is_err());
+        assert_contents_eq!(
+            coll.clone().replace_slice(2, -1, vec![10, 11]),
+            vec![0, 2, 10, 11, 6]
         );
     }
 
