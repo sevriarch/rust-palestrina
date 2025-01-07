@@ -13,8 +13,8 @@ use std::iter::Sum;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ChordSeq<T> {
-    contents: Vec<Vec<T>>,
-    metadata: MetadataList,
+    pub contents: Vec<Vec<T>>,
+    pub metadata: MetadataList,
 }
 
 #[derive(Debug, PartialEq)]

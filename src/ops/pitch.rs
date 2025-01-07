@@ -76,6 +76,10 @@ macro_rules! impl_traits_for_raw_values {
         impl Pitch<$ty> for NoteSeq<$ty> {
             impl_fns_for_seq!($ty, for transpose_pitch invert_pitch);
         }
+
+        impl Pitch<$ty> for ChordSeq<$ty> {
+            impl_fns_for_seq!($ty, for transpose_pitch invert_pitch);
+        }
     )*)
 }
 
@@ -127,6 +131,12 @@ mod tests {
             6,
             NoteSeq::new(vec![Some(10), None, Some(12)])
         );
+        pitch_trait_test!(
+            transpose_pitch,
+            ChordSeq::new(vec![vec![4, 5, 6], vec![], vec![7]]),
+            6,
+            ChordSeq::new(vec![vec![10, 11, 12], vec![], vec![13]])
+        );
     }
 
     #[test]
@@ -153,6 +163,12 @@ mod tests {
             NoteSeq::new(vec![Some(4), None, Some(6)]),
             6,
             NoteSeq::new(vec![Some(8), None, Some(6)])
+        );
+        pitch_trait_test!(
+            invert_pitch,
+            ChordSeq::new(vec![vec![4, 5, 6], vec![], vec![7]]),
+            6,
+            ChordSeq::new(vec![vec![8, 7, 6], vec![], vec![5]])
         );
     }
 }
