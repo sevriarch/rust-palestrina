@@ -40,6 +40,7 @@ macro_rules! impl_fns_for_melody_member {
 macro_rules! impl_traits_for_raw_values {
     (for $($ty:ident)*) => ($(
         impl Pitch<$ty> for $ty {
+
             fn transpose_pitch(&mut self, n: $ty) {
                 *self += n
             }
@@ -69,53 +70,49 @@ impl_traits_for_raw_values!(for i8 i16 i32 i64 isize u8 u16 u32 u64 usize f32 f6
 mod tests {
     use super::*;
 
+    macro_rules! pitch_trait_test {
+        ($fn:ident, $init:expr, $arg:expr, $ret:expr) => {
+            let mut x = $init;
+            x.$fn($arg);
+            assert_eq!(x, $ret);
+        };
+    }
+
+    macro_rules! transpose_test {
+        ($init:expr, $arg:expr, $ret:expr) => {
+            let mut x = $init;
+            x.transpose_pitch($arg);
+            assert_eq!(x, $ret);
+        };
+    }
+
     #[test]
     fn transpose_pitch() {
-        let mut x = 5;
-        x.transpose_pitch(6);
-        assert_eq!(x, 11);
-
-        let mut x = 5.5;
-        x.transpose_pitch(6.0);
-        assert_eq!(x, 11.5);
-
-        let mut x: Option<i32> = None;
-        x.transpose_pitch(6);
-        assert_eq!(x, None);
-
-        let mut x = Some(5);
-        x.transpose_pitch(6);
-        assert_eq!(x, Some(11));
-
-        let mut x = vec![4, 5, 6];
-        x.transpose_pitch(6);
-        assert_eq!(x, vec![10, 11, 12]);
-
-        let mut x = MelodyMember::from(vec![4, 5, 6]);
-        x.transpose_pitch(6);
-        assert_eq!(x, MelodyMember::from(vec![10, 11, 12]));
+        pitch_trait_test!(transpose_pitch, 5, 6, 11);
+        pitch_trait_test!(transpose_pitch, 5.5, 6.0, 11.5);
+        pitch_trait_test!(transpose_pitch, None, 6, None);
+        pitch_trait_test!(transpose_pitch, Some(5), 6, Some(11));
+        pitch_trait_test!(transpose_pitch, vec![4, 5, 6], 6, vec![10, 11, 12]);
+        pitch_trait_test!(
+            transpose_pitch,
+            MelodyMember::from(vec![4, 5, 6]),
+            6,
+            MelodyMember::from(vec![10, 11, 12])
+        );
     }
 
     #[test]
     fn invert_pitch() {
-        let mut x = 5;
-        x.invert_pitch(6);
-        assert_eq!(x, 7);
-
-        let mut x = 5.5;
-        x.invert_pitch(6.0);
-        assert_eq!(x, 6.5);
-
-        let mut x = Some(5);
-        x.invert_pitch(6);
-        assert_eq!(x, Some(7));
-
-        let mut x = vec![4, 5, 6];
-        x.invert_pitch(6);
-        assert_eq!(x, vec![8, 7, 6]);
-
-        let mut x = MelodyMember::from(vec![4, 5, 6]);
-        x.invert_pitch(6);
-        assert_eq!(x, MelodyMember::from(vec![8, 7, 6]));
+        pitch_trait_test!(invert_pitch, 5, 6, 7);
+        pitch_trait_test!(invert_pitch, 5.5, 6.0, 6.5);
+        pitch_trait_test!(invert_pitch, None, 6, None);
+        pitch_trait_test!(invert_pitch, Some(5), 6, Some(7));
+        pitch_trait_test!(invert_pitch, vec![4, 5, 6], 6, vec![8, 7, 6]);
+        pitch_trait_test!(
+            invert_pitch,
+            MelodyMember::from(vec![4, 5, 6]),
+            6,
+            MelodyMember::from(vec![8, 7, 6])
+        );
     }
 }
