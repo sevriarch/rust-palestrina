@@ -6,7 +6,7 @@ use crate::sequences::{
     traits::Sequence,
 };
 
-trait Pitch<T> {
+pub trait Pitch<T> {
     fn transpose_pitch(&mut self, n: T);
     fn invert_pitch(&mut self, n: T);
 }
@@ -37,10 +37,17 @@ macro_rules! impl_fns_for_melody_member {
     )*)
 }
 
+macro_rules! impl_fns_for_numeric_seq {
+    ($ty:ident, for $($fn:ident)*) => ($(
+        fn $fn(&mut self, n: $ty) {
+            self.contents.iter_mut().for_each(|p| p.$fn(n));
+        }
+    )*)
+}
+
 macro_rules! impl_traits_for_raw_values {
     (for $($ty:ident)*) => ($(
         impl Pitch<$ty> for $ty {
-
             fn transpose_pitch(&mut self, n: $ty) {
                 *self += n
             }
@@ -61,6 +68,10 @@ macro_rules! impl_traits_for_raw_values {
         impl Pitch<$ty> for MelodyMember<$ty> {
             impl_fns_for_melody_member!($ty, for transpose_pitch invert_pitch);
         }
+
+        impl Pitch<$ty> for NumericSeq<$ty> {
+            impl_fns_for_numeric_seq!($ty, for transpose_pitch invert_pitch);
+        }
     )*)
 }
 
@@ -69,6 +80,7 @@ impl_traits_for_raw_values!(for i8 i16 i32 i64 isize u8 u16 u32 u64 usize f32 f6
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::collections::traits::Collection;
 
     macro_rules! pitch_trait_test {
         ($fn:ident, $init:expr, $arg:expr, $ret:expr) => {
@@ -99,6 +111,12 @@ mod tests {
             6,
             MelodyMember::from(vec![10, 11, 12])
         );
+        pitch_trait_test!(
+            transpose_pitch,
+            NumericSeq::new(vec![4, 5, 6]),
+            6,
+            NumericSeq::new(vec![10, 11, 12])
+        );
     }
 
     #[test]
@@ -113,6 +131,12 @@ mod tests {
             MelodyMember::from(vec![4, 5, 6]),
             6,
             MelodyMember::from(vec![8, 7, 6])
+        );
+        pitch_trait_test!(
+            invert_pitch,
+            NumericSeq::new(vec![4, 5, 6]),
+            6,
+            NumericSeq::new(vec![8, 7, 6])
         );
     }
 }
