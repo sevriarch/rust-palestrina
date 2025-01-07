@@ -3,7 +3,6 @@ use crate::sequences::{
     melody::{Melody, MelodyMember},
     note::NoteSeq,
     numeric::NumericSeq,
-    traits::Sequence,
 };
 
 pub trait Pitch<T> {
@@ -80,6 +79,10 @@ macro_rules! impl_traits_for_raw_values {
         impl Pitch<$ty> for ChordSeq<$ty> {
             impl_fns_for_seq!($ty, for transpose_pitch invert_pitch);
         }
+
+        impl Pitch<$ty> for Melody<$ty> {
+            impl_fns_for_seq!($ty, for transpose_pitch invert_pitch);
+        }
     )*)
 }
 
@@ -94,14 +97,6 @@ mod tests {
         ($fn:ident, $init:expr, $arg:expr, $ret:expr) => {
             let mut x = $init;
             x.$fn($arg);
-            assert_eq!(x, $ret);
-        };
-    }
-
-    macro_rules! transpose_test {
-        ($init:expr, $arg:expr, $ret:expr) => {
-            let mut x = $init;
-            x.transpose_pitch($arg);
             assert_eq!(x, $ret);
         };
     }
@@ -137,6 +132,20 @@ mod tests {
             6,
             ChordSeq::new(vec![vec![10, 11, 12], vec![], vec![13]])
         );
+        pitch_trait_test!(
+            transpose_pitch,
+            Melody::new(vec![
+                MelodyMember::from(vec![4, 5, 6]),
+                MelodyMember::from(vec![]),
+                MelodyMember::from(vec![7])
+            ]),
+            6,
+            Melody::new(vec![
+                MelodyMember::from(vec![10, 11, 12]),
+                MelodyMember::from(vec![]),
+                MelodyMember::from(vec![13])
+            ])
+        );
     }
 
     #[test]
@@ -169,6 +178,20 @@ mod tests {
             ChordSeq::new(vec![vec![4, 5, 6], vec![], vec![7]]),
             6,
             ChordSeq::new(vec![vec![8, 7, 6], vec![], vec![5]])
+        );
+        pitch_trait_test!(
+            invert_pitch,
+            Melody::new(vec![
+                MelodyMember::from(vec![4, 5, 6]),
+                MelodyMember::from(vec![]),
+                MelodyMember::from(vec![7])
+            ]),
+            6,
+            Melody::new(vec![
+                MelodyMember::from(vec![8, 7, 6]),
+                MelodyMember::from(vec![]),
+                MelodyMember::from(vec![5])
+            ])
         );
     }
 }
