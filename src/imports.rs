@@ -264,7 +264,7 @@ pub fn constant<T: Clone>(n: usize, v: T) -> Vec<T> {
     vec![v; n]
 }
 
-pub fn sinusoidal<T: Into<f64>>(n: usize, width: T, first_angle: T, last_angle: T) -> Vec<i32> {
+pub fn sinusoidal<T: Into<f64>>(n: usize, width: T, first_angle: T, last_angle: T) -> Vec<i64> {
     let width: f64 = width.into();
     let last_angle: f64 = last_angle.into();
     let first_angle: f64 = first_angle.into();
@@ -275,18 +275,18 @@ pub fn sinusoidal<T: Into<f64>>(n: usize, width: T, first_angle: T, last_angle: 
         .map(|v| {
             let angle: f64 = pi180 * (first_angle + (v as f64 * gradiant));
 
-            (width * angle.sin()).round() as i32
+            (width * angle.sin()).round() as i64
         })
         .collect()
 }
 
-pub fn linear<T: Into<f64>>(n: usize, first_value: T, last_value: T) -> Vec<i32> {
+pub fn linear<T: Into<f64>>(n: usize, first_value: T, last_value: T) -> Vec<i64> {
     let first_value: f64 = first_value.into();
     let last_value: f64 = last_value.into();
     let gradiant = (last_value - first_value) / (n - 1) as f64;
 
     (0..n)
-        .map(|v| (first_value + gradiant * v as f64).floor() as i32)
+        .map(|v| (first_value + gradiant * v as f64).floor() as i64)
         .collect()
 }
 
