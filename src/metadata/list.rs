@@ -1,6 +1,8 @@
 use crate::entities::timing::Timing;
 use crate::metadata::data::{Metadata, MetadataError};
 
+use anyhow::Result;
+
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct MetadataList {
     pub contents: Vec<Metadata>,
@@ -17,7 +19,7 @@ impl MetadataList {
         self
     }
 
-    pub fn last_tick(&self, curr: u32) -> Result<u32, String> {
+    pub fn last_tick(&self, curr: u32) -> Result<u32> {
         if self.contents.is_empty() {
             return Ok(curr);
         }
@@ -153,8 +155,8 @@ mod tests {
 
     #[test]
     fn last_tick() {
-        assert_eq!(MetadataList::default().last_tick(0), Ok(0));
-        assert_eq!(MetadataList::default().last_tick(128), Ok(128));
+        assert_eq!(MetadataList::default().last_tick(0).unwrap(), 0);
+        assert_eq!(MetadataList::default().last_tick(128).unwrap(), 128);
 
         assert_eq!(
             MetadataList {
@@ -175,8 +177,9 @@ mod tests {
                     },
                 ],
             }
-            .last_tick(0),
-            Ok(125)
+            .last_tick(0)
+            .unwrap(),
+            125
         );
 
         assert_eq!(
@@ -198,8 +201,9 @@ mod tests {
                     },
                 ],
             }
-            .last_tick(200),
-            Ok(250)
+            .last_tick(200)
+            .unwrap(),
+            250
         );
     }
 

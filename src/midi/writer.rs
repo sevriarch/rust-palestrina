@@ -14,25 +14,25 @@ use std::io::Write;
 use super::constants::*;
 
 pub trait ToMidiBytes {
-    fn try_to_midi_bytes(&self) -> Result<Vec<u8>, String>;
+    fn try_to_midi_bytes(&self) -> Result<Vec<u8>>;
 }
 
 pub trait WriteMidiBytes {
-    fn try_to_hash(&self) -> Result<u64, String>;
+    fn try_to_hash(&self) -> Result<u64>;
     fn try_to_write_midi_bytes(&self, file: &str) -> Result<()>;
 }
 
 pub trait ToTimedMidiBytes {
-    fn try_to_timed_midi_bytes(&self, curr: u32) -> Result<(u32, Vec<u8>), String>;
+    fn try_to_timed_midi_bytes(&self, curr: u32) -> Result<(u32, Vec<u8>)>;
 }
 
 pub trait ToVecTimedMidiBytes {
-    fn try_to_vec_timed_midi_bytes(&self, curr: u32) -> Result<Vec<(u32, Vec<u8>)>, String>;
+    fn try_to_vec_timed_midi_bytes(&self, curr: u32) -> Result<Vec<(u32, Vec<u8>)>>;
 }
 
-fn try_number_to_fixed_bytes(num: u32, size: usize) -> Result<Vec<u8>, String> {
+fn try_number_to_fixed_bytes(num: u32, size: usize) -> Result<Vec<u8>> {
     if size == 0 {
-        return Err("can't convert a number to zero bytes".to_string());
+        return Err(anyhow!("can't convert a number to zero bytes"));
     }
 
     let mut bytes = Vec::<u8>::with_capacity(size);
@@ -45,16 +45,16 @@ fn try_number_to_fixed_bytes(num: u32, size: usize) -> Result<Vec<u8>, String> {
     }
 
     if n > 0xff {
-        return Err(format!("number {} cannot fit into {} bytes", n, size));
+        return Err(anyhow!("number {} cannot fit into {} bytes", n, size));
     }
 
     bytes.reverse();
     Ok(bytes)
 }
 
-fn try_number_to_variable_bytes(num: u32) -> Result<Vec<u8>, String> {
+fn try_number_to_variable_bytes(num: u32) -> Result<Vec<u8>> {
     if num > 0xfffffff {
-        return Err(format!("number {:?} >= 2^28", num));
+        return Err(anyhow!("number {:?} >= 2^28", num));
     }
 
     let mut bytes = Vec::<u8>::with_capacity(4);
@@ -70,7 +70,7 @@ fn try_number_to_variable_bytes(num: u32) -> Result<Vec<u8>, String> {
     Ok(bytes)
 }
 
-fn try_string_to_variable_bytes(str: &str) -> Result<Vec<u8>, String> {
+fn try_string_to_variable_bytes(str: &str) -> Result<Vec<u8>> {
     let mut chars: Vec<u8> = str
         .chars()
         .flat_map(|c| c.to_string().into_bytes())
@@ -93,7 +93,7 @@ macro_rules! build_text_event {
 }
 
 impl ToMidiBytes for MetadataData {
-    fn try_to_midi_bytes(&self) -> Result<Vec<u8>, String> {
+    fn try_to_midi_bytes(&self) -> Result<Vec<u8>> {
         match self {
             MetadataData::EndTrack => Ok(END_TRACK_EVENT.to_vec()),
             MetadataData::Tempo(t) => {
@@ -127,13 +127,13 @@ impl ToMidiBytes for MetadataData {
             MetadataData::Balance(i16),
             MetadataData::PitchBend(i16),
             */
-            _ => Err("invalid metadata".to_string()),
+            _ => Err(anyhow!("invalid metadata")),
         }
     }
 }
 
 impl ToTimedMidiBytes for Metadata {
-    fn try_to_timed_midi_bytes(&self, curr: u32) -> Result<(u32, Vec<u8>), String> {
+    fn try_to_timed_midi_bytes(&self, curr: u32) -> Result<(u32, Vec<u8>)> {
         let databytes = self.data.try_to_midi_bytes()?;
 
         Ok((self.timing.start_tick(curr)?, databytes))
@@ -141,7 +141,7 @@ impl ToTimedMidiBytes for Metadata {
 }
 
 impl ToVecTimedMidiBytes for MetadataList {
-    fn try_to_vec_timed_midi_bytes(&self, curr: u32) -> Result<Vec<(u32, Vec<u8>)>, String> {
+    fn try_to_vec_timed_midi_bytes(&self, curr: u32) -> Result<Vec<(u32, Vec<u8>)>> {
         self.contents
             .iter()
             .map(|m| m.try_to_timed_midi_bytes(curr))
@@ -155,7 +155,7 @@ macro_rules! impl_int_melody_member_to_vec_timed_midi_bytes {
             fn try_to_vec_timed_midi_bytes(
                 &self,
                 curr: u32,
-            ) -> Result<Vec<(u32, Vec<u8>)>, String> {
+            ) -> Result<Vec<(u32, Vec<u8>)>> {
                 let start = self.timing.start_tick(curr)?;
                 let end = self.timing.end_tick(curr)?;
 
@@ -163,7 +163,7 @@ macro_rules! impl_int_melody_member_to_vec_timed_midi_bytes {
 
                 for p in self.values.iter() {
                     if *p <= 0 || *p > 127 {
-                        return Err("pitch out of range".to_string());
+                        return Err(anyhow!("pitch {} out of range", *p));
                     }
 
                     ret.append(&mut vec![
@@ -185,7 +185,7 @@ macro_rules! impl_float_melody_member_to_vec_timed_midi_bytes {
             fn try_to_vec_timed_midi_bytes(
                 &self,
                 curr: u32,
-            ) -> Result<Vec<(u32, Vec<u8>)>, String> {
+            ) -> Result<Vec<(u32, Vec<u8>)>> {
                 let start = self.timing.start_tick(curr)?;
                 let end = self.timing.end_tick(curr)?;
 
@@ -193,7 +193,7 @@ macro_rules! impl_float_melody_member_to_vec_timed_midi_bytes {
 
                 for p in self.values.iter() {
                     if *p <= 0.0 || *p > 127.0 {
-                        return Err("pitch out of range".to_string());
+                        return Err(anyhow!("pitch {} out of range", *p));
                     }
 
                     let mut f = (p.fract() * 4096.0).round() as i32;
@@ -221,7 +221,7 @@ impl_float_melody_member_to_vec_timed_midi_bytes!(for f32 f64);
 macro_rules! impl_melody_to_vec_timed_midi_bytes {
     (for $($t:ty)*) => ($(
         impl ToVecTimedMidiBytes for Melody<$t> {
-            fn try_to_vec_timed_midi_bytes(&self, curr: u32) -> Result<Vec<(u32, Vec<u8>)>, String> {
+            fn try_to_vec_timed_midi_bytes(&self, curr: u32) -> Result<Vec<(u32, Vec<u8>)>> {
                 let mut curr = curr;
                 let mut ret = self.metadata.try_to_vec_timed_midi_bytes(curr)?;
 
@@ -242,7 +242,7 @@ impl_melody_to_vec_timed_midi_bytes!(for u16 u32 u64 usize i16 i32 i64 f32 f64);
 macro_rules! impl_melody_to_midi_bytes {
     (for $($t:ty)*) => ($(
 impl ToMidiBytes for Melody<$t> {
-    fn try_to_midi_bytes(&self) -> Result<Vec<u8>, String> {
+    fn try_to_midi_bytes(&self) -> Result<Vec<u8>> {
         let mut ret: Vec<u8> = vec![];
         let mut curr = 0;
 
@@ -272,7 +272,7 @@ impl_melody_to_midi_bytes!(for u16 u32 u64 usize i16 i32 i64 f32 f64);
 macro_rules! impl_score_to_midi_bytes {
     (for $($t:ty)*) => ($(
         impl ToMidiBytes for Score<$t> {
-            fn try_to_midi_bytes(&self) -> Result<Vec<u8>, String> {
+            fn try_to_midi_bytes(&self) -> Result<Vec<u8>> {
                 let mut ret: Vec<u8> = HEADER_CHUNK.to_vec();
                 ret.append(&mut HEADER_LENGTH.to_vec());
                 ret.append(&mut HEADER_FORMAT.to_vec());
@@ -291,7 +291,7 @@ macro_rules! impl_score_to_midi_bytes {
         }
 
         impl WriteMidiBytes for Score<$t> {
-            fn try_to_hash(&self) -> Result<u64, String> {
+            fn try_to_hash(&self) -> Result<u64> {
                 let mut h = DefaultHasher::new();
                 self.try_to_midi_bytes()?.hash(&mut h);
                 Ok(h.finish())
@@ -328,105 +328,122 @@ mod tests {
         assert!(try_number_to_fixed_bytes(0x0100, 1).is_err());
         assert!(try_number_to_fixed_bytes(0x010000, 2).is_err());
         assert!(try_number_to_fixed_bytes(0x01000000, 3).is_err());
-        assert_eq!(try_number_to_fixed_bytes(0x00, 1), Ok(vec![0x00]));
-        assert_eq!(try_number_to_fixed_bytes(0xff, 1), Ok(vec![0xff]));
-        assert_eq!(try_number_to_fixed_bytes(0x0100, 2), Ok(vec![0x01, 0x00]));
-        assert_eq!(try_number_to_fixed_bytes(0xffff, 2), Ok(vec![0xff, 0xff]));
-        assert_eq!(try_number_to_fixed_bytes(0xffff, 2), Ok(vec![0xff, 0xff]));
+        assert_eq!(try_number_to_fixed_bytes(0x00, 1).unwrap(), vec![0x00]);
+        assert_eq!(try_number_to_fixed_bytes(0xff, 1).unwrap(), vec![0xff]);
         assert_eq!(
-            try_number_to_fixed_bytes(0x010000, 3),
-            Ok(vec![0x01, 0x00, 0x00])
+            try_number_to_fixed_bytes(0x0100, 2).unwrap(),
+            vec![0x01, 0x00]
         );
         assert_eq!(
-            try_number_to_fixed_bytes(0xffffff, 3),
-            Ok(vec![0xff, 0xff, 0xff])
+            try_number_to_fixed_bytes(0xffff, 2).unwrap(),
+            vec![0xff, 0xff]
         );
         assert_eq!(
-            try_number_to_fixed_bytes(0x01000000, 4),
-            Ok(vec![0x01, 0x00, 0x00, 0x00])
+            try_number_to_fixed_bytes(0xffff, 2).unwrap(),
+            vec![0xff, 0xff]
         );
         assert_eq!(
-            try_number_to_fixed_bytes(0xffffffff, 4),
-            Ok(vec![0xff, 0xff, 0xff, 0xff])
+            try_number_to_fixed_bytes(0x010000, 3).unwrap(),
+            vec![0x01, 0x00, 0x00]
         );
         assert_eq!(
-            try_number_to_fixed_bytes(0x03f62ab3, 4),
-            Ok(vec![0x03, 0xf6, 0x2a, 0xb3])
+            try_number_to_fixed_bytes(0xffffff, 3).unwrap(),
+            vec![0xff, 0xff, 0xff]
+        );
+        assert_eq!(
+            try_number_to_fixed_bytes(0x01000000, 4).unwrap(),
+            vec![0x01, 0x00, 0x00, 0x00]
+        );
+        assert_eq!(
+            try_number_to_fixed_bytes(0xffffffff, 4).unwrap(),
+            vec![0xff, 0xff, 0xff, 0xff]
+        );
+        assert_eq!(
+            try_number_to_fixed_bytes(0x03f62ab3, 4).unwrap(),
+            vec![0x03, 0xf6, 0x2a, 0xb3]
         );
     }
 
     #[test]
     fn test_try_number_to_variable_bytes() {
         assert!(try_number_to_variable_bytes(0x10000000).is_err());
-        assert_eq!(try_number_to_variable_bytes(0x00), Ok(vec![0x00]));
-        assert_eq!(try_number_to_variable_bytes(0x7f), Ok(vec![0x7f]));
-        assert_eq!(try_number_to_variable_bytes(0x80), Ok(vec![0x81, 0x00]));
-        assert_eq!(try_number_to_variable_bytes(0x3fff), Ok(vec![0xff, 0x7f]));
+        assert_eq!(try_number_to_variable_bytes(0x00).unwrap(), vec![0x00]);
+        assert_eq!(try_number_to_variable_bytes(0x7f).unwrap(), vec![0x7f]);
         assert_eq!(
-            try_number_to_variable_bytes(0x4000),
-            Ok(vec![0x81, 0x80, 0x00])
+            try_number_to_variable_bytes(0x80).unwrap(),
+            vec![0x81, 0x00]
         );
         assert_eq!(
-            try_number_to_variable_bytes(0x1fffff),
-            Ok(vec![0xff, 0xff, 0x7f])
+            try_number_to_variable_bytes(0x3fff).unwrap(),
+            vec![0xff, 0x7f]
         );
         assert_eq!(
-            try_number_to_variable_bytes(0x200000),
-            Ok(vec![0x81, 0x80, 0x80, 0x00])
+            try_number_to_variable_bytes(0x4000).unwrap(),
+            vec![0x81, 0x80, 0x00]
         );
         assert_eq!(
-            try_number_to_variable_bytes(0x0fffffff),
-            Ok(vec![0xff, 0xff, 0xff, 0x7f])
+            try_number_to_variable_bytes(0x1fffff).unwrap(),
+            vec![0xff, 0xff, 0x7f]
         );
         assert_eq!(
-            try_number_to_variable_bytes(0x03f62ab3),
-            Ok(vec![0x9f, 0xd8, 0xd5, 0x33])
+            try_number_to_variable_bytes(0x200000).unwrap(),
+            vec![0x81, 0x80, 0x80, 0x00]
+        );
+        assert_eq!(
+            try_number_to_variable_bytes(0x0fffffff).unwrap(),
+            vec![0xff, 0xff, 0xff, 0x7f]
+        );
+        assert_eq!(
+            try_number_to_variable_bytes(0x03f62ab3).unwrap(),
+            vec![0x9f, 0xd8, 0xd5, 0x33]
         );
     }
 
     #[test]
     fn test_try_string_to_variable_bytes() {
-        assert_eq!(try_string_to_variable_bytes(""), Ok(vec![0x00]));
+        assert_eq!(try_string_to_variable_bytes("").unwrap(), vec![0x00]);
         assert_eq!(
-            try_string_to_variable_bytes("Per Nørgård"),
-            Ok(vec![
+            try_string_to_variable_bytes("Per Nørgård").unwrap(),
+            vec![
                 0x0d, 0x50, 0x65, 0x72, 0x20, 0x4e, 0xc3, 0xb8, 0x72, 0x67, 0xc3, 0xa5, 0x72, 0x64
-            ])
+            ]
         );
     }
 
     #[test]
     fn try_to_midi_bytes() {
         assert_eq!(
-            MetadataData::EndTrack.try_to_midi_bytes(),
-            Ok(vec![0xff, 0x2f, 0x00]),
+            MetadataData::EndTrack.try_to_midi_bytes().unwrap(),
+            vec![0xff, 0x2f, 0x00],
         );
 
         assert_eq!(
-            MetadataData::Tempo(144.0).try_to_midi_bytes(),
-            Ok(vec![0xff, 0x51, 0x03, 0x06, 0x5b, 0x9b]),
+            MetadataData::Tempo(144.0).try_to_midi_bytes().unwrap(),
+            vec![0xff, 0x51, 0x03, 0x06, 0x5b, 0x9b],
         );
 
         assert_eq!(
-            MetadataData::Tempo(60.0).try_to_midi_bytes(),
-            Ok(vec![0xff, 0x51, 0x03, 0x0f, 0x42, 0x40]),
+            MetadataData::Tempo(60.0).try_to_midi_bytes().unwrap(),
+            vec![0xff, 0x51, 0x03, 0x0f, 0x42, 0x40],
         );
 
         assert_eq!(
-            MetadataData::Sustain(true).try_to_midi_bytes(),
-            Ok(vec![0xb0, 0x40, 0x7f]),
+            MetadataData::Sustain(true).try_to_midi_bytes().unwrap(),
+            vec![0xb0, 0x40, 0x7f],
         );
 
         assert_eq!(
-            MetadataData::Sustain(false).try_to_midi_bytes(),
-            Ok(vec![0xb0, 0x40, 0x00]),
+            MetadataData::Sustain(false).try_to_midi_bytes().unwrap(),
+            vec![0xb0, 0x40, 0x00],
         );
 
         macro_rules! test_text {
             ($k:ident, $byte:expr) => {
                 assert_eq!(
-                    MetadataData::$k("test".to_string()).try_to_midi_bytes(),
-                    Ok(vec![0xff, $byte, 0x04, 0x74, 0x65, 0x73, 0x74])
+                    MetadataData::$k("test".to_string())
+                        .try_to_midi_bytes()
+                        .unwrap(),
+                    vec![0xff, $byte, 0x04, 0x74, 0x65, 0x73, 0x74]
                 );
             };
         }
@@ -442,8 +459,10 @@ mod tests {
         macro_rules! test_key_sig {
             ($k:expr, $bytes: expr) => {
                 assert_eq!(
-                    MetadataData::KeySignature($k.to_string()).try_to_midi_bytes(),
-                    Ok($bytes.to_vec())
+                    MetadataData::KeySignature($k.to_string())
+                        .try_to_midi_bytes()
+                        .unwrap(),
+                    $bytes.to_vec()
                 )
             };
         }
@@ -488,13 +507,17 @@ mod tests {
             .is_err());
 
         assert_eq!(
-            MetadataData::TimeSignature("2/4".to_string()).try_to_midi_bytes(),
-            Ok(vec![0xff, 0x58, 0x04, 0x02, 0x02, 0x18, 0x08])
+            MetadataData::TimeSignature("2/4".to_string())
+                .try_to_midi_bytes()
+                .unwrap(),
+            vec![0xff, 0x58, 0x04, 0x02, 0x02, 0x18, 0x08]
         );
 
         assert_eq!(
-            MetadataData::TimeSignature("9/16".to_string()).try_to_midi_bytes(),
-            Ok(vec![0xff, 0x58, 0x04, 0x09, 0x04, 0x18, 0x08])
+            MetadataData::TimeSignature("9/16".to_string())
+                .try_to_midi_bytes()
+                .unwrap(),
+            vec![0xff, 0x58, 0x04, 0x09, 0x04, 0x18, 0x08]
         );
         //[ { event: 'time-signature', value: '9/16' }, undefined, [ 0xff, 0x58, 0x04, 0x09, 0x04, 0x18, 0x08 ] ],
     }
@@ -511,8 +534,9 @@ mod tests {
                     offset: 32
                 }
             }
-            .try_to_timed_midi_bytes(64),
-            Ok((96, vec![0xff, 0x2f, 0x00]))
+            .try_to_timed_midi_bytes(64)
+            .unwrap(),
+            (96, vec![0xff, 0x2f, 0x00])
         );
 
         assert_eq!(
@@ -523,16 +547,19 @@ mod tests {
                     offset: 32
                 }
             }
-            .try_to_timed_midi_bytes(64),
-            Ok((160, vec![0xff, 0x51, 0x03, 0x0f, 0x42, 0x40]))
+            .try_to_timed_midi_bytes(64)
+            .unwrap(),
+            (160, vec![0xff, 0x51, 0x03, 0x0f, 0x42, 0x40])
         );
     }
 
     #[test]
     fn try_to_vec_timed_midi_bytes() {
         assert_eq!(
-            MetadataList::default().try_to_vec_timed_midi_bytes(0),
-            Ok(vec![])
+            MetadataList::default()
+                .try_to_vec_timed_midi_bytes(0)
+                .unwrap(),
+            vec![]
         );
 
         assert_eq!(
@@ -552,11 +579,12 @@ mod tests {
                     }
                 }
             ])
-            .try_to_vec_timed_midi_bytes(16),
-            Ok(vec![
+            .try_to_vec_timed_midi_bytes(16)
+            .unwrap(),
+            vec![
                 (160, vec![0xff, 0x51, 0x03, 0x0f, 0x42, 0x40]),
                 (80, vec![0xff, 0x01, 0x04, 0x74, 0x65, 0x73, 0x74])
-            ])
+            ]
         );
 
         macro_rules! metadata {
@@ -605,8 +633,9 @@ mod tests {
                     metadata!(MetadataData::Text("test".to_string()), 48),
                 ])
             }
-            .try_to_vec_timed_midi_bytes(0),
-            Ok(vec![
+            .try_to_vec_timed_midi_bytes(0)
+            .unwrap(),
+            vec![
                 (32, vec![0xb0, 0x40, 0x7f]),
                 (48, vec![0xff, 0x01, 0x04, 0x74, 0x65, 0x73, 0x74]),
                 (0, vec![0x90, 0x3c, 0x40]),
@@ -617,7 +646,7 @@ mod tests {
                 (32, vec![0x80, 0x3f, 0x40]),
                 (0, vec![0x90, 0x43, 0x40]),
                 (32, vec![0x80, 0x43, 0x40]),
-            ])
+            ]
         );
 
         assert_eq!(
@@ -634,8 +663,9 @@ mod tests {
                     metadata!(MetadataData::Text("test".to_string()), 48),
                 ])
             }
-            .try_to_vec_timed_midi_bytes(160),
-            Ok(vec![
+            .try_to_vec_timed_midi_bytes(160)
+            .unwrap(),
+            vec![
                 (32, vec![0xb0, 0x40, 0x7f]),
                 (208, vec![0xff, 0x01, 0x04, 0x74, 0x65, 0x73, 0x74]),
                 (160, vec![0x90, 0x3c, 0x40]),
@@ -646,7 +676,7 @@ mod tests {
                 (192, vec![0x80, 0x3f, 0x40]),
                 (160, vec![0x90, 0x43, 0x40]),
                 (192, vec![0x80, 0x43, 0x40]),
-            ])
+            ]
         );
 
         assert_eq!(
@@ -663,15 +693,16 @@ mod tests {
                     metadata!(MetadataData::Text("test".to_string()), 48),
                 ])
             }
-            .try_to_vec_timed_midi_bytes(160),
-            Ok(vec![
+            .try_to_vec_timed_midi_bytes(160)
+            .unwrap(),
+            vec![
                 (32, vec![0xb0, 0x40, 0x7f]),
                 (280, vec![0xff, 0x01, 0x04, 0x74, 0x65, 0x73, 0x74]),
                 (232, vec![0x90, 0x3c, 0x40]),
                 (264, vec![0x80, 0x3c, 0x40]),
                 (232, vec![0x90, 0x43, 0x40]),
                 (264, vec![0x80, 0x43, 0x40]),
-            ])
+            ]
         );
 
         assert_eq!(
@@ -688,22 +719,24 @@ mod tests {
                     metadata!(MetadataData::Text("test".to_string()), 48),
                 ])
             }
-            .try_to_vec_timed_midi_bytes(160),
-            Ok(vec![
+            .try_to_vec_timed_midi_bytes(160)
+            .unwrap(),
+            vec![
                 (32, vec![0xb0, 0x40, 0x7f]),
                 (220, vec![0xff, 0x01, 0x04, 0x74, 0x65, 0x73, 0x74]),
                 (172, vec![0x90, 0x3c, 0x40]),
                 (204, vec![0x80, 0x3c, 0x40]),
                 (172, vec![0x90, 0x43, 0x40]),
                 (204, vec![0x80, 0x43, 0x40]),
-            ])
+            ]
         );
 
         assert_eq!(
             Melody::try_from(vec![66; 0])
                 .unwrap()
-                .try_to_vec_timed_midi_bytes(0),
-            Ok(vec![(0, vec![0xff, 0x2f, 0x00])]),
+                .try_to_vec_timed_midi_bytes(0)
+                .unwrap(),
+            vec![(0, vec![0xff, 0x2f, 0x00])],
         );
 
         assert_eq!(
@@ -752,8 +785,9 @@ mod tests {
                 ],
                 metadata: MetadataList::default(),
             }
-            .try_to_vec_timed_midi_bytes(0),
-            Ok(vec![
+            .try_to_vec_timed_midi_bytes(0)
+            .unwrap(),
+            vec![
                 (72, vec![0x90, 0x3c, 0x40]),
                 (104, vec![0x80, 0x3c, 0x40]),
                 (72, vec![0x90, 0x43, 0x40]),
@@ -765,7 +799,7 @@ mod tests {
                 (124, vec![0x90, 0x3f, 0x40]),
                 (156, vec![0x80, 0x3f, 0x40]),
                 (156, vec![0xff, 0x2f, 0x00]),
-            ])
+            ]
         );
 
         assert_eq!(
@@ -773,12 +807,13 @@ mod tests {
                 contents: vec![],
                 metadata: MetadataList::default()
             }
-            .try_to_midi_bytes(),
-            Ok(vec![
+            .try_to_midi_bytes()
+            .unwrap(),
+            vec![
                 0x4d, 0x54, 0x72, 0x6b, // track header chunk
                 0x00, 0x00, 0x00, 0x04, // length chunk
                 0x00, 0xff, 0x2f, 0x00 // end track
-            ])
+            ]
         );
 
         assert_eq!(
@@ -827,8 +862,9 @@ mod tests {
                 ],
                 metadata: MetadataList::default(),
             }
-            .try_to_midi_bytes(),
-            Ok(vec![
+            .try_to_midi_bytes()
+            .unwrap(),
+            vec![
                 0x4d, 0x54, 0x72, 0x6b, // track header chunk
                 0x00, 0x00, 0x00, 0x2c, // length chunk
                 0x20, 0x90, 0x3d, 0x40, // first note on
@@ -842,7 +878,7 @@ mod tests {
                 0x10, 0x80, 0x3e, 0x40, // fourth note off
                 0x10, 0x80, 0x3f, 0x40, // last note off
                 0x00, 0xff, 0x2f, 0x00, // end track
-            ])
+            ]
         );
 
         assert_eq!(
@@ -853,8 +889,9 @@ mod tests {
                 }],
                 metadata: MetadataList::default(),
             }
-            .try_to_midi_bytes(),
-            Ok(vec![
+            .try_to_midi_bytes()
+            .unwrap(),
+            vec![
                 0x4d, 0x54, 0x68, 0x64, // file header chunk
                 0x00, 0x00, 0x00, 0x06, // header length
                 0x00, 0x01, // midi version
@@ -863,7 +900,7 @@ mod tests {
                 0x4d, 0x54, 0x72, 0x6b, // track header chunk
                 0x00, 0x00, 0x00, 0x04, // track length
                 0x00, 0xff, 0x2f, 0x00 // end track
-            ])
+            ]
         );
 
         assert_eq!(
@@ -915,8 +952,9 @@ mod tests {
                 }],
                 metadata: MetadataList::default()
             }
-            .try_to_midi_bytes(),
-            Ok(vec![
+            .try_to_midi_bytes()
+            .unwrap(),
+            vec![
                 0x4d, 0x54, 0x68, 0x64, // file header chunk
                 0x00, 0x00, 0x00, 0x06, // header length
                 0x00, 0x01, // midi version
@@ -935,7 +973,7 @@ mod tests {
                 0x10, 0x80, 0x3e, 0x40, // fourth note off
                 0x10, 0x80, 0x3f, 0x40, // last note off
                 0x00, 0xff, 0x2f, 0x00, // end track
-            ])
+            ]
         );
     }
 
@@ -990,8 +1028,9 @@ mod tests {
                 }],
                 metadata: MetadataList::default()
             }
-            .try_to_hash(),
-            Ok(12932865703826558789)
+            .try_to_hash()
+            .unwrap(),
+            12932865703826558789
         );
     }
 

@@ -69,7 +69,7 @@ where
         self
     }
 
-    pub fn last_tick(&self, curr: u32) -> Result<u32, String> {
+    pub fn last_tick(&self, curr: u32) -> Result<u32> {
         let end_of_note = self.timing.end_tick(curr)?;
         let last_metadata = self.before.last_tick(curr).unwrap_or(curr);
 
@@ -250,7 +250,7 @@ where
         self.contents.iter().map(|m| m.timing.duration).collect()
     }
 
-    pub fn to_ticks(&self) -> Result<Vec<(u32, u32)>, String> {
+    pub fn to_ticks(&self) -> Result<Vec<(u32, u32)>> {
         let mut curr = 0;
         self.contents
             .iter()
@@ -265,7 +265,7 @@ where
             .collect()
     }
 
-    pub fn to_start_ticks(&self) -> Result<Vec<u32>, String> {
+    pub fn to_start_ticks(&self) -> Result<Vec<u32>> {
         let mut curr = 0;
         self.contents
             .iter()
@@ -279,7 +279,7 @@ where
             .collect()
     }
 
-    pub fn to_end_ticks(&self) -> Result<Vec<u32>, String> {
+    pub fn to_end_ticks(&self) -> Result<Vec<u32>> {
         let mut curr = 0;
         self.contents
             .iter()
@@ -293,7 +293,7 @@ where
             .collect()
     }
 
-    pub fn last_tick(&self) -> Result<u32, String> {
+    pub fn last_tick(&self) -> Result<u32> {
         let mut last = self.metadata.last_tick(0)?;
         let mut curr = 0;
 
@@ -454,8 +454,9 @@ mod tests {
         assert_eq!(
             MelodyMember::from(vec![12, 16])
                 .with_duration(64)
-                .last_tick(96),
-            Ok(160),
+                .last_tick(96)
+                .unwrap(),
+            160,
             "duration only"
         );
 
@@ -463,8 +464,9 @@ mod tests {
             MelodyMember::from(vec![12, 16])
                 .with_duration(64)
                 .with_exact_tick(80)
-                .last_tick(0),
-            Ok(144),
+                .last_tick(0)
+                .unwrap(),
+            144,
             "duration and exact tick"
         );
 
@@ -472,8 +474,9 @@ mod tests {
             MelodyMember::from(vec![12, 16])
                 .with_duration(64)
                 .with_exact_tick(80)
-                .last_tick(96),
-            Ok(144),
+                .last_tick(96)
+                .unwrap(),
+            144,
             "duration and exact tick"
         );
 
@@ -481,8 +484,9 @@ mod tests {
             MelodyMember::from(vec![12, 16])
                 .with_duration(64)
                 .with_event(&Metadata::try_from(("tempo", 120)).unwrap())
-                .last_tick(0),
-            Ok(64),
+                .last_tick(0)
+                .unwrap(),
+            64,
             "duration, untimed event"
         );
 
@@ -494,8 +498,9 @@ mod tests {
                         .unwrap()
                         .with_exact_tick(80)
                 )
-                .last_tick(0),
-            Ok(80),
+                .last_tick(0)
+                .unwrap(),
+            80,
             "duration, event with exact tick, event after note ends"
         );
 
@@ -507,8 +512,9 @@ mod tests {
                         .unwrap()
                         .with_exact_tick(80)
                 )
-                .last_tick(120),
-            Ok(184),
+                .last_tick(120)
+                .unwrap(),
+            184,
             "duration, event with exact tick, event before note ends"
         );
 
@@ -521,8 +527,9 @@ mod tests {
                         .unwrap()
                         .with_exact_tick(160)
                 )
-                .last_tick(0),
-            Ok(160),
+                .last_tick(0)
+                .unwrap(),
+            160,
             "duration, events with exact tick and offset, exact tick event last"
         );
 
@@ -535,8 +542,9 @@ mod tests {
                         .unwrap()
                         .with_exact_tick(160)
                 )
-                .last_tick(100),
-            Ok(228),
+                .last_tick(100)
+                .unwrap(),
+            228,
             "duration, events with exact tick and offset, note ends last"
         );
 
@@ -545,8 +553,9 @@ mod tests {
                 .with_duration(64)
                 .with_offset(16)
                 .with_exact_tick(80)
-                .last_tick(96),
-            Ok(160),
+                .last_tick(96)
+                .unwrap(),
+            160,
             "duration, offset and last tick"
         );
     }

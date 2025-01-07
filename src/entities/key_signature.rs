@@ -1,3 +1,5 @@
+use anyhow::{anyhow, Result};
+
 // Functions for converting key signatures to and from MIDI bytes
 // and for validating that a key signature is valid
 const MAJOR_KEYS: [&str; 15] = [
@@ -52,19 +54,19 @@ fn to_midi_byte2(key: &str) -> u8 {
     0x00
 }
 
-pub fn to_midi_bytes(key: &str) -> Result<[u8; 5], String> {
+pub fn to_midi_bytes(key: &str) -> Result<[u8; 5]> {
     if let Some(byte1) = to_midi_byte1(key) {
         let byte2 = to_midi_byte2(key);
 
         return Ok([0xff, 0x59, 0x02, byte1, byte2]);
     }
 
-    Err(format!("Invalid key: {:?}", key))
+    Err(anyhow!("Invalid key: {:?}", key))
 }
 
-pub fn from_midi_bytes((byte, minor): (u8, u8)) -> Result<String, String> {
+pub fn from_midi_bytes((byte, minor): (u8, u8)) -> Result<String> {
     if byte > 0x07 && byte < 0xf9 {
-        return Err(format!("invalid byte 1: {}", byte));
+        return Err(anyhow!("invalid byte 1: {}", byte));
     }
 
     let ix = (7 + byte as usize) & 0xff;
@@ -72,7 +74,7 @@ pub fn from_midi_bytes((byte, minor): (u8, u8)) -> Result<String, String> {
     match minor {
         0 => Ok(MAJOR_KEYS[ix].to_string()),
         1 => Ok(MINOR_KEYS[ix].to_string()),
-        _ => Err(format!("invalid byte 2: {}", minor)),
+        _ => Err(anyhow!("invalid byte 2: {}", minor)),
     }
 }
 
@@ -94,8 +96,11 @@ mod tests {
 
     macro_rules! midi_conv_test {
         ($key:expr, $byte1:expr, $byte2:expr) => {
-            assert_eq!(to_midi_bytes($key), Ok([0xff, 0x59, 0x02, $byte1, $byte2]));
-            assert_eq!(from_midi_bytes(($byte1, $byte2)), Ok($key.to_string()));
+            assert_eq!(
+                to_midi_bytes($key).unwrap(),
+                [0xff, 0x59, 0x02, $byte1, $byte2]
+            );
+            assert_eq!(from_midi_bytes(($byte1, $byte2)).unwrap(), $key.to_string());
         };
     }
 

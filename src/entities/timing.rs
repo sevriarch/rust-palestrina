@@ -1,11 +1,14 @@
+use anyhow::{anyhow, Result};
+
 pub trait Timing {
     fn with_exact_tick(&mut self, tick: u32) -> Self;
     fn with_offset(&mut self, tick: i32) -> Self;
     fn mutate_exact_tick(&mut self, f: impl Fn(&mut u32)) -> Self;
     fn mutate_offset(&mut self, f: impl Fn(&mut i32)) -> Self;
-    fn start_tick(&self, curr: u32) -> Result<u32, String>;
+    fn start_tick(&self, curr: u32) -> Result<u32>;
 }
 
+#[inline(always)]
 fn exact_or_curr(exact: Option<u32>, curr: u32) -> u32 {
     if let Some(tick) = exact {
         tick
@@ -14,9 +17,10 @@ fn exact_or_curr(exact: Option<u32>, curr: u32) -> u32 {
     }
 }
 
-fn pos_or_err(tick: i32) -> Result<u32, String> {
+#[inline(always)]
+fn pos_or_err(tick: i32) -> Result<u32> {
     if tick < 0 {
-        Err(format!("negative tick {:?} is not permitted", tick))
+        Err(anyhow!("negative tick {:?} is not permitted", tick))
     } else {
         Ok(tick as u32)
     }
@@ -47,7 +51,7 @@ macro_rules! timing_traits {
                 *self
             }
 
-            fn start_tick(&self, curr: u32) -> Result<u32, String> {
+            fn start_tick(&self, curr: u32) -> Result<u32> {
                 pos_or_err(self.offset + exact_or_curr(self.tick, curr) as i32)
             }
         }
@@ -82,15 +86,15 @@ impl DurationalEventTiming {
         *self
     }
 
-    pub fn end_tick(&self, curr: u32) -> Result<u32, String> {
+    pub fn end_tick(&self, curr: u32) -> Result<u32> {
         pos_or_err((exact_or_curr(self.tick, curr) + self.duration) as i32 + self.offset)
     }
 
-    pub fn next_tick(&self, curr: u32) -> Result<u32, String> {
+    pub fn next_tick(&self, curr: u32) -> Result<u32> {
         Ok(exact_or_curr(self.tick, curr) + self.duration)
     }
 
-    pub fn augment_rhythm(mut self, v: u32) -> Result<Self, String> {
+    pub fn augment_rhythm(mut self, v: u32) -> Result<Self> {
         self.duration *= v;
         self.offset *= v as i32;
         Ok(self)
@@ -127,15 +131,15 @@ mod test_event_timing {
             assert_eq!(t.offset, 100);
 
             let t = <$type>::default().with_offset(100);
-            assert_eq!(t.start_tick(200), Ok(300));
+            assert_eq!(t.start_tick(200).unwrap(), 300);
 
             let t = <$type>::default().with_offset(-100);
             assert!(t.start_tick(0).is_err());
-            assert_eq!(t.start_tick(200), Ok(100));
+            assert_eq!(t.start_tick(200).unwrap(), 100);
 
             let t = <$type>::default().with_exact_tick(300).with_offset(-100);
-            assert_eq!(t.start_tick(0), Ok(200));
-            assert_eq!(t.start_tick(300), Ok(200));
+            assert_eq!(t.start_tick(0).unwrap(), 200);
+            assert_eq!(t.start_tick(300).unwrap(), 200);
         };
     }
 
@@ -165,15 +169,15 @@ mod test_event_timing {
             .with_duration(50);
 
         assert!(t.end_tick(0).is_err());
-        assert_eq!(t.end_tick(200), Ok(150));
+        assert_eq!(t.end_tick(200).unwrap(), 150);
 
         let t = DurationalEventTiming::default()
             .with_exact_tick(200)
             .with_offset(-100)
             .with_duration(50);
 
-        assert_eq!(t.end_tick(0), Ok(150));
-        assert_eq!(t.end_tick(200), Ok(150));
+        assert_eq!(t.end_tick(0).unwrap(), 150);
+        assert_eq!(t.end_tick(200).unwrap(), 150);
 
         let t = DurationalEventTiming::default()
             .with_exact_tick(200)
@@ -190,23 +194,23 @@ mod test_event_timing {
             .with_offset(-100)
             .with_duration(50);
 
-        assert_eq!(t.next_tick(0), Ok(50));
-        assert_eq!(t.next_tick(200), Ok(250));
+        assert_eq!(t.next_tick(0).unwrap(), 50);
+        assert_eq!(t.next_tick(200).unwrap(), 250);
 
         let t = DurationalEventTiming::default()
             .with_exact_tick(200)
             .with_offset(-100)
             .with_duration(50);
 
-        assert_eq!(t.next_tick(0), Ok(250));
-        assert_eq!(t.next_tick(200), Ok(250));
+        assert_eq!(t.next_tick(0).unwrap(), 250);
+        assert_eq!(t.next_tick(200).unwrap(), 250);
 
         let t = DurationalEventTiming::default()
             .with_exact_tick(200)
             .with_offset(-300)
             .with_duration(50);
 
-        assert_eq!(t.next_tick(0), Ok(250));
-        assert_eq!(t.next_tick(200), Ok(250));
+        assert_eq!(t.next_tick(0).unwrap(), 250);
+        assert_eq!(t.next_tick(200).unwrap(), 250);
     }
 }

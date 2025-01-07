@@ -1,30 +1,32 @@
-pub fn from_str(sig: &str) -> Result<(u8, u16), String> {
+use anyhow::{anyhow, Result};
+
+pub fn from_str(sig: &str) -> Result<(u8, u16)> {
     let p: Vec<&str> = sig.split("/").collect();
 
     if p.len() != 2 {
-        return Err(format!("invalid time signature: {}", sig));
+        return Err(anyhow!("invalid time signature: {}", sig));
     }
 
     let num: u8 = p[0]
         .parse()
-        .map_err(|_| format!("invalid numerator in time signature: {}", sig))?;
+        .map_err(|_| anyhow!("invalid numerator in time signature: {}", sig))?;
 
     if num == 0 {
-        return Err(format!("invalid numerator in time signature: {}", sig));
+        return Err(anyhow!("invalid numerator in time signature: {}", sig));
     }
 
     let denom: u16 = p[1]
         .parse()
-        .map_err(|_| format!("invalid denominator in time signature: {}", sig))?;
+        .map_err(|_| anyhow!("invalid denominator in time signature: {}", sig))?;
 
     if denom > 0 && denom & (denom - 1) == 0 {
         Ok((num, denom))
     } else {
-        Err(format!("invalid denominator in time signature: {}", sig))
+        Err(anyhow!("invalid denominator in time signature: {}", sig))
     }
 }
 
-pub fn to_midi_bytes(sig: &str) -> Result<[u8; 7], String> {
+pub fn to_midi_bytes(sig: &str) -> Result<[u8; 7]> {
     let bytes = from_str(sig)?;
     let byte2 = 15 - bytes.1.leading_zeros() as u8;
 
@@ -63,8 +65,8 @@ mod tests {
     macro_rules! midi_conv_test {
         ($sig:expr, $byte1:expr, $byte2:expr) => {
             assert_eq!(
-                to_midi_bytes($sig),
-                Ok([0xff, 0x58, 0x04, $byte1, $byte2, 0x18, 0x08])
+                to_midi_bytes($sig).unwrap(),
+                [0xff, 0x58, 0x04, $byte1, $byte2, 0x18, 0x08]
             );
             assert_eq!(
                 from_midi_bytes([$byte1, $byte2, 0x18, 0x08]),
