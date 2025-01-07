@@ -574,6 +574,20 @@ mod tests {
     }
 
     #[test]
+    fn test_combine() {
+        assert!(NumericSeq::new(vec![1, 2, 3])
+            .combine(|(a, b)| a + b, NumericSeq::new(vec![4, 5]))
+            .is_err());
+
+        assert_eq!(
+            NumericSeq::new(vec![1, 2, 3])
+                .combine(|(a, b)| a + b, NumericSeq::new(vec![4, 5, 6]))
+                .unwrap(),
+            NumericSeq::new(vec![5, 7, 9])
+        );
+    }
+
+    #[test]
     fn test_chaining() {
         fn chained_methods() -> Result<NumericSeq<i32>> {
             let ret = NumericSeq::new(vec![1, 2, 3])

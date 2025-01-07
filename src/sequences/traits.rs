@@ -4,7 +4,7 @@ use crate::entities::scale::Scale;
 use anyhow::{anyhow, Result};
 use num_traits::{Num, PrimInt};
 use std::fmt::Debug;
-use std::iter::Sum;
+use std::iter::{zip, Sum};
 use std::ops::SubAssign;
 
 #[macro_export]
@@ -278,5 +278,19 @@ pub trait Sequence<
             + num_traits::Euclid,
     {
         Ok(self.mutate_pitches(scale.fit_to_scale(&zeroval)))
+    }
+
+    fn combine(self, f: impl Fn((&T, &T)) -> T, seq: Self) -> Result<Self> {
+        if self.length() != seq.length() {
+            return Err(anyhow!(
+                "sequence lengths ({} vs {}) were different",
+                self.length(),
+                seq.length()
+            ));
+        }
+
+        let ret = zip(self.cts_ref(), seq.cts_ref()).map(f).collect();
+
+        Ok(self.with_contents(ret))
     }
 }
