@@ -37,7 +37,7 @@ macro_rules! impl_fns_for_melody_member {
     )*)
 }
 
-macro_rules! impl_fns_for_numeric_seq {
+macro_rules! impl_fns_for_seq {
     ($ty:ident, for $($fn:ident)*) => ($(
         fn $fn(&mut self, n: $ty) {
             self.contents.iter_mut().for_each(|p| p.$fn(n));
@@ -70,7 +70,11 @@ macro_rules! impl_traits_for_raw_values {
         }
 
         impl Pitch<$ty> for NumericSeq<$ty> {
-            impl_fns_for_numeric_seq!($ty, for transpose_pitch invert_pitch);
+            impl_fns_for_seq!($ty, for transpose_pitch invert_pitch);
+        }
+
+        impl Pitch<$ty> for NoteSeq<$ty> {
+            impl_fns_for_seq!($ty, for transpose_pitch invert_pitch);
         }
     )*)
 }
@@ -117,6 +121,12 @@ mod tests {
             6,
             NumericSeq::new(vec![10, 11, 12])
         );
+        pitch_trait_test!(
+            transpose_pitch,
+            NoteSeq::new(vec![Some(4), None, Some(6)]),
+            6,
+            NoteSeq::new(vec![Some(10), None, Some(12)])
+        );
     }
 
     #[test]
@@ -137,6 +147,12 @@ mod tests {
             NumericSeq::new(vec![4, 5, 6]),
             6,
             NumericSeq::new(vec![8, 7, 6])
+        );
+        pitch_trait_test!(
+            invert_pitch,
+            NoteSeq::new(vec![Some(4), None, Some(6)]),
+            6,
+            NoteSeq::new(vec![Some(8), None, Some(6)])
         );
     }
 }
