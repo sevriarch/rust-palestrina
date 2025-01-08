@@ -621,6 +621,23 @@ pub trait Collection<T: Clone + Debug>: Sized {
         Ok((self.construct(p1), self.construct(p2)))
     }
 
+    fn partition_in_position(&self, f: fn(&T) -> bool, default: T) -> Result<(Self, Self)> {
+        let len = self.length();
+
+        let mut p1 = vec![default.clone(); len];
+        let mut p2 = vec![default; len];
+
+        self.cts_ref().iter().enumerate().for_each(|(i, val)| {
+            if f(val) {
+                p1[i] = val.clone();
+            } else {
+                p2[i] = val.clone();
+            }
+        });
+
+        Ok((self.construct(p1), self.construct(p2)))
+    }
+
     fn group_by<KeyType: Hash + Eq + PartialEq + Debug>(
         &self,
         f: fn(&T) -> KeyType,
@@ -1153,6 +1170,16 @@ mod tests {
 
         assert_eq!(p1.contents, vec![0, 2, 4, 6]);
         assert_eq!(p2.contents, vec![3, 5]);
+    }
+
+    #[test]
+    fn partition_in_position() {
+        let (p1, p2) = TestColl::new(vec![0, 2, 3, 4, 5, 6])
+            .partition_in_position(|i| i % 2 == 0, -1)
+            .unwrap();
+
+        assert_eq!(p1.contents, vec![0, 2, -1, 4, -1, 6]);
+        assert_eq!(p2.contents, vec![-1, -1, 3, -1, 5, -1]);
     }
 
     #[test]
