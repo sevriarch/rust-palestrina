@@ -130,9 +130,9 @@ impl<T> TryFrom<Vec<MelodyMember<T>>> for Melody<T>
 where
     T: Clone + Copy + Num + Debug + PartialOrd + Bounded,
 {
-    type Error = MelodyError;
+    type Error = anyhow::Error;
 
-    fn try_from(what: Vec<MelodyMember<T>>) -> Result<Self, Self::Error> {
+    fn try_from(what: Vec<MelodyMember<T>>) -> Result<Self> {
         Ok(Self::new(what))
     }
 }
@@ -141,9 +141,9 @@ impl<T> TryFrom<Vec<Vec<T>>> for Melody<T>
 where
     T: Clone + Copy + Num + Debug + PartialOrd + Bounded,
 {
-    type Error = MelodyError;
+    type Error = anyhow::Error;
 
-    fn try_from(what: Vec<Vec<T>>) -> Result<Self, Self::Error> {
+    fn try_from(what: Vec<Vec<T>>) -> Result<Self> {
         Ok(Self::new(
             what.into_iter().map(MelodyMember::from).collect(),
         ))
@@ -154,9 +154,9 @@ impl<T> TryFrom<Vec<T>> for Melody<T>
 where
     T: Clone + Copy + Num + Debug + PartialOrd + Bounded,
 {
-    type Error = MelodyError;
+    type Error = anyhow::Error;
 
-    fn try_from(what: Vec<T>) -> Result<Self, Self::Error> {
+    fn try_from(what: Vec<T>) -> Result<Self> {
         Ok(Self::new(
             what.into_iter().map(MelodyMember::from).collect(),
         ))
@@ -169,9 +169,9 @@ macro_rules! try_from_seq {
         where
             T: Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
         {
-            type Error = MelodyError;
+            type Error = anyhow::Error;
 
-            fn try_from(what: $type) -> Result<Self, Self::Error> {
+            fn try_from(what: $type) -> Result<Self> {
                 Ok(Self::new(
                     what.to_pitches()
                         .into_iter()
@@ -563,24 +563,24 @@ mod tests {
     #[test]
     fn try_from_vec() {
         assert_eq!(
-            Melody::try_from(vec![5, 12, 16]),
-            Ok(Melody::new(vec![
+            Melody::try_from(vec![5, 12, 16]).unwrap(),
+            Melody::new(vec![
                 MelodyMember::from(vec![5]),
                 MelodyMember::from(vec![12]),
                 MelodyMember::from(vec![16]),
-            ]))
+            ])
         );
     }
 
     #[test]
     fn try_from_vec_of_vecs() {
         assert_eq!(
-            Melody::try_from(vec![vec![5], vec![], vec![12, 16]]),
-            Ok(Melody::new(vec![
+            Melody::try_from(vec![vec![5], vec![], vec![12, 16]]).unwrap(),
+            Melody::new(vec![
                 MelodyMember::from(vec![5]),
                 MelodyMember::from(vec![]),
                 MelodyMember::from(vec![12, 16]),
-            ]))
+            ])
         );
     }
 
@@ -591,49 +591,50 @@ mod tests {
                 MelodyMember::from(vec![5]),
                 MelodyMember::from(vec![]),
                 MelodyMember::from(vec![12, 16]),
-            ]),
-            Ok(Melody::<i32>::new(vec![
+            ])
+            .unwrap(),
+            Melody::<i32>::new(vec![
                 MelodyMember::from(vec![5]),
                 MelodyMember::from(vec![]),
                 MelodyMember::from(vec![12, 16]),
-            ]))
+            ])
         );
     }
 
     #[test]
     fn try_from_chordseq() {
         assert_eq!(
-            Melody::try_from(ChordSeq::new(vec![vec![5], vec![], vec![12, 16]])),
-            Ok(Melody::new(vec![
+            Melody::try_from(ChordSeq::new(vec![vec![5], vec![], vec![12, 16]])).unwrap(),
+            Melody::new(vec![
                 MelodyMember::from(vec![5]),
                 MelodyMember::from(vec![]),
                 MelodyMember::from(vec![12, 16]),
-            ]))
+            ])
         );
     }
 
     #[test]
     fn try_from_numseq() {
         assert_eq!(
-            Melody::try_from(NumericSeq::new(vec![5, 12, 16])),
-            Ok(Melody::new(vec![
+            Melody::try_from(NumericSeq::new(vec![5, 12, 16])).unwrap(),
+            Melody::new(vec![
                 MelodyMember::from(vec![5]),
                 MelodyMember::from(vec![12]),
                 MelodyMember::from(vec![16]),
-            ]))
+            ])
         );
     }
 
     #[test]
     fn try_from_noteseq() {
         assert_eq!(
-            Melody::try_from(NoteSeq::new(vec![Some(5), None, Some(12), Some(16)])),
-            Ok(Melody::new(vec![
+            Melody::try_from(NoteSeq::new(vec![Some(5), None, Some(12), Some(16)])).unwrap(),
+            Melody::new(vec![
                 MelodyMember::from(vec![5]),
                 MelodyMember::from(vec![]),
                 MelodyMember::from(vec![12]),
                 MelodyMember::from(vec![16]),
-            ]))
+            ])
         );
     }
 
