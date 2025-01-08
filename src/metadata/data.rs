@@ -1,5 +1,7 @@
 use crate::entities::timing::{EventTiming, Timing};
+use anyhow::{anyhow, Result};
 use std::fmt::Debug;
+use thiserror::Error;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum MetadataData {
@@ -21,13 +23,21 @@ pub enum MetadataData {
     PitchBend(i16),
 }
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum MetadataError {
-    InvalidEventType,
-    InvalidValueType,
+    #[error("Invalid metadata type found: {0}")]
+    InvalidMetadataType(String),
+    #[error("Found unexpected string value {1} for metadata type {0}")]
+    UnexpectedStringValue(String, String),
+    #[error("Found unexpected int value {1} for metadata type {0}")]
+    UnexpectedIntValue(String, i16),
+    #[error("Found unexpected floating point value {1} for metadata type {0}")]
+    UnexpectedFloatValue(String, f32),
+    #[error("Found unexpected boolean value {1} for metadata type {0}")]
+    UnexpectedBooleanValue(String, bool),
 }
 
-fn get_meta_event_string_data(event: &str, value: String) -> Result<MetadataData, MetadataError> {
+fn get_meta_event_string_data(event: &str, value: String) -> Result<MetadataData> {
     match event {
         "key-signature" => Ok(MetadataData::KeySignature(value)),
         "time-signature" => Ok(MetadataData::TimeSignature(value)),
@@ -38,18 +48,24 @@ fn get_meta_event_string_data(event: &str, value: String) -> Result<MetadataData
         "cue-point" => Ok(MetadataData::CuePoint(value)),
         "copyright" => Ok(MetadataData::Copyright(value)),
         "trackname" => Ok(MetadataData::TrackName(value)),
-        _ => Err(MetadataError::InvalidValueType),
+        _ => Err(anyhow!(MetadataError::UnexpectedStringValue(
+            event.to_string(),
+            value
+        ))),
     }
 }
 
-fn get_meta_event_int_data(event: &str, value: i16) -> Result<MetadataData, MetadataError> {
+fn get_meta_event_int_data(event: &str, value: i16) -> Result<MetadataData> {
     match event {
         "volume" => Ok(MetadataData::Volume(value)),
         "pan" => Ok(MetadataData::Pan(value)),
         "balance" => Ok(MetadataData::Balance(value)),
         "pitch-bend" => Ok(MetadataData::PitchBend(value)),
         "tempo" => Ok(MetadataData::Tempo(value as f32)),
-        _ => Err(MetadataError::InvalidValueType),
+        _ => Err(anyhow!(MetadataError::UnexpectedIntValue(
+            event.to_string(),
+            value
+        ))),
     }
 }
 
@@ -63,9 +79,9 @@ impl From<MetadataData> for Metadata {
 }
 
 impl TryFrom<(&str, &str)> for Metadata {
-    type Error = MetadataError;
+    type Error = anyhow::Error;
 
-    fn try_from((event, value): (&str, &str)) -> Result<Self, Self::Error> {
+    fn try_from((event, value): (&str, &str)) -> Result<Self> {
         let data = get_meta_event_string_data(event, value.to_string())?;
 
         Ok(Metadata::from(data))
@@ -73,7 +89,7 @@ impl TryFrom<(&str, &str)> for Metadata {
 }
 
 impl TryFrom<(&str, i16)> for Metadata {
-    type Error = MetadataError;
+    type Error = anyhow::Error;
 
     fn try_from((event, value): (&str, i16)) -> Result<Self, Self::Error> {
         let data = get_meta_event_int_data(event, value)?;
@@ -83,25 +99,31 @@ impl TryFrom<(&str, i16)> for Metadata {
 }
 
 impl TryFrom<(&str, bool)> for Metadata {
-    type Error = MetadataError;
+    type Error = anyhow::Error;
 
-    fn try_from((event, value): (&str, bool)) -> Result<Self, Self::Error> {
+    fn try_from((event, value): (&str, bool)) -> Result<Self> {
         if event == "sustain" {
             Ok(Metadata::from(MetadataData::Sustain(value)))
         } else {
-            Err(MetadataError::InvalidValueType)
+            Err(anyhow!(MetadataError::UnexpectedBooleanValue(
+                event.to_string(),
+                value
+            )))
         }
     }
 }
 
 impl TryFrom<(&str, f32)> for Metadata {
-    type Error = MetadataError;
+    type Error = anyhow::Error;
 
-    fn try_from((event, value): (&str, f32)) -> Result<Self, Self::Error> {
+    fn try_from((event, value): (&str, f32)) -> Result<Self> {
         if event == "tempo" {
             Ok(Metadata::from(MetadataData::Tempo(value)))
         } else {
-            Err(MetadataError::InvalidValueType)
+            Err(anyhow!(MetadataError::UnexpectedFloatValue(
+                event.to_string(),
+                value,
+            )))
         }
     }
 }

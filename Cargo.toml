@@ -12,6 +12,7 @@ readme = "README.md"
 [dependencies]
 num-traits = "0.2.19"
 anyhow = "1.0.95"
+thiserror = "2.0.10"
 
 [dev-dependencies]
 assert_float_eq = "1"

@@ -1,5 +1,5 @@
 use crate::entities::timing::Timing;
-use crate::metadata::data::{Metadata, MetadataError};
+use crate::metadata::data::Metadata;
 
 use anyhow::Result;
 
@@ -54,17 +54,11 @@ impl MetadataList {
 }
 
 pub trait PushMetadata<T> {
-    fn push(self, kind: &str, data: T) -> Result<Self, MetadataError>
+    fn push(self, kind: &str, data: T) -> Result<Self>
     where
         Self: Sized;
 
-    fn push_with_timing(
-        self,
-        kind: &str,
-        data: T,
-        tick: Option<u32>,
-        offset: i32,
-    ) -> Result<Self, MetadataError>
+    fn push_with_timing(self, kind: &str, data: T, tick: Option<u32>, offset: i32) -> Result<Self>
     where
         Self: Sized;
 }
@@ -72,7 +66,7 @@ pub trait PushMetadata<T> {
 macro_rules! push_impl {
     ($($type:ty)*) => ($(
 impl PushMetadata<$type> for MetadataList {
-    fn push(mut self, kind: &str, data: $type) -> Result<Self, MetadataError>
+    fn push(mut self, kind: &str, data: $type) -> Result<Self>
     where
         Self: Sized,
     {
@@ -89,7 +83,7 @@ impl PushMetadata<$type> for MetadataList {
         data: $type,
         tick: Option<u32>,
         offset: i32
-    ) -> Result<Self, MetadataError>
+    ) -> Result<Self>
     where
         Self: Sized,
     {
