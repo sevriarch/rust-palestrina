@@ -328,9 +328,9 @@ where
         self.mutate_each(|m| m.volume = vel)
     }
 
-    pub fn with_volumes(mut self, vel: Vec<u8>) -> Result<Self, String> {
+    pub fn with_volumes(mut self, vel: Vec<u8>) -> Result<Self> {
         if vel.len() != self.contents.len() {
-            return Err(format!(
+            return Err(anyhow!(
                 "supplied volumes are of a different length ({:?}) from Sequence ({:?})",
                 vel.len(),
                 self.contents.len()
@@ -352,9 +352,9 @@ where
         self.mutate_each(|m| m.timing.duration = dur)
     }
 
-    pub fn with_durations(mut self, dur: Vec<u32>) -> Result<Self, String> {
+    pub fn with_durations(mut self, dur: Vec<u32>) -> Result<Self> {
         if dur.len() != self.contents.len() {
-            return Err(format!(
+            return Err(anyhow!(
                 "supplied volumes are of a different length ({:?}) from Sequence ({:?})",
                 dur.len(),
                 self.contents.len()
