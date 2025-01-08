@@ -70,10 +70,25 @@ where
     }
 
     pub fn last_tick(&self, curr: u32) -> Result<u32> {
-        let end_of_note = self.timing.end_tick(curr)?;
-        let last_metadata = self.before.last_tick(curr).unwrap_or(curr);
+        let mut max = 0;
 
-        Ok(end_of_note.max(last_metadata))
+        if !self.values.is_empty() {
+            let end_of_note = self.timing.end_tick(curr)?;
+
+            if end_of_note > max {
+                max = end_of_note;
+            }
+        }
+
+        if !self.before.contents.is_empty() {
+            let last_metadata = self.before.last_tick(self.timing.start_tick(curr)?)?;
+
+            if last_metadata > max {
+                max = last_metadata;
+            }
+        }
+
+        Ok(max)
     }
 
     pub fn with_exact_tick(&mut self, d: u32) -> &mut Self {
@@ -557,6 +572,27 @@ mod tests {
                 .unwrap(),
             160,
             "duration, offset and last tick"
+        );
+
+        assert_eq!(
+            MelodyMember::<i32>::from(vec![])
+                .with_duration(64)
+                .with_offset(16)
+                .with_exact_tick(80)
+                .last_tick(96)
+                .unwrap(),
+            0,
+            "no notes, no metadata events, duration, offset and last tick"
+        );
+
+        assert_eq!(
+            MelodyMember::<i32>::from(vec![])
+                .with_duration(64)
+                .with_event(Metadata::try_from(("tempo", 120)).unwrap().with_offset(80))
+                .last_tick(96)
+                .unwrap(),
+            176,
+            "no notes, metadata event, duration, offset and last tick"
         );
     }
 
