@@ -8,6 +8,7 @@ use crate::sequences::{melody::Melody, note::NoteSeq, numeric::NumericSeq, trait
 use anyhow::Result;
 
 const LEN: usize = 1280;
+const TICKS: u32 = 128;
 const GAP: usize = 5;
 const MOD: i32 = 25;
 const BAR: i32 = 16;
@@ -118,7 +119,7 @@ fn melodify(seq: NoteSeq<i32>) -> Result<Melody<i32>> {
             m.values = vec![m.values[0], m.values[0] + 12];
         }
     })
-    .with_duration(48)
+    .with_duration(TICKS / 4)
     .with_volumes(make_volume()?.contents)
 }
 
@@ -158,7 +159,7 @@ fn make_score() -> Result<()> {
     let m0 = melodify(zag.0)?;
     let m1 = melodify(zag.1)?;
     println!("{:?}", m1);
-    let score = Score::new(vec![m0, m1]);
+    let score = Score::new(vec![m0, m1]).with_ticks_per_quarter(TICKS);
 
     score.try_to_write_midi_bytes("src/e2e/pf_son_1_finale.midi")
 }

@@ -888,6 +888,7 @@ mod tests {
                     metadata: MetadataList::default()
                 }],
                 metadata: MetadataList::default(),
+                ticks_per_quarter: 192,
             }
             .try_to_midi_bytes()
             .unwrap(),
@@ -950,7 +951,8 @@ mod tests {
                     ],
                     metadata: MetadataList::default(),
                 }],
-                metadata: MetadataList::default()
+                metadata: MetadataList::default(),
+                ticks_per_quarter: 192,
             }
             .try_to_midi_bytes()
             .unwrap(),
@@ -1026,7 +1028,8 @@ mod tests {
                     ],
                     metadata: MetadataList::default(),
                 }],
-                metadata: MetadataList::default()
+                metadata: MetadataList::default(),
+                ticks_per_quarter: 192,
             }
             .try_to_hash()
             .unwrap(),
@@ -1082,7 +1085,8 @@ mod tests {
                 ],
                 metadata: MetadataList::default(),
             }],
-            metadata: MetadataList::default()
+            metadata: MetadataList::default(),
+            ticks_per_quarter: 192,
         }
         .try_to_write_midi_bytes("foo.midi")
         .is_ok());

@@ -16,6 +16,7 @@ where
 {
     pub contents: Vec<Melody<T>>,
     pub metadata: MetadataList,
+    pub ticks_per_quarter: u32,
 }
 
 impl<T> From<Vec<Melody<T>>> for Score<T>
@@ -46,6 +47,7 @@ where
         Self {
             contents: m,
             metadata: MetadataList::default(),
+            ticks_per_quarter: 192,
         }
     }
 
@@ -53,6 +55,7 @@ where
         Self {
             contents,
             metadata: self.metadata.clone(),
+            ticks_per_quarter: 192,
         }
     }
 }
@@ -105,8 +108,13 @@ where
         })
     }
 
+    pub fn with_ticks_per_quarter(mut self, ticks: u32) -> Self {
+        self.ticks_per_quarter = ticks;
+        self
+    }
+
     pub fn ticks_per_quarter(&self) -> u32 {
-        192
+        self.ticks_per_quarter
     }
 
     pub fn with_all_ticks_exact(&self) -> &Self {
@@ -193,5 +201,13 @@ mod tests {
             .volume_range(),
             Some((40, 70))
         );
+    }
+
+    #[test]
+    fn ticks_per_quarter() {
+        let sc = Score::new(vec![Melody::<i32>::new(vec![])]);
+
+        assert_eq!(sc.ticks_per_quarter(), 192);
+        assert_eq!(sc.with_ticks_per_quarter(64).ticks_per_quarter(), 64);
     }
 }
