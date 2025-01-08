@@ -1,6 +1,6 @@
 use crate::collections::traits::Collection;
 use crate::default_collection_methods;
-use crate::metadata::list::MetadataList;
+use crate::metadata::list::{MetadataList, PushMetadata};
 use crate::sequences::melody::Melody;
 use crate::sequences::traits::Sequence;
 use anyhow::Result;
@@ -117,6 +117,11 @@ where
         self.ticks_per_quarter
     }
 
+    pub fn with_tempo<TTempo: Into<f32>>(mut self, tempo: TTempo) -> Result<Self> {
+        self.metadata = self.metadata.push("tempo", tempo.into())?;
+        Ok(self)
+    }
+
     pub fn with_all_ticks_exact(&self) -> &Self {
         todo!();
     }
@@ -153,7 +158,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::entities::timing::DurationalEventTiming;
+    use crate::entities::timing::{DurationalEventTiming, EventTiming};
+    use crate::metadata::data::{Metadata, MetadataData};
     use crate::sequences::melody::MelodyMember;
 
     #[test]
@@ -204,10 +210,27 @@ mod tests {
     }
 
     #[test]
-    fn ticks_per_quarter() {
+    fn with_ticks_per_quarter() {
         let sc = Score::new(vec![Melody::<i32>::new(vec![])]);
 
         assert_eq!(sc.ticks_per_quarter(), 192);
         assert_eq!(sc.with_ticks_per_quarter(64).ticks_per_quarter(), 64);
+    }
+
+    #[test]
+    fn with_tempo() {
+        let sc = Score::new(vec![Melody::<i32>::new(vec![])])
+            .with_tempo(144_i16)
+            .unwrap();
+
+        assert_eq!(
+            sc.metadata,
+            MetadataList {
+                contents: vec![Metadata {
+                    data: MetadataData::Tempo(144.0),
+                    timing: EventTiming::default()
+                }]
+            }
+        );
     }
 }
