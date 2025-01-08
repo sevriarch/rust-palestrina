@@ -588,6 +588,29 @@ mod tests {
     }
 
     #[test]
+    fn test_map_with() {
+        assert!(NumericSeq::new(vec![1, 2, 3])
+            .map_with(
+                |v| v.into_iter().sum(),
+                vec![NumericSeq::new(vec![4, 5]), NumericSeq::new(vec![7, 8, 9])]
+            )
+            .is_err());
+
+        assert_eq!(
+            NumericSeq::new(vec![1, 2, 3])
+                .map_with(
+                    |v| v.into_iter().sum(),
+                    vec![
+                        NumericSeq::new(vec![4, 5, 6]),
+                        NumericSeq::new(vec![7, 8, 9])
+                    ]
+                )
+                .unwrap(),
+            NumericSeq::new(vec![12, 15, 18])
+        );
+    }
+
+    #[test]
     fn test_chaining() {
         fn chained_methods() -> Result<NumericSeq<i32>> {
             let ret = NumericSeq::new(vec![1, 2, 3])

@@ -6,6 +6,7 @@ use num_traits::{Num, PrimInt};
 use std::fmt::Debug;
 use std::iter::{zip, Sum};
 use std::ops::SubAssign;
+use std::slice::Iter;
 
 #[macro_export]
 macro_rules! default_sequence_methods {
@@ -290,6 +291,23 @@ pub trait Sequence<
         }
 
         let ret = zip(self.cts_ref(), seq.cts_ref()).map(f).collect();
+
+        Ok(self.with_contents(ret))
+    }
+
+    fn map_with(self, f: impl Fn(Vec<&T>) -> T, seq: Vec<Self>) -> Result<Self> {
+        let len = self.length();
+
+        if seq.iter().any(|s| self.length() != s.length()) {
+            return Err(anyhow!("sequence lengths were different"));
+        }
+
+        let mut iters: Vec<Iter<'_, T>> = seq.iter().map(|v| v.cts_ref().iter()).collect();
+        iters.insert(0, self.cts_ref().iter());
+
+        let ret: Vec<T> = (0..len)
+            .map(|_| f(iters.iter_mut().map(|n| n.next().unwrap()).collect()))
+            .collect();
 
         Ok(self.with_contents(ret))
     }
