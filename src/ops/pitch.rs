@@ -8,6 +8,7 @@ use crate::sequences::{
 pub trait Pitch<T> {
     fn transpose_pitch(&mut self, n: T);
     fn invert_pitch(&mut self, n: T);
+    fn is_silent(&self) -> bool;
 }
 
 macro_rules! impl_fns_for_option {
@@ -54,34 +55,66 @@ macro_rules! impl_traits_for_raw_values {
             fn invert_pitch(&mut self, n: $ty) {
                 *self = n + n - *self
             }
+
+            fn is_silent(&self) -> bool {
+                false
+            }
         }
 
         impl Pitch<$ty> for Option<$ty> {
             impl_fns_for_option!($ty, for transpose_pitch invert_pitch);
+
+            fn is_silent(&self) -> bool {
+                self.is_none()
+            }
         }
 
         impl Pitch<$ty> for Vec<$ty> {
             impl_fns_for_vec!($ty, for transpose_pitch invert_pitch);
+
+            fn is_silent(&self) -> bool {
+                self.is_empty()
+            }
         }
 
         impl Pitch<$ty> for MelodyMember<$ty> {
             impl_fns_for_melody_member!($ty, for transpose_pitch invert_pitch);
+
+            fn is_silent(&self) -> bool {
+                self.values.is_empty() || self.volume == 0
+            }
         }
 
         impl Pitch<$ty> for NumericSeq<$ty> {
             impl_fns_for_seq!($ty, for transpose_pitch invert_pitch);
+
+            fn is_silent(&self) -> bool {
+                self.contents.is_empty()
+            }
         }
 
         impl Pitch<$ty> for NoteSeq<$ty> {
             impl_fns_for_seq!($ty, for transpose_pitch invert_pitch);
+
+            fn is_silent(&self) -> bool {
+                self.contents.iter().all(|m| m.is_silent())
+            }
         }
 
         impl Pitch<$ty> for ChordSeq<$ty> {
             impl_fns_for_seq!($ty, for transpose_pitch invert_pitch);
+
+            fn is_silent(&self) -> bool {
+                self.contents.iter().all(|m| m.is_silent())
+            }
         }
 
         impl Pitch<$ty> for Melody<$ty> {
             impl_fns_for_seq!($ty, for transpose_pitch invert_pitch);
+
+            fn is_silent(&self) -> bool {
+                self.contents.iter().all(|m| m.is_silent())
+            }
         }
     )*)
 }
@@ -92,6 +125,8 @@ impl_traits_for_raw_values!(for i8 i16 i32 i64 isize u8 u16 u32 u64 usize f32 f6
 mod tests {
     use super::*;
     use crate::collections::traits::Collection;
+    use crate::entities::timing::DurationalEventTiming;
+    use crate::metadata::list::MetadataList;
 
     macro_rules! pitch_trait_test {
         ($fn:ident, $init:expr, $arg:expr, $ret:expr) => {
@@ -193,5 +228,43 @@ mod tests {
                 MelodyMember::from(vec![5])
             ])
         );
+    }
+
+    #[test]
+    fn is_silent() {
+        assert!(!0.is_silent());
+        assert!(!Some(0).is_silent());
+        assert!(None::<i32>.is_silent());
+        assert!(Vec::<i32>::new().is_silent());
+        assert!(!vec![0].is_silent());
+        assert!(MelodyMember::<i32>::from(vec![]).is_silent());
+        assert!(!MelodyMember::from(vec![0]).is_silent());
+        assert!(MelodyMember {
+            values: vec![0],
+            volume: 0,
+            timing: DurationalEventTiming::default(),
+            before: MetadataList::default()
+        }
+        .is_silent());
+        assert!(NumericSeq::<i32>::new(vec![]).is_silent());
+        assert!(!NumericSeq::new(vec![0]).is_silent());
+        assert!(NoteSeq::<i32>::new(vec![]).is_silent());
+        assert!(NoteSeq::<i32>::new(vec![None]).is_silent());
+        assert!(!NoteSeq::new(vec![Some(0), None, Some(1)]).is_silent());
+        assert!(ChordSeq::<i32>::new(vec![]).is_silent());
+        assert!(ChordSeq::<i32>::new(vec![vec![]]).is_silent());
+        assert!(!ChordSeq::new(vec![vec![0], vec![], vec![1]]).is_silent());
+        assert!(Melody::<i32>::new(vec![]).is_silent());
+        assert!(Melody::<i32>::try_from(vec![vec![]]).unwrap().is_silent());
+        assert!(!Melody::try_from(vec![vec![0], vec![], vec![1]])
+            .unwrap()
+            .is_silent());
+        assert!(Melody::new(vec![MelodyMember {
+            values: vec![0],
+            volume: 0,
+            timing: DurationalEventTiming::default(),
+            before: MetadataList::default()
+        }])
+        .is_silent());
     }
 }
