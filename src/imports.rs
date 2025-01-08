@@ -1,7 +1,8 @@
 use std::f64::consts::PI;
+use std::ops::{Add, Div, Mul, Neg, Sub};
 
-fn is_prime(n: i64) -> bool {
-    let max = (n as f64).sqrt() as i64 + 1;
+fn is_prime(n: i32) -> bool {
+    let max = (n as f64).sqrt() as i32 + 1;
 
     for i in 2..max {
         if n % i == 0 {
@@ -12,7 +13,7 @@ fn is_prime(n: i64) -> bool {
     n > 1
 }
 
-pub fn primes(n: usize) -> Vec<i64> {
+pub fn primes(n: usize) -> Vec<i32> {
     let mut ret = Vec::with_capacity(n);
 
     if n == 0 {
@@ -37,12 +38,12 @@ pub fn primes(n: usize) -> Vec<i64> {
     ret
 }
 
-pub fn primepi(n: usize) -> Vec<i64> {
+pub fn primepi(n: usize) -> Vec<i32> {
     let mut ret = Vec::with_capacity(n);
     let mut count = 0;
 
     for i in 0..n {
-        if is_prime(i as i64) {
+        if is_prime(i as i32) {
             count += 1;
         }
 
@@ -52,30 +53,30 @@ pub fn primepi(n: usize) -> Vec<i64> {
     ret
 }
 
-pub fn squares(n: usize) -> Vec<i64> {
-    (0..n as i64).map(|v| v * v).collect()
+pub fn squares(n: usize) -> Vec<i32> {
+    (0..n as i32).map(|v| v * v).collect()
 }
 
-pub fn sqrt_floor(n: usize) -> Vec<i64> {
-    (0..n).map(|v| (v as f64).sqrt() as i64).collect()
+pub fn sqrt_floor(n: usize) -> Vec<i32> {
+    (0..n).map(|v| (v as f64).sqrt() as i32).collect()
 }
 
-pub fn sqrt_round(n: usize) -> Vec<i64> {
+pub fn sqrt_round(n: usize) -> Vec<i32> {
     (0..n)
-        .map(|v| (v as f64).powf(0.5).round() as i64)
+        .map(|v| (v as f64).powf(0.5).round() as i32)
         .collect()
 }
 
-pub fn sqrt_ceil(n: usize) -> Vec<i64> {
-    (0..n).map(|v| (v as f64).powf(0.5).ceil() as i64).collect()
+pub fn sqrt_ceil(n: usize) -> Vec<i32> {
+    (0..n).map(|v| (v as f64).powf(0.5).ceil() as i32).collect()
 }
 
-pub fn bigomega(n: usize) -> Vec<i64> {
+pub fn bigomega(n: usize) -> Vec<i32> {
     let primes = &primes(n);
 
     (0..n)
         .map(|v| {
-            let mut num = v as i64;
+            let mut num = v as i32;
             let mut ct = 0;
 
             for prime in primes {
@@ -91,19 +92,19 @@ pub fn bigomega(n: usize) -> Vec<i64> {
         .collect()
 }
 
-pub fn triangular(n: usize) -> Vec<i64> {
+pub fn triangular(n: usize) -> Vec<i32> {
     let mut tot = 0;
     let mut ret = Vec::with_capacity(n);
 
     for i in 0..n {
-        tot += i as i64;
+        tot += i as i32;
         ret.push(tot);
     }
 
     ret
 }
 
-pub fn fibonacci(n: usize) -> Vec<i64> {
+pub fn fibonacci(n: usize) -> Vec<i32> {
     match n {
         0 => vec![],
         1 => vec![0],
@@ -122,7 +123,7 @@ pub fn fibonacci(n: usize) -> Vec<i64> {
     }
 }
 
-pub fn binary_runs(n: usize) -> Vec<i64> {
+pub fn binary_runs(n: usize) -> Vec<i32> {
     (0..n)
         .map(|v| {
             let mut ct = 0;
@@ -145,7 +146,7 @@ pub fn binary_runs(n: usize) -> Vec<i64> {
         .collect()
 }
 
-pub fn infinity(n: usize) -> Vec<i64> {
+pub fn infinity(n: usize) -> Vec<i32> {
     let mut ret = Vec::with_capacity(n);
 
     if n > 0 {
@@ -162,7 +163,7 @@ pub fn infinity(n: usize) -> Vec<i64> {
     ret
 }
 
-pub fn infinity_rhythmic(n: usize) -> Vec<i64> {
+pub fn infinity_rhythmic(n: usize) -> Vec<i32> {
     if n == 0 {
         return vec![];
     }
@@ -175,7 +176,7 @@ pub fn infinity_rhythmic(n: usize) -> Vec<i64> {
     (0..n).map(|v| fib[4 + bin[v] as usize]).collect()
 }
 
-fn infinity_var1_index(n: usize) -> i64 {
+fn infinity_var1_index(n: usize) -> i32 {
     if n == 0 {
         return 0;
     }
@@ -187,11 +188,11 @@ fn infinity_var1_index(n: usize) -> i64 {
     }
 }
 
-pub fn infinity_var1(n: usize) -> Vec<i64> {
+pub fn infinity_var1(n: usize) -> Vec<i32> {
     (0..n).map(infinity_var1_index).collect()
 }
 
-fn infinity_var2_index(n: usize) -> i64 {
+fn infinity_var2_index(n: usize) -> i32 {
     if n == 0 {
         return 0;
     }
@@ -203,15 +204,15 @@ fn infinity_var2_index(n: usize) -> i64 {
     }
 }
 
-pub fn infinity_var2(n: usize) -> Vec<i64> {
+pub fn infinity_var2(n: usize) -> Vec<i32> {
     (0..n).map(infinity_var2_index).collect()
 }
 
-pub fn rasmussen(n: usize) -> Vec<i64> {
+pub fn rasmussen(n: usize) -> Vec<i32> {
     let ppi = primepi(n);
     let primes = &primes(n);
 
-    (0..n as i64)
+    (0..n as i32)
         .map(|v| {
             let mut num = v;
             let mut ct = 0;
@@ -229,13 +230,13 @@ pub fn rasmussen(n: usize) -> Vec<i64> {
         .collect()
 }
 
-pub fn my1(n: usize) -> Vec<i64> {
+pub fn my1(n: usize) -> Vec<i32> {
     let tri = triangular(n + 1);
 
-    (1..=n).map(|v| tri[v] % (v as f64).sqrt() as i64).collect()
+    (1..=n).map(|v| tri[v] % (v as f64).sqrt() as i32).collect()
 }
 
-pub fn bitrev(n: u64) -> Vec<i64> {
+pub fn bitrev(n: u64) -> Vec<i32> {
     (0..n)
         .map(|v| {
             if v == 0 {
@@ -264,7 +265,7 @@ pub fn constant<T: Clone>(n: usize, v: T) -> Vec<T> {
     vec![v; n]
 }
 
-pub fn sinusoidal<T: Into<f64>>(n: usize, width: T, first_angle: T, last_angle: T) -> Vec<i64> {
+pub fn sinusoidal<T: Into<f64>>(n: usize, width: T, first_angle: T, last_angle: T) -> Vec<i32> {
     let width: f64 = width.into();
     let last_angle: f64 = last_angle.into();
     let first_angle: f64 = first_angle.into();
@@ -275,18 +276,16 @@ pub fn sinusoidal<T: Into<f64>>(n: usize, width: T, first_angle: T, last_angle: 
         .map(|v| {
             let angle: f64 = pi180 * (first_angle + (v as f64 * gradiant));
 
-            (width * angle.sin()).round() as i64
+            (width * angle.sin()).round() as i32
         })
         .collect()
 }
 
-pub fn linear<T: Into<f64>>(n: usize, first_value: T, last_value: T) -> Vec<i64> {
-    let first_value: f64 = first_value.into();
-    let last_value: f64 = last_value.into();
-    let gradiant = (last_value - first_value) / (n - 1) as f64;
+pub fn linear(n: usize, first_value: i32, last_value: i32) -> Vec<i32> {
+    let difference = (last_value - first_value) as f32 / (n - 1) as f32;
 
     (0..n)
-        .map(|v| (first_value + gradiant * v as f64).floor() as i64)
+        .map(|v| first_value + (difference * v as f32).floor() as i32)
         .collect()
 }
 
