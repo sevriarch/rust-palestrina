@@ -158,8 +158,10 @@ fn make_score() -> Result<()> {
 
     let m0 = melodify(zag.0)?;
     let m1 = melodify(zag.1)?;
-    println!("{:?}", m1);
-    let score = Score::new(vec![m0, m1]).with_ticks_per_quarter(TICKS);
+    let score = Score::new(vec![m0, m1])
+        .with_ticks_per_quarter(TICKS)
+        .with_time_signature("4/4")?
+        .with_tempo(100.0)?;
 
     score.try_to_write_midi_bytes("src/e2e/pf_son_1_finale.midi")
 }

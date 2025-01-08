@@ -122,6 +122,11 @@ where
         Ok(self)
     }
 
+    pub fn with_time_signature(mut self, ts: &str) -> Result<Self> {
+        self.metadata = self.metadata.push("time-signature", ts)?;
+        Ok(self)
+    }
+
     pub fn with_all_ticks_exact(&self) -> &Self {
         todo!();
     }
@@ -228,6 +233,23 @@ mod tests {
             MetadataList {
                 contents: vec![Metadata {
                     data: MetadataData::Tempo(144.0),
+                    timing: EventTiming::default()
+                }]
+            }
+        );
+    }
+
+    #[test]
+    fn with_time_signature() {
+        let sc = Score::new(vec![Melody::<i32>::new(vec![])])
+            .with_time_signature("4/4")
+            .unwrap();
+
+        assert_eq!(
+            sc.metadata,
+            MetadataList {
+                contents: vec![Metadata {
+                    data: MetadataData::TimeSignature("4/4".to_string()),
                     timing: EventTiming::default()
                 }]
             }
