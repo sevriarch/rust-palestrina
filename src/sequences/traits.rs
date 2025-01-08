@@ -311,4 +311,21 @@ pub trait Sequence<
 
         Ok(self.with_contents(ret))
     }
+
+    fn map_with_indexed(self, f: impl Fn((usize, Vec<&T>)) -> T, seq: Vec<Self>) -> Result<Self> {
+        let len = self.length();
+
+        if seq.iter().any(|s| self.length() != s.length()) {
+            return Err(anyhow!("sequence lengths were different"));
+        }
+
+        let mut iters: Vec<Iter<'_, T>> = seq.iter().map(|v| v.cts_ref().iter()).collect();
+        iters.insert(0, self.cts_ref().iter());
+
+        let ret: Vec<T> = (0..len)
+            .map(|i| f((i, iters.iter_mut().map(|n| n.next().unwrap()).collect())))
+            .collect();
+
+        Ok(self.with_contents(ret))
+    }
 }

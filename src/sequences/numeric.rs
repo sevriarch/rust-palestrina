@@ -611,6 +611,29 @@ mod tests {
     }
 
     #[test]
+    fn test_map_with_indexed() {
+        assert!(NumericSeq::new(vec![1, 2, 3])
+            .map_with_indexed(
+                |(i, v)| v.into_iter().sum::<i32>() * i as i32,
+                vec![NumericSeq::new(vec![4, 5]), NumericSeq::new(vec![7, 8, 9])]
+            )
+            .is_err());
+
+        assert_eq!(
+            NumericSeq::new(vec![1, 2, 3])
+                .map_with_indexed(
+                    |(i, v)| v.into_iter().sum::<i32>() * i as i32,
+                    vec![
+                        NumericSeq::new(vec![4, 5, 6]),
+                        NumericSeq::new(vec![7, 8, 9])
+                    ]
+                )
+                .unwrap(),
+            NumericSeq::new(vec![0, 15, 36])
+        );
+    }
+
+    #[test]
     fn test_chaining() {
         fn chained_methods() -> Result<NumericSeq<i32>> {
             let ret = NumericSeq::new(vec![1, 2, 3])
