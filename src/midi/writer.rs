@@ -247,7 +247,6 @@ impl ToMidiBytes for Melody<$t> {
         let mut curr = 0;
 
         let mut list = self.try_to_vec_timed_midi_bytes(0)?;
-        list.append(&mut self.metadata.try_to_vec_timed_midi_bytes(0)?);
         list.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
 
         for mut val in list {
@@ -279,10 +278,15 @@ macro_rules! impl_score_to_midi_bytes {
                 ret.append(&mut try_number_to_fixed_bytes(self.length() as u32, 2)?);
 
                 // Need to fix this up
-                ret.append(&mut try_number_to_fixed_bytes(/*self.ticks_per_quarter()*/192, 2)?);
+                ret.append(&mut try_number_to_fixed_bytes(self.ticks_per_quarter, 2)?);
 
                 // Need to apply score metadata to first track (but only first track)
-                for m in self.cts_ref() {
+                let mut cts: Vec<Melody<$t>> = self.clone_contents();
+                if !cts.is_empty() {
+                    cts[0].metadata.contents.splice(0..0, self.metadata.contents.clone());
+                }
+
+                for m in cts {
                     ret.append(&mut m.try_to_midi_bytes()?);
                 }
 
@@ -964,6 +968,166 @@ mod tests {
                 0x00, 0xc0, // ticks per quarter note
                 0x4d, 0x54, 0x72, 0x6b, // track header chunk
                 0x00, 0x00, 0x00, 0x2c, // track length
+                0x20, 0x90, 0x3d, 0x40, // first note on
+                0x20, 0x80, 0x3d, 0x40, // first note off
+                0x08, 0x90, 0x3c, 0x40, // second note on
+                0x00, 0x90, 0x43, 0x40, // third note on
+                0x04, 0x90, 0x3e, 0x40, // fourth note on
+                0x1c, 0x80, 0x3c, 0x40, // second note off
+                0x00, 0x80, 0x43, 0x40, // third note off
+                0x14, 0x90, 0x3f, 0x40, // last note on
+                0x10, 0x80, 0x3e, 0x40, // fourth note off
+                0x10, 0x80, 0x3f, 0x40, // last note off
+                0x00, 0xff, 0x2f, 0x00, // end track
+            ]
+        );
+
+        assert_eq!(
+            Score {
+                contents: vec![Melody {
+                    contents: vec![
+                        MelodyMember {
+                            values: vec![60, 67],
+                            timing: DurationalEventTiming {
+                                tick: None,
+                                offset: 72,
+                                duration: 32,
+                            },
+                            volume: 64,
+                            before: MetadataList::default(),
+                        },
+                        MelodyMember {
+                            values: vec![61],
+                            timing: DurationalEventTiming {
+                                tick: None,
+                                offset: 0,
+                                duration: 32,
+                            },
+                            volume: 64,
+                            before: MetadataList::default(),
+                        },
+                        MelodyMember {
+                            values: vec![62],
+                            timing: DurationalEventTiming {
+                                tick: Some(60),
+                                offset: 16,
+                                duration: 64,
+                            },
+                            volume: 64,
+                            before: MetadataList::default(),
+                        },
+                        MelodyMember {
+                            values: vec![63],
+                            timing: DurationalEventTiming {
+                                tick: None,
+                                offset: 0,
+                                duration: 32,
+                            },
+                            volume: 64,
+                            before: MetadataList::default(),
+                        },
+                    ],
+                    metadata: MetadataList {
+                        contents: vec![Metadata {
+                            data: MetadataData::Tempo(144.0),
+                            timing: EventTiming::default()
+                        }]
+                    },
+                }],
+                metadata: MetadataList::default(),
+                ticks_per_quarter: 192,
+            }
+            .try_to_midi_bytes()
+            .unwrap(),
+            vec![
+                0x4d, 0x54, 0x68, 0x64, // file header chunk
+                0x00, 0x00, 0x00, 0x06, // header length
+                0x00, 0x01, // midi version
+                0x00, 0x01, // number of tracks
+                0x00, 0xc0, // ticks per quarter note
+                0x4d, 0x54, 0x72, 0x6b, // track header chunk
+                0x00, 0x00, 0x00, 0x33, // track length
+                0x00, 0xff, 0x51, 0x03, 0x06, 0x5b, 0x9b, // tempo of 144
+                0x20, 0x90, 0x3d, 0x40, // first note on
+                0x20, 0x80, 0x3d, 0x40, // first note off
+                0x08, 0x90, 0x3c, 0x40, // second note on
+                0x00, 0x90, 0x43, 0x40, // third note on
+                0x04, 0x90, 0x3e, 0x40, // fourth note on
+                0x1c, 0x80, 0x3c, 0x40, // second note off
+                0x00, 0x80, 0x43, 0x40, // third note off
+                0x14, 0x90, 0x3f, 0x40, // last note on
+                0x10, 0x80, 0x3e, 0x40, // fourth note off
+                0x10, 0x80, 0x3f, 0x40, // last note off
+                0x00, 0xff, 0x2f, 0x00, // end track
+            ]
+        );
+
+        assert_eq!(
+            Score {
+                contents: vec![Melody {
+                    contents: vec![
+                        MelodyMember {
+                            values: vec![60, 67],
+                            timing: DurationalEventTiming {
+                                tick: None,
+                                offset: 72,
+                                duration: 32,
+                            },
+                            volume: 64,
+                            before: MetadataList::default(),
+                        },
+                        MelodyMember {
+                            values: vec![61],
+                            timing: DurationalEventTiming {
+                                tick: None,
+                                offset: 0,
+                                duration: 32,
+                            },
+                            volume: 64,
+                            before: MetadataList::default(),
+                        },
+                        MelodyMember {
+                            values: vec![62],
+                            timing: DurationalEventTiming {
+                                tick: Some(60),
+                                offset: 16,
+                                duration: 64,
+                            },
+                            volume: 64,
+                            before: MetadataList::default(),
+                        },
+                        MelodyMember {
+                            values: vec![63],
+                            timing: DurationalEventTiming {
+                                tick: None,
+                                offset: 0,
+                                duration: 32,
+                            },
+                            volume: 64,
+                            before: MetadataList::default(),
+                        },
+                    ],
+                    metadata: MetadataList::default(),
+                }],
+                metadata: MetadataList {
+                    contents: vec![Metadata {
+                        data: MetadataData::Tempo(144.0),
+                        timing: EventTiming::default()
+                    }]
+                },
+                ticks_per_quarter: 192,
+            }
+            .try_to_midi_bytes()
+            .unwrap(),
+            vec![
+                0x4d, 0x54, 0x68, 0x64, // file header chunk
+                0x00, 0x00, 0x00, 0x06, // header length
+                0x00, 0x01, // midi version
+                0x00, 0x01, // number of tracks
+                0x00, 0xc0, // ticks per quarter note
+                0x4d, 0x54, 0x72, 0x6b, // track header chunk
+                0x00, 0x00, 0x00, 0x33, // track length
+                0x00, 0xff, 0x51, 0x03, 0x06, 0x5b, 0x9b, // tempo of 144
                 0x20, 0x90, 0x3d, 0x40, // first note on
                 0x20, 0x80, 0x3d, 0x40, // first note off
                 0x08, 0x90, 0x3c, 0x40, // second note on
