@@ -8,7 +8,7 @@ use crate::sequences::{melody::Melody, note::NoteSeq, numeric::NumericSeq, trait
 use anyhow::Result;
 
 const LEN: usize = 1280;
-const TICKS: u32 = 128;
+const TICKS: u32 = 64;
 const GAP: usize = 5;
 const MOD: i32 = 25;
 const BAR: i32 = 16;
@@ -26,12 +26,14 @@ fn make_overlay() -> Result<NumericSeq<i32>> {
 
     overlay
         .mutate_slice(bar(29), bar(37), |v| v.invert_pitch(max))?
-        .mutate_slice(bar(37), bar(45), |v| *v = min - *v / 2)?
+        .mutate_slice(bar(37), bar(45), |v| {
+            *v = min - (*v as f64 / 2.0).floor() as i32
+        })?
         .mutate_slice(bar(61), bar(69), |v| v.invert_pitch(max))?
         .set_slice(bar(69), bar(73), min)?
         .set_slice(bar(73), bar(77), max + 8)?
         .mutate_slice_indexed(bar(77), bar(81), |(i, v)| {
-            *v = min + ((i as i32 - 76 * 16 + 1) * 8 / BAR)
+            *v = min + (i as i32 - 76 * BAR + 1) * 8 / BAR;
         })?
         .append_items(&[8, 8])
         .transpose(-16)
@@ -104,7 +106,12 @@ fn make_volume() -> Result<NumericSeq<u8>> {
     dy!(69, 71, dynamics::PP);
     dy!(71, 75, dynamics::PP, dynamics::MF);
     dy!(77, 80, dynamics::P, dynamics::F);
-    dy!(80, 81, dynamics::F, dynamics::PP);
+
+    coll = coll.replace_slice(
+        bar(80),
+        bar(81) - 1,
+        linear(15, dynamics::F as i32, dynamics::PP as i32),
+    )?;
 
     Ok(NumericSeq::new(
         coll.contents.iter().map(|v| (*v % 256) as u8).collect(),
@@ -165,15 +172,6 @@ fn make_score() -> Result<()> {
 
     score.try_to_write_midi_bytes("src/e2e/pf_son_1_finale.midi")
 }
-/*
-    score([ melodify(zag[0]), melodify(zag[1]) ])
-        .withTicksPerQuarter(TICKS)
-        .withTempo(100)
-        .withTimeSignature('4/4')
-        .writeCanvas(__filename)
-        .writeMidi(__filename)
-        .expectHash(HASH)
-*/
 
 #[test]
 fn test_e2e() {
