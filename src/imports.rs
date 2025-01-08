@@ -1,5 +1,4 @@
 use std::f64::consts::PI;
-use std::ops::{Add, Div, Mul, Neg, Sub};
 
 fn is_prime(n: i32) -> bool {
     let max = (n as f64).sqrt() as i32 + 1;
