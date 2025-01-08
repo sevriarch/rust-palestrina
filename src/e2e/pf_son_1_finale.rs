@@ -13,10 +13,14 @@ const GAP: usize = 5;
 const MOD: i32 = 25;
 const BAR: i32 = 16;
 
+// Map bar numbers to the sequence member that starts the bar
 fn bar(x: i32) -> i32 {
     (x - 1) * BAR
 }
 
+// Make a sequence of the same length as the melodic content, used to move the main melody up or down in pitch
+// This sequence is a basic sinusoidal curve with some passages modified and the last 12 bars replaced by
+// static values followed by a steady ascent
 fn make_overlay() -> Result<NumericSeq<i32>> {
     let vals = sinusoidal(LEN, 8.5, 0.0, 3600.0);
     let overlay = NumericSeq::new(vals);
@@ -63,11 +67,13 @@ fn apply_overlay(seq: NoteSeq<i32>) -> Result<NoteSeq<i32>> {
     )
 }
 
+// Function to generate the dynamics for the composition
 fn make_volume() -> Result<NumericSeq<u8>> {
     let mut coll = NumericSeq::new(constant(LEN, dynamics::MF as i32));
 
     coll = coll.append_items(&[dynamics::PP as i32, dynamics::PP as i32]);
 
+    // Macro to generate a dynamic gradation over the length of the passed sequence
     macro_rules! dy {
         ($from:expr, $to:expr, $const:expr) => {
             coll = coll.set_slice(bar($from), bar($to), $const as i32)?;
@@ -118,6 +124,8 @@ fn make_volume() -> Result<NumericSeq<u8>> {
     ))
 }
 
+// Combine a sequence with the overlay sequence, convert to a melody, apply octave doubling,
+// duration and volume.
 fn melodify(seq: NoteSeq<i32>) -> Result<Melody<i32>> {
     let mel: Melody<i32> = apply_overlay(seq)?.try_into()?;
 
@@ -130,7 +138,7 @@ fn melodify(seq: NoteSeq<i32>) -> Result<Melody<i32>> {
     .with_volumes(make_volume()?.contents)
 }
 
-fn make_score() -> Result<()> {
+fn make_score() -> Result<Score<i32>> {
     // Collect raw material using multiple variants of the base sequence
     let mut lines = Vec::with_capacity(GAP);
 
@@ -155,6 +163,7 @@ fn make_score() -> Result<()> {
         .append_items(&[69, 97])
         .try_into()?;
 
+    // Separate into two parts, one for each hand, based on pitch of the note.
     let zag = zig.partition_in_position(
         |p| match p {
             Some(pitch) => *pitch >= 71,
@@ -163,17 +172,20 @@ fn make_score() -> Result<()> {
         None,
     )?;
 
-    let m0 = melodify(zag.0)?;
-    let m1 = melodify(zag.1)?;
-    let score = Score::new(vec![m0, m1])
+    // Create score from combining these parts with the overlay, then set metadata and generate
+    Score::new(vec![melodify(zag.0)?, melodify(zag.1)?])
         .with_ticks_per_quarter(TICKS)
         .with_time_signature("4/4")?
-        .with_tempo(100.0)?;
-
-    score.try_to_write_midi_bytes("src/e2e/pf_son_1_finale.midi")
+        .with_tempo(100.0)
 }
 
 #[test]
 fn test_e2e() {
-    assert!(make_score().is_ok());
+    let score = make_score().unwrap();
+
+    assert_eq!(score.try_to_hash().unwrap(), 1820630916097187139);
+
+    assert!(score
+        .try_to_write_midi_bytes("src/e2e/pf_son_1_finale.midi")
+        .is_ok());
 }
