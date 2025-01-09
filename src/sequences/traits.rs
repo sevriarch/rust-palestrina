@@ -263,7 +263,7 @@ pub trait Sequence<
         })
     }
 
-    fn scale(self, scale: Scale<PitchType>, zeroval: PitchType) -> Result<Self, String>
+    fn scale(self, scale: Scale<PitchType>, zeroval: PitchType) -> Result<Self>
     where
         PitchType: PrimInt
             + From<i32>
