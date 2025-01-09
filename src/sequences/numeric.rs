@@ -511,16 +511,6 @@ mod tests {
     }
 
     #[test]
-    fn filter_in_position() {
-        assert_eq!(
-            NumericSeq::new(vec![1, 2, 3, 4, 5])
-                .filter_in_position(|v| v % 2 == 0, 8)
-                .unwrap(),
-            NumericSeq::new(vec![8, 2, 8, 4, 8])
-        );
-    }
-
-    #[test]
     fn flat_map_windows() {
         assert_eq!(
             NumericSeq::new(vec![1, 2, 3, 4, 5])

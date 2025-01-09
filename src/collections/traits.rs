@@ -398,6 +398,14 @@ pub trait Collection<T: Clone + Debug>: Sized {
         })
     }
 
+    fn filter_in_position(self, f: fn(&T) -> bool, default: T) -> Self {
+        self.mutate_each(|m| {
+            if !f(m) {
+                *m = default.clone();
+            }
+        })
+    }
+
     fn insert_before(self, indices: &[i32], values: &[T]) -> Result<Self> {
         let ix = self.indices_sorted(indices)?;
 
@@ -935,6 +943,14 @@ mod tests {
         assert_eq!(
             TestColl::new(vec![0, 2, 3, 4, 5, 6]).filter_indexed(|(i, _)| (i % 2) == 0),
             TestColl::new(vec![0, 3, 5])
+        );
+    }
+
+    #[test]
+    fn filter_in_position() {
+        assert_eq!(
+            TestColl::new(vec![0, 2, 3, 4, 5, 6]).filter_in_position(|v| v % 2 == 0, 8),
+            TestColl::new(vec![0, 2, 8, 4, 8, 6])
         );
     }
 

@@ -209,14 +209,6 @@ pub trait Sequence<
         }))
     }
 
-    fn filter_in_position(self, f: fn(&T) -> bool, default: T) -> Result<Self, String> {
-        Ok(self.mutate_each(|m| {
-            if !f(m) {
-                *m = default.clone();
-            }
-        }))
-    }
-
     fn collect_windows(&self, len: usize, step: usize) -> Vec<Vec<T>> {
         let c = self.cts_ref();
         let max = c.len() - len;
