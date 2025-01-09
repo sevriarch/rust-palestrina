@@ -28,7 +28,7 @@ macro_rules! default_sequence_methods {
 }
 
 pub trait Sequence<
-    T: Clone + Debug,
+    T: Clone + Debug + PartialEq,
     PitchType: Clone + Copy + Debug + Num + PartialOrd + Sum + From<i32>,
 >: Collection<T>
 {
@@ -254,6 +254,12 @@ pub trait Sequence<
     fn pad(self, val: T, num: usize) -> Self {
         self.mutate_contents(|c| {
             c.splice(0..0, std::iter::repeat(val).take(num));
+        })
+    }
+
+    fn dedupe(self) -> Self {
+        self.mutate_contents(|c| {
+            c.dedup();
         })
     }
 

@@ -564,6 +564,14 @@ mod tests {
     }
 
     #[test]
+    fn dedupe() {
+        assert_eq!(
+            NumericSeq::new(vec![1, 2, 2, 3, 1, 3, 3, 2]).dedupe(),
+            NumericSeq::new(vec![1, 2, 3, 1, 3, 2])
+        );
+    }
+
+    #[test]
     fn test_combine() {
         assert!(NumericSeq::new(vec![1, 2, 3])
             .combine(|(a, b)| a + b, NumericSeq::new(vec![4, 5]))
