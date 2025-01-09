@@ -662,6 +662,26 @@ pub trait Collection<T: Clone + Debug>: Sized {
             .collect())
     }
 
+    fn group_by_in_position<KeyType: Hash + Eq + PartialEq + Debug>(
+        &self,
+        f: fn(&T) -> KeyType,
+        default: T,
+    ) -> Result<HashMap<KeyType, Self>> {
+        let mut rets = HashMap::<KeyType, Vec<T>>::new();
+        let len = self.length();
+
+        self.cts_ref().iter().enumerate().for_each(|(i, m)| {
+            let val = rets.entry(f(m)).or_insert(vec![default.clone(); len]);
+
+            val[i] = m.clone();
+        });
+
+        Ok(rets
+            .into_iter()
+            .map(|(k, v)| (k, self.construct(v.to_vec())))
+            .collect())
+    }
+
     fn pipe<TPipe>(&self, mut f: impl FnMut(&Self) -> TPipe) -> TPipe {
         f(self)
     }
@@ -1201,13 +1221,25 @@ mod tests {
     #[test]
     fn group_by() {
         let map = TestColl::new(vec![0, 2, 3, 4, 5, 6])
-            .group_by(|i| i % 3)
+            .group_by(|v| v % 3)
             .unwrap();
 
         assert_eq!(map.len(), 3);
         assert_eq!(map.get(&0).unwrap().contents, vec![0, 3, 6]);
         assert_eq!(map.get(&1).unwrap().contents, vec![4]);
         assert_eq!(map.get(&2).unwrap().contents, vec![2, 5]);
+    }
+
+    #[test]
+    fn group_by_in_position() {
+        let map = TestColl::new(vec![0, 2, 3, 4, 5, 6])
+            .group_by_in_position(|v| v % 3, 8)
+            .unwrap();
+
+        assert_eq!(map.len(), 3);
+        assert_eq!(map.get(&0).unwrap().contents, vec![0, 8, 3, 8, 8, 6]);
+        assert_eq!(map.get(&1).unwrap().contents, vec![8, 8, 8, 4, 8, 8]);
+        assert_eq!(map.get(&2).unwrap().contents, vec![8, 2, 8, 8, 5, 8]);
     }
 
     #[test]
