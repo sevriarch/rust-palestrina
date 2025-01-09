@@ -1,6 +1,32 @@
+use anyhow::{anyhow, Result};
 use num_traits::{Euclid, Num};
 use std::cmp::PartialOrd;
 use std::ops::SubAssign;
+
+fn name_to_notes(name: &str) -> Result<Vec<i8>> {
+    match name {
+        "chromatic" => Ok(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]),
+        "octatonic12" => Ok(vec![0, 1, 3, 4, 6, 7, 9, 10]),
+        "octatonic21" => Ok(vec![0, 2, 3, 5, 6, 8, 9, 11]),
+        "wholetone" => Ok(vec![0, 2, 4, 6, 8, 10]),
+        "major" => Ok(vec![0, 2, 4, 5, 7, 9, 11]),
+        "minor" => Ok(vec![0, 2, 3, 5, 7, 8, 10]),
+        "ionian" => Ok(vec![0, 2, 4, 5, 7, 9, 11]),
+        "dorian" => Ok(vec![0, 2, 3, 5, 7, 9, 10]),
+        "phrygian" => Ok(vec![0, 1, 3, 5, 7, 8, 10]),
+        "lydian" => Ok(vec![0, 2, 4, 6, 7, 9, 11]),
+        "mixolydian" => Ok(vec![0, 2, 4, 5, 7, 9, 10]),
+        "aeolian" => Ok(vec![0, 2, 3, 5, 7, 8, 10]),
+        "locrian" => Ok(vec![0, 1, 3, 5, 6, 8, 10]),
+        "pentatonic" => Ok(vec![0, 2, 4, 7, 9]),
+        "pentatonicc" => Ok(vec![0, 2, 4, 7, 9]),
+        "pentatonicd" => Ok(vec![0, 2, 5, 7, 10]),
+        "pentatonice" => Ok(vec![0, 3, 5, 8, 10]),
+        "pentatonicg" => Ok(vec![0, 2, 5, 7, 9]),
+        "pentatonica" => Ok(vec![0, 3, 5, 7, 10]),
+        _ => Err(anyhow!("unknown scale: {}", name)),
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct Scale<T>
@@ -37,51 +63,35 @@ impl<
         }
     }
 
+    pub fn from_name(name: &str) -> Result<Self> {
+        let notes = name_to_notes(name)?;
+
+        Ok(Self {
+            notes: notes.into_iter().map(T::from).collect(),
+            ..Default::default()
+        })
+    }
+
     pub fn with_octave(mut self, o: T) -> Self {
         self.octave = o;
         self
     }
 
-    pub fn with_notes(mut self, notes: Vec<T>) -> Result<Self, String> {
+    pub fn with_notes(mut self, notes: Vec<T>) -> Result<Self> {
         self.notes = notes;
         self.length = self
             .notes
             .len()
             .try_into()
-            .map_err(|_| "scale length too long")?;
+            .map_err(|_| anyhow!("scale length too long"))?;
 
         Ok(self)
     }
 
-    pub fn with_name(self, name: &str) -> Result<Self, String> {
-        let notes = match name {
-            "chromatic" => vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-            "octatonic12" => vec![0, 1, 3, 4, 6, 7, 9, 10],
-            "octatonic21" => vec![0, 2, 3, 5, 6, 8, 9, 11],
-            "wholetone" => vec![0, 2, 4, 6, 8, 10],
-            "major" => vec![0, 2, 4, 5, 7, 9, 11],
-            "minor" => vec![0, 2, 3, 5, 7, 8, 10],
-            "ionian" => vec![0, 2, 4, 5, 7, 9, 11],
-            "dorian" => vec![0, 2, 3, 5, 7, 9, 10],
-            "phrygian" => vec![0, 1, 3, 5, 7, 8, 10],
-            "lydian" => vec![0, 2, 4, 6, 7, 9, 11],
-            "mixolydian" => vec![0, 2, 4, 5, 7, 9, 10],
-            "aeolian" => vec![0, 2, 3, 5, 7, 8, 10],
-            "locrian" => vec![0, 1, 3, 5, 6, 8, 10],
-            "pentatonic" => vec![0, 2, 4, 7, 9],
-            "pentatonicc" => vec![0, 2, 4, 7, 9],
-            "pentatonicd" => vec![0, 2, 5, 7, 10],
-            "pentatonice" => vec![0, 3, 5, 8, 10],
-            "pentatonicg" => vec![0, 2, 5, 7, 9],
-            "pentatonica" => vec![0, 3, 5, 7, 10],
-            _ => vec![],
-        };
+    pub fn with_name(self, name: &str) -> Result<Self> {
+        let notes = name_to_notes(name)?;
 
-        if notes.is_empty() {
-            Err(format!("{} is not a valid scale", name))
-        } else {
-            self.with_notes(notes.into_iter().map(T::from).collect())
-        }
+        self.with_notes(notes.into_iter().map(T::from).collect())
     }
 
     pub fn fit_to_scale<'a>(&'a self, zeroval: &'a T) -> Box<dyn Fn(&mut T) + 'a> {
@@ -126,6 +136,21 @@ mod tests {
     fn with_octave() {
         assert_eq!(Scale::<i32>::new().octave, 12);
         assert_eq!(Scale::new().with_octave(8).octave, 8);
+    }
+
+    #[test]
+    fn from_name() {
+        assert_eq!(Scale::<i32>::new().notes, vec![]);
+        assert_eq!(
+            Scale::<i32>::from_name("lydian").unwrap().notes,
+            vec![0, 2, 4, 6, 7, 9, 11]
+        );
+        assert_eq!(
+            Scale::<i32>::from_name("pentatonic").unwrap().notes,
+            vec![0, 2, 4, 7, 9]
+        );
+
+        assert!(Scale::<i32>::from_name("turbofish").is_err());
     }
 
     #[test]
