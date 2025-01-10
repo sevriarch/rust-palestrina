@@ -69,6 +69,31 @@ fn get_meta_event_int_data(event: &str, value: i16) -> Result<MetadataData> {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct Metadata {
+    pub data: MetadataData,
+    pub timing: EventTiming,
+}
+
+macro_rules! metadata {
+    ($data:expr) => {
+        Metadata {
+            data: $data,
+            timing: EventTiming::default(),
+        }
+    };
+
+    ($data:expr, $tick:expr, $offset:expr) => {
+        Metadata {
+            data: $data,
+            timing: EventTiming {
+                tick: $tick,
+                offset: $offset,
+            },
+        }
+    };
+}
+
 impl From<MetadataData> for Metadata {
     fn from(data: MetadataData) -> Self {
         Metadata {
@@ -84,17 +109,17 @@ impl TryFrom<(&str, &str)> for Metadata {
     fn try_from((event, value): (&str, &str)) -> Result<Self> {
         let data = get_meta_event_string_data(event, value.to_string())?;
 
-        Ok(Metadata::from(data))
+        Ok(metadata!(data))
     }
 }
 
 impl TryFrom<(&str, i16)> for Metadata {
     type Error = anyhow::Error;
 
-    fn try_from((event, value): (&str, i16)) -> Result<Self, Self::Error> {
+    fn try_from((event, value): (&str, i16)) -> Result<Self> {
         let data = get_meta_event_int_data(event, value)?;
 
-        Ok(Metadata::from(data))
+        Ok(metadata!(data))
     }
 }
 
@@ -103,7 +128,7 @@ impl TryFrom<(&str, bool)> for Metadata {
 
     fn try_from((event, value): (&str, bool)) -> Result<Self> {
         if event == "sustain" {
-            Ok(Metadata::from(MetadataData::Sustain(value)))
+            Ok(metadata!(MetadataData::Sustain(value)))
         } else {
             Err(anyhow!(MetadataError::UnexpectedBooleanValue(
                 event.to_string(),
@@ -118,7 +143,7 @@ impl TryFrom<(&str, f32)> for Metadata {
 
     fn try_from((event, value): (&str, f32)) -> Result<Self> {
         if event == "tempo" {
-            Ok(Metadata::from(MetadataData::Tempo(value)))
+            Ok(metadata!(MetadataData::Tempo(value)))
         } else {
             Err(anyhow!(MetadataError::UnexpectedFloatValue(
                 event.to_string(),
@@ -128,10 +153,54 @@ impl TryFrom<(&str, f32)> for Metadata {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct Metadata {
-    pub data: MetadataData,
-    pub timing: EventTiming,
+impl TryFrom<(&str, &str, Option<u32>, i32)> for Metadata {
+    type Error = anyhow::Error;
+
+    fn try_from((event, value, tick, offset): (&str, &str, Option<u32>, i32)) -> Result<Self> {
+        let data = get_meta_event_string_data(event, value.to_string())?;
+
+        Ok(metadata!(data, tick, offset))
+    }
+}
+
+impl TryFrom<(&str, i16, Option<u32>, i32)> for Metadata {
+    type Error = anyhow::Error;
+
+    fn try_from((event, value, tick, offset): (&str, i16, Option<u32>, i32)) -> Result<Self> {
+        let data = get_meta_event_int_data(event, value)?;
+
+        Ok(metadata!(data, tick, offset))
+    }
+}
+
+impl TryFrom<(&str, bool, Option<u32>, i32)> for Metadata {
+    type Error = anyhow::Error;
+
+    fn try_from((event, value, tick, offset): (&str, bool, Option<u32>, i32)) -> Result<Self> {
+        if event == "sustain" {
+            Ok(metadata!(MetadataData::Sustain(value), tick, offset))
+        } else {
+            Err(anyhow!(MetadataError::UnexpectedBooleanValue(
+                event.to_string(),
+                value
+            )))
+        }
+    }
+}
+
+impl TryFrom<(&str, f32, Option<u32>, i32)> for Metadata {
+    type Error = anyhow::Error;
+
+    fn try_from((event, value, tick, offset): (&str, f32, Option<u32>, i32)) -> Result<Self> {
+        if event == "tempo" {
+            Ok(metadata!(MetadataData::Tempo(value), tick, offset))
+        } else {
+            Err(anyhow!(MetadataError::UnexpectedFloatValue(
+                event.to_string(),
+                value,
+            )))
+        }
+    }
 }
 
 impl Metadata {
@@ -177,16 +246,56 @@ mod tests {
     use super::*;
 
     #[test]
+    fn try_from() {
+        assert!(Metadata::try_from(("doesn't exist", "really")).is_err());
+        assert!(Metadata::try_from(("doesn't exist", "really", Some(50), 100)).is_err());
+
+        assert_eq!(
+            Metadata::try_from(("text", "this text")).unwrap(),
+            metadata!(MetadataData::Text("this text".to_string()), None, 0)
+        );
+
+        assert_eq!(
+            Metadata::try_from(("text", "this text", Some(50), 100)).unwrap(),
+            metadata!(MetadataData::Text("this text".to_string()), Some(50), 100)
+        );
+
+        assert_eq!(
+            Metadata::try_from(("pitch-bend", 4096)).unwrap(),
+            metadata!(MetadataData::PitchBend(4096), None, 0)
+        );
+
+        assert_eq!(
+            Metadata::try_from(("pitch-bend", 4096, Some(50), 100)).unwrap(),
+            metadata!(MetadataData::PitchBend(4096), Some(50), 100)
+        );
+
+        assert_eq!(
+            Metadata::try_from(("tempo", 132)).unwrap(),
+            metadata!(MetadataData::Tempo(132.0), None, 0)
+        );
+
+        assert_eq!(
+            Metadata::try_from(("tempo", 132.0, Some(50), 100)).unwrap(),
+            metadata!(MetadataData::Tempo(132.0), Some(50), 100)
+        );
+
+        assert_eq!(
+            Metadata::try_from(("sustain", true)).unwrap(),
+            metadata!(MetadataData::Sustain(true), None, 0)
+        );
+
+        assert_eq!(
+            Metadata::try_from(("sustain", true, Some(50), 100)).unwrap(),
+            metadata!(MetadataData::Sustain(true), Some(50), 100)
+        )
+    }
+
+    #[test]
     fn with_exact_tick() {
         assert_eq!(
             Metadata::default().with_exact_tick(500),
-            &Metadata {
-                data: MetadataData::EndTrack,
-                timing: EventTiming {
-                    tick: Some(500),
-                    offset: 0
-                }
-            }
+            &metadata!(MetadataData::EndTrack, Some(500), 0)
         );
     }
 
@@ -194,26 +303,14 @@ mod tests {
     fn mutate_exact_tick() {
         assert_eq!(
             Metadata::default().mutate_exact_tick(|v| *v += 50),
-            &Metadata {
-                data: MetadataData::EndTrack,
-                timing: EventTiming {
-                    tick: None,
-                    offset: 0
-                }
-            }
+            &metadata!(MetadataData::EndTrack, None, 0)
         );
 
         assert_eq!(
             Metadata::default()
                 .with_exact_tick(50)
                 .mutate_exact_tick(|v| *v += 50),
-            &Metadata {
-                data: MetadataData::EndTrack,
-                timing: EventTiming {
-                    tick: Some(100),
-                    offset: 0
-                }
-            }
+            &metadata!(MetadataData::EndTrack, Some(100), 0)
         );
     }
 
@@ -221,13 +318,7 @@ mod tests {
     fn with_offset() {
         assert_eq!(
             Metadata::default().with_offset(50),
-            &Metadata {
-                data: MetadataData::EndTrack,
-                timing: EventTiming {
-                    tick: None,
-                    offset: 50
-                }
-            }
+            &metadata!(MetadataData::EndTrack, None, 50)
         );
     }
 
@@ -237,73 +328,7 @@ mod tests {
             Metadata::default()
                 .with_offset(50)
                 .mutate_offset(|v| *v += 50),
-            &Metadata {
-                data: MetadataData::EndTrack,
-                timing: EventTiming {
-                    tick: None,
-                    offset: 100
-                }
-            }
+            &metadata!(MetadataData::EndTrack, None, 100)
         );
     }
-
-    #[test]
-    fn try_from() {
-        assert!(Metadata::try_from(("doesn't exist", "really")).is_err());
-
-        assert_eq!(
-            Metadata::try_from(("text", "this text")).unwrap().data,
-            MetadataData::Text("this text".to_string())
-        );
-
-        assert_eq!(
-            Metadata::try_from(("pitch-bend", 4096)).unwrap().data,
-            MetadataData::PitchBend(4096)
-        );
-
-        assert_eq!(
-            Metadata::try_from(("tempo", 132)).unwrap().data,
-            MetadataData::Tempo(132.0)
-        );
-
-        assert_eq!(
-            Metadata::try_from(("tempo", 132.0)).unwrap().data,
-            MetadataData::Tempo(132.0)
-        );
-
-        assert_eq!(
-            Metadata::try_from(("sustain", true)).unwrap().data,
-            MetadataData::Sustain(true)
-        )
-    }
-
-    /*
-    #[test]
-    fn augment_rhythm() {
-        assert_eq!(
-            EventList::new(vec![Metadata::try_from(("sustain", true))
-                .unwrap()
-                .with_offset(100)])
-            .augment_rhythm(3)
-            .unwrap(),
-            EventList::new(vec![Metadata::try_from(("sustain", true))
-                .unwrap()
-                .with_offset(300)])
-        );
-    }
-
-    #[test]
-    fn diminish_rhythm() {
-        assert_eq!(
-            EventList::new(vec![Metadata::try_from(("sustain", true))
-                .unwrap()
-                .with_offset(300)])
-            .diminish_rhythm(3)
-            .unwrap(),
-            EventList::new(vec![Metadata::try_from(("sustain", true))
-                .unwrap()
-                .with_offset(100)])
-        );
-    }
-    */
 }
