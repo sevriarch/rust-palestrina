@@ -23,7 +23,7 @@ pub enum MetadataData {
     PitchBend(i16),
 }
 
-#[derive(Error, Debug)]
+#[derive(Clone, Error, Debug)]
 pub enum MetadataError {
     #[error("Invalid metadata type found: {0}")]
     InvalidMetadataType(String),

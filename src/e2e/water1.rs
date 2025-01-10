@@ -2,7 +2,6 @@
 
 const { imports, noteseq, NoteSeqMember, melody, MelodyMember, score, Melody } = require('../built')
 
-const TICKS = 840
 const HASH  = 'd0422047681ce6632afd75527f33c3ef'
 
 const META = [
@@ -24,11 +23,13 @@ const DEBUG = process.env.WATER_DEBUG && process.env.WATER_DEBUG !== '0'
 use crate::collections::traits::Collection;
 use crate::entities::scale::Scale;
 use crate::imports::rasmussen;
+use crate::metadata::data::Metadata;
 use crate::ops::pitch::Pitch;
 use crate::sequences::{note::NoteSeq, numeric::NumericSeq, traits::Sequence};
 use anyhow::Result;
 
 const LEN: usize = 2816;
+const TICKS: u32 = 840;
 
 //const MAXGAP: i8 = 15;
 
@@ -223,45 +224,46 @@ function logTrack(n, section, s) {
     log('track', n, section + ': len', len, 'notes', len - sil, 'silent', sil)
 }
 
-function rhythm(n) {
-    return TICKS * 2 / (8 - n)
+*/
+pub fn rhythm(n: u32) -> u32 {
+    TICKS * 2 / (8 - n)
 }
 
-function tempoEvents() {
-    const TEMPI = [
-        [ 128, 1 ],
-        [ 124, 325 ],
-        [ 120, 343 ],
-        [ 116, 361 ],
-        [ 112, 379 ], // "Tempo flessibile"
-        [ 108, 462 ],
-        [ 104, 542 ],
-        [ 108, 570 ],
-        [ 112, 581 ],
-        [ 116, 592 ],
-        [ 120, 603 ],
-        [ 124, 614 ],
-        [ 104, 622 ],
-        [ 108, 626 ],
-        [ 112, 630 ],
-        [ 116, 633 ],
-        [ 120, 636 ],
-        [ 128, 639 ],
-        [ 120, 656 ],
-        [ 112, 660 ],
-        [ 104, 664 ],
-        [ 96, 668 ],
-        [ 88, 672 ],
-        [ 80, 676 ],
-        [ 72, 680 ],
-        [ 64, 684 ],
+pub fn tempo_events() -> Result<Vec<Metadata>> {
+    vec![
+        (128, 1),
+        (124, 325),
+        (120, 343),
+        (116, 361),
+        (112, 379), // "Tempo flessibile"
+        (108, 462),
+        (104, 542),
+        (108, 570),
+        (112, 581),
+        (116, 592),
+        (120, 603),
+        (124, 614),
+        (104, 622),
+        (108, 626),
+        (112, 630),
+        (116, 633),
+        (120, 636),
+        (128, 639),
+        (120, 656),
+        (112, 660),
+        (104, 664),
+        (96, 668),
+        (88, 672),
+        (80, 676),
+        (72, 680),
+        (64, 684),
     ]
-
-    return TEMPI.map(([ t, bar ]) => {
-        return { event: 'tempo', value: t, at: (bar - 1) * 2 * TICKS }
-    })
+    .iter()
+    .map(|(t, bar)| Metadata::try_from(("tempo", *t as f32, Some((bar - 1) * 2 * TICKS), 0)))
+    .collect()
 }
 
+/*
 function melody1(n) {
     log('entering m1', n)
 
