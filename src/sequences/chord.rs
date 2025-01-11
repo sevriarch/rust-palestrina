@@ -34,6 +34,21 @@ where
     }
 }
 
+impl<T> TryFrom<Vec<Option<T>>> for ChordSeq<T>
+where
+    T: Clone + Copy + Num + Debug + PartialOrd + Bounded,
+{
+    type Error = ChordSeqError;
+
+    fn try_from(what: Vec<Option<T>>) -> Result<Self, Self::Error> {
+        Ok(Self::new(
+            what.iter()
+                .map(|v| v.map_or_else(Vec::new, |v| vec![v]))
+                .collect(),
+        ))
+    }
+}
+
 impl<T> TryFrom<Vec<Vec<T>>> for ChordSeq<T>
 where
     T: Clone + Copy + Num + Debug + PartialOrd + Bounded,
@@ -46,23 +61,24 @@ where
 }
 
 macro_rules! try_from_seq {
-    ($type:ty) => {
-        impl<T> TryFrom<$type> for ChordSeq<T>
+    (for $($t:ty)*) => ($(
+        impl<T> TryFrom<$t> for ChordSeq<T>
         where
             T: Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
         {
             type Error = ChordSeqError;
 
-            fn try_from(what: $type) -> Result<Self, Self::Error> {
-                Ok(Self::new(what.to_pitches()))
+            fn try_from(what: $t) -> Result<Self, Self::Error> {
+                Ok(Self{
+                    contents: what.to_pitches(),
+                    metadata: what.metadata
+                })
             }
         }
-    };
+    )*)
 }
 
-try_from_seq!(Melody<T>);
-try_from_seq!(NoteSeq<T>);
-try_from_seq!(NumericSeq<T>);
+try_from_seq!(for NumericSeq<T> NoteSeq<T> Melody<T>);
 
 impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded> Collection<Vec<T>> for ChordSeq<T> {
     default_collection_methods!(Vec<T>);
@@ -118,8 +134,9 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Seq
 #[cfg(test)]
 mod tests {
     use crate::collections::traits::Collection;
+    use crate::metadata::{data::MetadataData, list::MetadataList};
     use crate::sequences::chord::ChordSeq;
-    use crate::sequences::melody::Melody;
+    use crate::sequences::melody::{Melody, MelodyMember};
     use crate::sequences::note::NoteSeq;
     use crate::sequences::numeric::NumericSeq;
     use crate::sequences::traits::Sequence;
@@ -133,7 +150,15 @@ mod tests {
     }
 
     #[test]
-    fn try_from_vec_vec() {
+    fn try_from_vec_of_options() {
+        assert_eq!(
+            ChordSeq::try_from(vec![Some(5), None, Some(12), Some(16)]),
+            Ok(ChordSeq::new(vec![vec![5], vec![], vec![12], vec![16]]))
+        );
+    }
+
+    #[test]
+    fn try_from_vec_of_vecs() {
         assert_eq!(
             ChordSeq::try_from(vec![vec![5], vec![], vec![12, 16]]),
             Ok(ChordSeq::new(vec![vec![5], vec![], vec![12, 16]]))
@@ -143,24 +168,49 @@ mod tests {
     #[test]
     fn try_from_melody() {
         assert_eq!(
-            ChordSeq::try_from(Melody::try_from(vec![vec![5], vec![], vec![12, 16]]).unwrap()),
-            Ok(ChordSeq::new(vec![vec![5], vec![], vec![12, 16]]))
-        );
-    }
-
-    #[test]
-    fn try_from_numseq() {
-        assert_eq!(
-            ChordSeq::try_from(NumericSeq::new(vec![5, 12, 16])),
-            Ok(ChordSeq::new(vec![vec![5], vec![12], vec![16]]))
+            ChordSeq::try_from(Melody {
+                contents: vec![
+                    MelodyMember::from(vec![5]),
+                    MelodyMember::from(vec![]),
+                    MelodyMember::from(vec![12, 16]),
+                ],
+                metadata: MetadataList::new(vec![MetadataData::Tempo(144.0).into()])
+            })
+            .unwrap(),
+            ChordSeq {
+                contents: vec![vec![5], vec![], vec![12, 16]],
+                metadata: MetadataList::new(vec![MetadataData::Tempo(144.0).into()])
+            }
         );
     }
 
     #[test]
     fn try_from_noteseq() {
         assert_eq!(
-            ChordSeq::try_from(NoteSeq::new(vec![Some(5), None, Some(12), Some(16)])),
-            Ok(ChordSeq::new(vec![vec![5], vec![], vec![12], vec![16]]))
+            ChordSeq::try_from(NoteSeq {
+                contents: vec![Some(5), None, Some(12), Some(16)],
+                metadata: MetadataList::new(vec![MetadataData::Tempo(144.0).into()])
+            })
+            .unwrap(),
+            ChordSeq {
+                contents: vec![vec![5], vec![], vec![12], vec![16]],
+                metadata: MetadataList::new(vec![MetadataData::Tempo(144.0).into()])
+            }
+        );
+    }
+
+    #[test]
+    fn try_from_numseq() {
+        assert_eq!(
+            ChordSeq::try_from(NumericSeq {
+                contents: vec![5, 12, 16],
+                metadata: MetadataList::new(vec![MetadataData::Tempo(144.0).into()])
+            })
+            .unwrap(),
+            ChordSeq {
+                contents: vec![vec![5], vec![12], vec![16]],
+                metadata: MetadataList::new(vec![MetadataData::Tempo(144.0).into()])
+            }
         );
     }
 

@@ -53,7 +53,7 @@ where
 {
     fn from(what: Option<T>) -> Self {
         MelodyMember {
-            values: what.map_or_else(|| Vec::new(), |v| vec![v]),
+            values: what.map_or_else(Vec::new, |v| vec![v]),
             ..Default::default()
         }
     }
