@@ -6,7 +6,7 @@ use crate::sequences::note::NoteSeq;
 use crate::sequences::traits::Sequence;
 use crate::{default_collection_methods, default_sequence_methods};
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use num_traits::{Bounded, Num};
 use std::convert::TryFrom;
 use std::fmt::Debug;
@@ -34,6 +34,23 @@ where
     }
 }
 
+impl<T> TryFrom<Vec<Option<T>>> for NumericSeq<T>
+where
+    T: Copy + Clone + Num + Debug + PartialOrd + Bounded,
+{
+    type Error = anyhow::Error;
+
+    fn try_from(what: Vec<Option<T>>) -> Result<Self> {
+        let mut ret = Vec::with_capacity(what.len());
+
+        for v in what {
+            ret.push(v.context("cannot include non-values in a NumericSeq")?);
+        }
+
+        Ok(NumericSeq::new(ret))
+    }
+}
+
 impl<T> TryFrom<Vec<Vec<T>>> for NumericSeq<T>
 where
     T: Copy + Clone + Num + Debug + PartialOrd + Bounded,
@@ -56,7 +73,7 @@ where
 }
 
 macro_rules! try_from_seq {
-    ($type:ty) => {
+    (for $($type:ty)*) => ($(
         impl<T> TryFrom<$type> for NumericSeq<T>
         where
             T: Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
@@ -64,18 +81,16 @@ macro_rules! try_from_seq {
             type Error = anyhow::Error;
 
             fn try_from(what: $type) -> Result<Self> {
-                match what.to_numeric_values() {
-                    Ok(vals) => Ok(NumericSeq::new(vals)),
-                    Err(_) => Err(anyhow!("invalid values in input")),
-                }
+                Ok(NumericSeq{
+                    contents: what.to_numeric_values()?,
+                    metadata: what.metadata
+                })
             }
         }
-    };
+    )*)
 }
 
-try_from_seq!(Melody<T>);
-try_from_seq!(ChordSeq<T>);
-try_from_seq!(NoteSeq<T>);
+try_from_seq!(for NoteSeq<T> ChordSeq<T> Melody<T>);
 
 impl<T: Clone + Num + Debug + PartialOrd + Bounded> Collection<T> for NumericSeq<T> {
     default_collection_methods!(T);
@@ -121,8 +136,9 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Seq
 mod tests {
     use crate::collections::traits::Collection;
     use crate::entities::scale::Scale;
+    use crate::metadata::{data::MetadataData, list::MetadataList};
     use crate::sequences::chord::ChordSeq;
-    use crate::sequences::melody::Melody;
+    use crate::sequences::melody::{Melody, MelodyMember};
     use crate::sequences::note::NoteSeq;
     use crate::sequences::numeric::NumericSeq;
     use crate::sequences::traits::Sequence;
@@ -138,7 +154,17 @@ mod tests {
     }
 
     #[test]
-    fn try_from_vec_vec() {
+    fn try_from_vec_of_options() {
+        assert_eq!(
+            NumericSeq::try_from(vec![Some(1), Some(2), Some(3)]).unwrap(),
+            NumericSeq::new(vec![1, 2, 3])
+        );
+
+        assert!(NumericSeq::try_from(vec![Some(1), None, Some(2), Some(3)]).is_err());
+    }
+
+    #[test]
+    fn try_from_vec_of_vecs() {
         assert_eq!(
             NumericSeq::try_from(vec![vec![1], vec![2], vec![3]]).unwrap(),
             NumericSeq::new(vec![1, 2, 3])
@@ -154,8 +180,19 @@ mod tests {
         assert!(NumericSeq::try_from(Melody::try_from(vec![vec![1, 2, 3]]).unwrap()).is_err());
 
         assert_eq!(
-            NumericSeq::try_from(Melody::try_from(vec![1, 2, 3]).unwrap()).unwrap(),
-            NumericSeq::new(vec![1, 2, 3])
+            NoteSeq::try_from(Melody {
+                contents: vec![
+                    MelodyMember::from(vec![1]),
+                    MelodyMember::from(vec![2]),
+                    MelodyMember::from(vec![3]),
+                ],
+                metadata: MetadataList::new(vec![MetadataData::Tempo(144.0).into()])
+            })
+            .unwrap(),
+            NoteSeq {
+                contents: vec![Some(1), Some(2), Some(3)],
+                metadata: MetadataList::new(vec![MetadataData::Tempo(144.0).into()])
+            }
         );
     }
 
@@ -165,8 +202,15 @@ mod tests {
         assert!(NumericSeq::try_from(ChordSeq::new(vec![vec![1, 2, 3]])).is_err());
 
         assert_eq!(
-            NumericSeq::try_from(ChordSeq::new(vec![vec![1], vec![2], vec![3]])).unwrap(),
-            NumericSeq::new(vec![1, 2, 3])
+            NumericSeq::try_from(ChordSeq {
+                contents: vec![vec![1], vec![2], vec![3]],
+                metadata: MetadataList::new(vec![MetadataData::Tempo(144.0).into()])
+            })
+            .unwrap(),
+            NumericSeq {
+                contents: vec![1, 2, 3],
+                metadata: MetadataList::new(vec![MetadataData::Tempo(144.0).into()])
+            }
         );
     }
 
@@ -175,8 +219,15 @@ mod tests {
         assert!(NumericSeq::try_from(NoteSeq::<i32>::new(vec![None])).is_err());
 
         assert_eq!(
-            NumericSeq::try_from(NoteSeq::new(vec![Some(1), Some(2), Some(3)])).unwrap(),
-            NumericSeq::new(vec![1, 2, 3])
+            NumericSeq::try_from(NoteSeq {
+                contents: vec![Some(1), Some(2), Some(3)],
+                metadata: MetadataList::new(vec![MetadataData::Tempo(144.0).into()])
+            })
+            .unwrap(),
+            NumericSeq {
+                contents: vec![1, 2, 3],
+                metadata: MetadataList::new(vec![MetadataData::Tempo(144.0).into()])
+            }
         );
     }
 
