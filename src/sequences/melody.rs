@@ -47,6 +47,18 @@ where
     }
 }
 
+impl<T> From<Option<T>> for MelodyMember<T>
+where
+    T: Copy + Clone + Num,
+{
+    fn from(what: Option<T>) -> Self {
+        MelodyMember {
+            values: what.map_or_else(|| Vec::new(), |v| vec![v]),
+            ..Default::default()
+        }
+    }
+}
+
 impl<T> From<Vec<T>> for MelodyMember<T>
 where
     T: Copy + Clone + Num,
@@ -141,6 +153,23 @@ pub enum MelodyError {
     InvalidValues,
 }
 
+macro_rules! try_from_vec {
+    (for $($t:ty)*) => ($(
+        impl<T> TryFrom<$t> for Melody<T>
+        where
+            T: Clone + Copy + Num + Debug + PartialOrd + Bounded,
+        {
+            type Error = anyhow::Error;
+
+            fn try_from(what: $t) -> Result<Self> {
+                Ok(Self::new(what.into_iter().map(MelodyMember::from).collect()))
+            }
+        }
+    )*)
+}
+
+try_from_vec!(for Vec<T> Vec<Option<T>> Vec<Vec<T>>);
+
 impl<T> TryFrom<Vec<MelodyMember<T>>> for Melody<T>
 where
     T: Clone + Copy + Num + Debug + PartialOrd + Bounded,
@@ -149,32 +178,6 @@ where
 
     fn try_from(what: Vec<MelodyMember<T>>) -> Result<Self> {
         Ok(Self::new(what))
-    }
-}
-
-impl<T> TryFrom<Vec<Vec<T>>> for Melody<T>
-where
-    T: Clone + Copy + Num + Debug + PartialOrd + Bounded,
-{
-    type Error = anyhow::Error;
-
-    fn try_from(what: Vec<Vec<T>>) -> Result<Self> {
-        Ok(Self::new(
-            what.into_iter().map(MelodyMember::from).collect(),
-        ))
-    }
-}
-
-impl<T> TryFrom<Vec<T>> for Melody<T>
-where
-    T: Clone + Copy + Num + Debug + PartialOrd + Bounded,
-{
-    type Error = anyhow::Error;
-
-    fn try_from(what: Vec<T>) -> Result<Self> {
-        Ok(Self::new(
-            what.into_iter().map(MelodyMember::from).collect(),
-        ))
     }
 }
 
@@ -187,12 +190,14 @@ macro_rules! try_from_seq {
             type Error = anyhow::Error;
 
             fn try_from(what: $type) -> Result<Self> {
-                Ok(Self::new(
-                    what.to_pitches()
+                Ok(Self {
+                    contents: what
+                        .to_pitches()
                         .into_iter()
                         .map(MelodyMember::from)
                         .collect(),
-                ))
+                    metadata: what.metadata,
+                })
             }
         }
     };
@@ -451,6 +456,14 @@ mod tests {
     use crate::sequences::traits::Sequence;
 
     #[test]
+    fn mel_member_from() {
+        assert_eq!(MelodyMember::from(5).values, vec![5]);
+        assert_eq!(MelodyMember::from(Some(5)).values, vec![5]);
+        assert_eq!(MelodyMember::<i32>::from(None).values, vec![]);
+        assert_eq!(MelodyMember::from(vec![5]).values, vec![5]);
+    }
+
+    #[test]
     fn mel_member_with_event() {
         assert_eq!(
             MelodyMember::from(vec![12, 16])
@@ -609,6 +622,19 @@ mod tests {
     }
 
     #[test]
+    fn try_from_vec_of_options() {
+        assert_eq!(
+            Melody::try_from(vec![Some(5), None, Some(12), Some(16)]).unwrap(),
+            Melody::new(vec![
+                MelodyMember::from(vec![5]),
+                MelodyMember::from(vec![]),
+                MelodyMember::from(vec![12]),
+                MelodyMember::from(vec![16]),
+            ])
+        );
+    }
+
+    #[test]
     fn try_from_vec_of_vecs() {
         assert_eq!(
             Melody::try_from(vec![vec![5], vec![], vec![12, 16]]).unwrap(),
@@ -640,37 +666,58 @@ mod tests {
     #[test]
     fn try_from_chordseq() {
         assert_eq!(
-            Melody::try_from(ChordSeq::new(vec![vec![5], vec![], vec![12, 16]])).unwrap(),
-            Melody::new(vec![
-                MelodyMember::from(vec![5]),
-                MelodyMember::from(vec![]),
-                MelodyMember::from(vec![12, 16]),
-            ])
+            Melody::try_from(ChordSeq {
+                contents: vec![vec![5], vec![], vec![12, 16]],
+                metadata: MetadataList::new(vec![MetadataData::Tempo(144.0).into()])
+            })
+            .unwrap(),
+            Melody {
+                contents: vec![
+                    MelodyMember::from(vec![5]),
+                    MelodyMember::from(vec![]),
+                    MelodyMember::from(vec![12, 16]),
+                ],
+                metadata: MetadataList::new(vec![MetadataData::Tempo(144.0).into()])
+            }
         );
     }
 
     #[test]
     fn try_from_numseq() {
         assert_eq!(
-            Melody::try_from(NumericSeq::new(vec![5, 12, 16])).unwrap(),
-            Melody::new(vec![
-                MelodyMember::from(vec![5]),
-                MelodyMember::from(vec![12]),
-                MelodyMember::from(vec![16]),
-            ])
+            Melody::try_from(NumericSeq {
+                contents: vec![5, 12, 16],
+                metadata: MetadataList::new(vec![MetadataData::Tempo(144.0).into()])
+            })
+            .unwrap(),
+            Melody {
+                contents: vec![
+                    MelodyMember::from(vec![5]),
+                    MelodyMember::from(vec![12]),
+                    MelodyMember::from(vec![16]),
+                ],
+                metadata: MetadataList::new(vec![MetadataData::Tempo(144.0).into()])
+            }
         );
     }
 
     #[test]
     fn try_from_noteseq() {
         assert_eq!(
-            Melody::try_from(NoteSeq::new(vec![Some(5), None, Some(12), Some(16)])).unwrap(),
-            Melody::new(vec![
-                MelodyMember::from(vec![5]),
-                MelodyMember::from(vec![]),
-                MelodyMember::from(vec![12]),
-                MelodyMember::from(vec![16]),
-            ])
+            Melody::try_from(NoteSeq {
+                contents: vec![Some(5), None, Some(12), Some(16)],
+                metadata: MetadataList::new(vec![MetadataData::Tempo(144.0).into()])
+            })
+            .unwrap(),
+            Melody {
+                contents: vec![
+                    MelodyMember::from(vec![5]),
+                    MelodyMember::from(vec![]),
+                    MelodyMember::from(vec![12]),
+                    MelodyMember::from(vec![16]),
+                ],
+                metadata: MetadataList::new(vec![MetadataData::Tempo(144.0).into()])
+            }
         );
     }
 
