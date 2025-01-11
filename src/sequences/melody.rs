@@ -182,14 +182,14 @@ where
 }
 
 macro_rules! try_from_seq {
-    ($type:ty) => {
-        impl<T> TryFrom<$type> for Melody<T>
+    (for $($t:ty)*) => ($(
+        impl<T> TryFrom<$t> for Melody<T>
         where
             T: Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
         {
             type Error = anyhow::Error;
 
-            fn try_from(what: $type) -> Result<Self> {
+            fn try_from(what: $t) -> Result<Self> {
                 Ok(Self {
                     contents: what
                         .to_pitches()
@@ -200,12 +200,10 @@ macro_rules! try_from_seq {
                 })
             }
         }
-    };
+    )*)
 }
 
-try_from_seq!(NumericSeq<T>);
-try_from_seq!(NoteSeq<T>);
-try_from_seq!(ChordSeq<T>);
+try_from_seq!(for NumericSeq<T> NoteSeq<T> ChordSeq<T>);
 
 impl<T: Clone + Num + Debug + PartialOrd + Bounded> Collection<MelodyMember<T>> for Melody<T> {
     default_collection_methods!(MelodyMember<T>);
