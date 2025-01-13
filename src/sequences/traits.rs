@@ -297,12 +297,31 @@ pub trait Sequence<
         self.replace_contents(|c| std::iter::repeat(c.clone()).take(num).flatten().collect())
     }
 
-    fn looped(self, num: usize) -> Self {
+    fn looped(self, num: usize) -> Result<Self> {
         let len = self.length();
 
-        self.repeated(num / len + 1).mutate_contents(|c| {
+        if len == 0 {
+            return Err(anyhow!("cannot loop a zero-length sequence"));
+        }
+
+        Ok(self.repeated(num / len + 1).mutate_contents(|c| {
             c.truncate(num);
-        })
+        }))
+    }
+
+    fn looped_from(self, num: usize, start: i32) -> Result<Self> {
+        let first = self.index(start)?;
+        let last = num + first;
+        let len = self.length();
+
+        if len == 0 {
+            return Err(anyhow!("cannot loop a zero-length sequence"));
+        }
+
+        Ok(self.repeated(last / len + 1).mutate_contents(|c| {
+            c.truncate(last);
+            c.drain(..first);
+        }))
     }
 
     fn scale(self, scale: Scale<PitchType>, zeroval: PitchType) -> Result<Self>
@@ -728,19 +747,56 @@ mod tests {
     #[test]
     fn repeated() {
         assert_eq!(numseq![1, 2, 3].repeated(0), numseq![]);
-
         assert_eq!(numseq![1, 2, 3].repeated(2), numseq![1, 2, 3, 1, 2, 3]);
     }
 
     #[test]
     fn looped() {
-        assert_eq!(numseq![1, 2, 3].looped(0), numseq![]);
-        assert_eq!(numseq![1, 2, 3].looped(2), numseq![1, 2]);
-        assert_eq!(numseq![1, 2, 3].looped(3), numseq![1, 2, 3]);
-        assert_eq!(numseq![1, 2, 3].looped(4), numseq![1, 2, 3, 1]);
-        assert_eq!(numseq![1, 2, 3].looped(5), numseq![1, 2, 3, 1, 2]);
-        assert_eq!(numseq![1, 2, 3].looped(6), numseq![1, 2, 3, 1, 2, 3]);
-        assert_eq!(numseq![1, 2, 3].looped(7), numseq![1, 2, 3, 1, 2, 3, 1]);
+        assert!(NumericSeq::<i32>::new(vec![]).looped(3).is_err());
+
+        assert_eq!(numseq![1, 2, 3].looped(0).unwrap(), numseq![]);
+        assert_eq!(numseq![1, 2, 3].looped(2).unwrap(), numseq![1, 2]);
+        assert_eq!(numseq![1, 2, 3].looped(3).unwrap(), numseq![1, 2, 3]);
+        assert_eq!(numseq![1, 2, 3].looped(4).unwrap(), numseq![1, 2, 3, 1]);
+        assert_eq!(numseq![1, 2, 3].looped(5).unwrap(), numseq![1, 2, 3, 1, 2]);
+        assert_eq!(
+            numseq![1, 2, 3].looped(6).unwrap(),
+            numseq![1, 2, 3, 1, 2, 3]
+        );
+        assert_eq!(
+            numseq![1, 2, 3].looped(7).unwrap(),
+            numseq![1, 2, 3, 1, 2, 3, 1]
+        );
+    }
+
+    #[test]
+    fn looped_from() {
+        assert!(NumericSeq::<i32>::new(vec![]).looped_from(3, 0).is_err());
+        assert!(numseq![1, 2, 3].looped_from(3, 3).is_err());
+        assert!(numseq![1, 2, 3].looped_from(3, -4).is_err());
+
+        assert_eq!(numseq![1, 2, 3].looped_from(0, -3).unwrap(), numseq![]);
+        assert_eq!(numseq![1, 2, 3].looped_from(2, -1).unwrap(), numseq![3, 1]);
+        assert_eq!(
+            numseq![1, 2, 3].looped_from(3, 0).unwrap(),
+            numseq![1, 2, 3]
+        );
+        assert_eq!(
+            numseq![1, 2, 3].looped_from(4, 2).unwrap(),
+            numseq![3, 1, 2, 3]
+        );
+        assert_eq!(
+            numseq![1, 2, 3].looped_from(5, 0).unwrap(),
+            numseq![1, 2, 3, 1, 2]
+        );
+        assert_eq!(
+            numseq![1, 2, 3].looped_from(6, -1).unwrap(),
+            numseq![3, 1, 2, 3, 1, 2]
+        );
+        assert_eq!(
+            numseq![1, 2, 3].looped_from(7, 0).unwrap(),
+            numseq![1, 2, 3, 1, 2, 3, 1]
+        );
     }
 
     #[test]
