@@ -699,6 +699,19 @@ mod tests {
     }
 
     #[test]
+    fn pad_right() {
+        assert_eq!(
+            NumericSeq::new(vec![1, 2, 3]).pad_right(4, 1),
+            NumericSeq::new(vec![1, 2, 3, 4])
+        );
+
+        assert_eq!(
+            NumericSeq::new(vec![1, 2, 3]).pad_right(2, 4),
+            NumericSeq::new(vec![1, 2, 3, 2, 2, 2, 2])
+        );
+    }
+
+    #[test]
     fn dedupe() {
         assert_eq!(
             NumericSeq::new(vec![1, 2, 2, 3, 1, 3, 3, 2]).dedupe(),
