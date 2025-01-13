@@ -289,6 +289,14 @@ pub trait Sequence<
         })
     }
 
+    fn repeat(self) -> Self {
+        self.mutate_contents(|c| c.extend(c.clone()))
+    }
+
+    fn repeated(self, num: usize) -> Self {
+        self.replace_contents(|c| std::iter::repeat(c.clone()).take(num).flatten().collect())
+    }
+
     fn scale(self, scale: Scale<PitchType>, zeroval: PitchType) -> Result<Self>
     where
         PitchType: PrimInt
@@ -772,6 +780,27 @@ mod tests {
         assert_eq!(
             NumericSeq::new(vec![1, 2, 2, 3, 1, 3, 3, 2]).dedupe(),
             NumericSeq::new(vec![1, 2, 3, 1, 3, 2])
+        );
+    }
+
+    #[test]
+    fn repeat() {
+        assert_eq!(
+            NumericSeq::new(vec![1, 2, 3]).repeat(),
+            NumericSeq::new(vec![1, 2, 3, 1, 2, 3])
+        );
+    }
+
+    #[test]
+    fn repeated() {
+        assert_eq!(
+            NumericSeq::new(vec![1, 2, 3]).repeated(0),
+            NumericSeq::new(vec![])
+        );
+
+        assert_eq!(
+            NumericSeq::new(vec![1, 2, 3]).repeated(2),
+            NumericSeq::new(vec![1, 2, 3, 1, 2, 3])
         );
     }
 
