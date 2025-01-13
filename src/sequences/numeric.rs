@@ -12,6 +12,13 @@ use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::iter::Sum;
 
+#[macro_export]
+macro_rules! numseq {
+    ($($x:expr),*) => (
+        NumericSeq{contents: vec![$($x),*], metadata: MetadataList::default()}
+    );
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct NumericSeq<T> {
     pub contents: Vec<T>,
@@ -141,6 +148,12 @@ mod tests {
     use crate::sequences::note::NoteSeq;
     use crate::sequences::numeric::NumericSeq;
     use crate::sequences::traits::Sequence;
+
+    #[test]
+    fn try_from_macro() {
+        assert_eq!(numseq![], NumericSeq::<i32>::new(vec![]));
+        assert_eq!(numseq![1, 2, 3], NumericSeq::new(vec![1, 2, 3]));
+    }
 
     #[test]
     fn try_from_vec() {
