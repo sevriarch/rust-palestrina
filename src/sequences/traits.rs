@@ -273,6 +273,16 @@ pub trait Sequence<
         }
     }
 
+    fn pad_right_to(self, val: T, num: usize) -> Self {
+        let len = self.length();
+
+        if len < num {
+            self.pad_right(val, num - len)
+        } else {
+            self
+        }
+    }
+
     fn dedupe(self) -> Self {
         self.mutate_contents(|c| {
             c.dedup();
@@ -736,6 +746,24 @@ mod tests {
         assert_eq!(
             NumericSeq::new(vec![1, 2, 3]).pad_to(2, 5),
             NumericSeq::new(vec![2, 2, 1, 2, 3])
+        );
+    }
+
+    #[test]
+    fn pad_right_to() {
+        assert_eq!(
+            NumericSeq::new(vec![1, 2, 3]).pad_right_to(4, 3),
+            NumericSeq::new(vec![1, 2, 3])
+        );
+
+        assert_eq!(
+            NumericSeq::new(vec![1, 2, 3]).pad_right_to(4, 4),
+            NumericSeq::new(vec![1, 2, 3, 4])
+        );
+
+        assert_eq!(
+            NumericSeq::new(vec![1, 2, 3]).pad_right_to(2, 5),
+            NumericSeq::new(vec![1, 2, 3, 2, 2])
         );
     }
 
