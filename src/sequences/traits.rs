@@ -297,6 +297,14 @@ pub trait Sequence<
         self.replace_contents(|c| std::iter::repeat(c.clone()).take(num).flatten().collect())
     }
 
+    fn looped(self, num: usize) -> Self {
+        let len = self.length();
+
+        self.repeated(num / len + 1).mutate_contents(|c| {
+            c.truncate(num);
+        })
+    }
+
     fn scale(self, scale: Scale<PitchType>, zeroval: PitchType) -> Result<Self>
     where
         PitchType: PrimInt
@@ -722,6 +730,17 @@ mod tests {
         assert_eq!(numseq![1, 2, 3].repeated(0), numseq![]);
 
         assert_eq!(numseq![1, 2, 3].repeated(2), numseq![1, 2, 3, 1, 2, 3]);
+    }
+
+    #[test]
+    fn looped() {
+        assert_eq!(numseq![1, 2, 3].looped(0), numseq![]);
+        assert_eq!(numseq![1, 2, 3].looped(2), numseq![1, 2]);
+        assert_eq!(numseq![1, 2, 3].looped(3), numseq![1, 2, 3]);
+        assert_eq!(numseq![1, 2, 3].looped(4), numseq![1, 2, 3, 1]);
+        assert_eq!(numseq![1, 2, 3].looped(5), numseq![1, 2, 3, 1, 2]);
+        assert_eq!(numseq![1, 2, 3].looped(6), numseq![1, 2, 3, 1, 2, 3]);
+        assert_eq!(numseq![1, 2, 3].looped(7), numseq![1, 2, 3, 1, 2, 3, 1]);
     }
 
     #[test]
