@@ -23,6 +23,13 @@ pub enum NoteSeqError {
     InvalidValues,
 }
 
+#[macro_export]
+macro_rules! noteseq {
+    ($($x:expr),*) => (
+        NoteSeq::new(vec![$(Option::from($x)),*])
+    );
+}
+
 impl<T> TryFrom<Vec<T>> for NoteSeq<T>
 where
     T: Copy + Clone + Num + Debug + PartialOrd + Bounded,
@@ -148,18 +155,23 @@ mod tests {
     use crate::sequences::traits::Sequence;
 
     #[test]
-    fn try_from_vec() {
+    fn try_from_macro() {
         assert_eq!(
-            NoteSeq::try_from(vec![1, 2, 3]).unwrap(),
-            NoteSeq::new(vec![Some(1), Some(2), Some(3)])
+            noteseq![1, 2, None, 3],
+            NoteSeq::new(vec![Some(1), Some(2), None, Some(3)]),
         );
+    }
+
+    #[test]
+    fn try_from_vec() {
+        assert_eq!(NoteSeq::try_from(vec![1, 2, 3]).unwrap(), noteseq![1, 2, 3]);
     }
 
     #[test]
     fn try_from_vec_of_options() {
         assert_eq!(
             NoteSeq::try_from(vec![Some(1), None, Some(2), Some(3)]).unwrap(),
-            NoteSeq::new(vec![Some(1), None, Some(2), Some(3)])
+            noteseq![1, None, 2, 3]
         );
     }
 
@@ -169,7 +181,7 @@ mod tests {
 
         assert_eq!(
             NoteSeq::try_from(vec![vec![1], vec![], vec![2], vec![3]]).unwrap(),
-            NoteSeq::new(vec![Some(1), None, Some(2), Some(3)])
+            noteseq![1, None, 2, 3]
         );
     }
 
@@ -229,33 +241,31 @@ mod tests {
 
     #[test]
     fn to_flat_pitches() {
-        assert_eq!(
-            NoteSeq::new(vec![Some(1), None, Some(2), Some(3)]).to_flat_pitches(),
-            vec![1, 2, 3]
-        );
+        assert_eq!(noteseq![1, None, 2, 3].to_flat_pitches(), vec![1, 2, 3]);
     }
+
     #[test]
     fn to_pitches() {
         assert_eq!(
-            NoteSeq::new(vec![Some(1), None, Some(2), Some(3)]).to_pitches(),
+            noteseq![1, None, 2, 3].to_pitches(),
             vec![vec![1], vec![], vec![2], vec![3]]
         );
     }
+
     #[test]
     fn to_numeric_values() {
-        assert!(NoteSeq::<i32>::new(vec![None]).to_numeric_values().is_err());
+        assert!(noteseq![1, None, 2, 3].to_numeric_values().is_err());
 
         assert_eq!(
-            NoteSeq::new(vec![Some(1), Some(2), Some(3)])
-                .to_numeric_values()
-                .unwrap(),
+            noteseq![1, 2, 3].to_numeric_values().unwrap(),
             vec![1, 2, 3]
         );
     }
+
     #[test]
     fn to_optional_numeric_values() {
         assert_eq!(
-            NoteSeq::new(vec![Some(1), None, Some(2), Some(3)])
+            noteseq![1, None, 2, 3]
                 .to_optional_numeric_values()
                 .unwrap(),
             vec![Some(1), None, Some(2), Some(3)]
