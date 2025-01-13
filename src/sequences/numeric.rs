@@ -253,4 +253,14 @@ mod tests {
             vec![4, 2, 5, 6, 3]
         );
     }
+
+    #[test]
+    fn to_optional_numeric_values() {
+        assert_eq!(
+            NumericSeq::new(vec![4, 2, 5, 6, 3])
+                .to_optional_numeric_values()
+                .unwrap(),
+            vec![Some(4), Some(2), Some(5), Some(6), Some(3)]
+        );
+    }
 }
