@@ -15,7 +15,7 @@ use std::iter::Sum;
 #[macro_export]
 macro_rules! numseq {
     ($($x:expr),*) => (
-        NumericSeq{contents: vec![$($x),*], metadata: MetadataList::default()}
+        NumericSeq::new(vec![$($x),*])
     );
 }
 
