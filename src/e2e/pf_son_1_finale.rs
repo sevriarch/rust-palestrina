@@ -36,7 +36,7 @@ fn make_overlay() -> Result<NumericSeq<i32>> {
         .mutate_slice(bar(61), bar(69), |v| v.invert_pitch(max))?
         .set_slice(bar(69), bar(73), min)?
         .set_slice(bar(73), bar(77), max + 8)?
-        .mutate_slice_indexed(bar(77), bar(81), |(i, v)| {
+        .mutate_slice_enumerated(bar(77), bar(81), |(i, v)| {
             *v = min + (i as i32 - 76 * BAR + 1) * 8 / BAR;
         })?
         .append_items(&[8, 8])
@@ -159,7 +159,7 @@ fn make_score() -> Result<Score<i32>> {
     ];
 
     let zig: NoteSeq<i32> = first
-        .map_with_indexed(|(i, vals)| *vals[look[i % 8]], lines)?
+        .map_with_enumerated(|(i, vals)| *vals[look[i % 8]], lines)?
         .append_items(&[69, 97])
         .try_into()?;
 
