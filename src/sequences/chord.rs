@@ -23,6 +23,17 @@ pub enum ChordSeqError {
     InvalidValues,
 }
 
+#[macro_export]
+macro_rules! chordseq {
+    ($([$($x:expr),*]),*) => (
+        ChordSeq::new(vec![ $(vec![ $($x),* ]),* ])
+    );
+
+    ($($x:expr),*) => (
+        ChordSeq::new(vec![ $(vec![ $x ]),* ])
+    );
+}
+
 impl<T> TryFrom<Vec<T>> for ChordSeq<T>
 where
     T: Clone + Copy + Num + Debug + PartialOrd + Bounded,
@@ -142,26 +153,38 @@ mod tests {
     use crate::sequences::traits::Sequence;
 
     #[test]
+    fn from_macro() {
+        assert_eq!(
+            chordseq![[1], [], [2, 3], [4]],
+            ChordSeq::new(vec![vec![1], vec![], vec![2, 3], vec![4]])
+        );
+        assert_eq!(
+            chordseq![1, 2, 3],
+            ChordSeq::new(vec![vec![1], vec![2], vec![3]])
+        );
+    }
+
+    #[test]
     fn try_from_vec() {
         assert_eq!(
-            ChordSeq::try_from(vec![5, 12, 16]),
-            Ok(ChordSeq::new(vec![vec![5], vec![12], vec![16]]))
+            ChordSeq::try_from(vec![5, 12, 16]).unwrap(),
+            chordseq![5, 12, 16]
         );
     }
 
     #[test]
     fn try_from_vec_of_options() {
         assert_eq!(
-            ChordSeq::try_from(vec![Some(5), None, Some(12), Some(16)]),
-            Ok(ChordSeq::new(vec![vec![5], vec![], vec![12], vec![16]]))
+            ChordSeq::try_from(vec![Some(5), None, Some(12), Some(16)]).unwrap(),
+            chordseq![[5], [], [12], [16]]
         );
     }
 
     #[test]
     fn try_from_vec_of_vecs() {
         assert_eq!(
-            ChordSeq::try_from(vec![vec![5], vec![], vec![12, 16]]),
-            Ok(ChordSeq::new(vec![vec![5], vec![], vec![12, 16]]))
+            ChordSeq::try_from(vec![vec![5], vec![], vec![12, 16]]).unwrap(),
+            chordseq![[5], [], [12, 16]]
         );
     }
 
@@ -217,7 +240,7 @@ mod tests {
     #[test]
     fn to_flat_pitches() {
         assert_eq!(
-            ChordSeq::new(vec![vec![5], vec![], vec![12, 16]]).to_flat_pitches(),
+            chordseq![[5], [], [12, 16]].to_flat_pitches(),
             vec![5, 12, 16]
         );
     }
@@ -225,7 +248,7 @@ mod tests {
     #[test]
     fn to_pitches() {
         assert_eq!(
-            ChordSeq::new(vec![vec![5], vec![], vec![12, 16]]).to_pitches(),
+            chordseq![[5], [], [12, 16]].to_pitches(),
             vec![vec![5], vec![], vec![12, 16]]
         );
     }
@@ -235,24 +258,18 @@ mod tests {
         assert!(ChordSeq::<i32>::new(vec![vec![]])
             .to_numeric_values()
             .is_err());
-        assert!(ChordSeq::new(vec![vec![12, 16]])
-            .to_numeric_values()
-            .is_err());
+        assert!(chordseq![[12, 16]].to_numeric_values().is_err());
         assert_eq!(
-            ChordSeq::new(vec![vec![5], vec![12], vec![16]])
-                .to_numeric_values()
-                .unwrap(),
+            chordseq![5, 12, 16].to_numeric_values().unwrap(),
             vec![5, 12, 16]
         );
     }
 
     #[test]
     fn to_optional_numeric_values() {
-        assert!(ChordSeq::new(vec![vec![12, 16]])
-            .to_optional_numeric_values()
-            .is_err());
+        assert!(chordseq![[12, 16]].to_optional_numeric_values().is_err());
         assert_eq!(
-            ChordSeq::new(vec![vec![5], vec![], vec![12], vec![16]])
+            chordseq![[5], [], [12], [16]]
                 .to_optional_numeric_values()
                 .unwrap(),
             vec![Some(5), None, Some(12), Some(16)]

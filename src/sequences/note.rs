@@ -26,7 +26,7 @@ pub enum NoteSeqError {
 #[macro_export]
 macro_rules! noteseq {
     ($($x:expr),*) => (
-        NoteSeq::new(vec![$(Option::from($x)),*])
+        NoteSeq::new(vec![ $(Option::from($x)),* ])
     );
 }
 
@@ -155,7 +155,7 @@ mod tests {
     use crate::sequences::traits::Sequence;
 
     #[test]
-    fn try_from_macro() {
+    fn from_macro() {
         assert_eq!(
             noteseq![1, 2, None, 3],
             NoteSeq::new(vec![Some(1), Some(2), None, Some(3)]),

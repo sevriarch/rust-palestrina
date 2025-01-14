@@ -15,7 +15,7 @@ use std::iter::Sum;
 #[macro_export]
 macro_rules! numseq {
     ($($x:expr),*) => (
-        NumericSeq::new(vec![$($x),*])
+        NumericSeq::new(vec![ $($x),* ])
     );
 }
 
@@ -150,7 +150,7 @@ mod tests {
     use crate::sequences::traits::Sequence;
 
     #[test]
-    fn try_from_macro() {
+    fn from_macro() {
         assert_eq!(numseq![], NumericSeq::<i32>::new(vec![]));
         assert_eq!(numseq![1, 2, 3], NumericSeq::new(vec![1, 2, 3]));
     }
