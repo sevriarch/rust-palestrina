@@ -75,7 +75,35 @@ pub struct Metadata {
     pub timing: EventTiming,
 }
 
+#[macro_export]
+macro_rules! me2data {
+    () => ( Vec::new() );
+
+    (($data:expr, $tick:expr, $offset:expr)) => (
+        vec![metadata!($data, Option::<u32>::from($tick), $offset)]
+    );
+
+    ($data:expr) => (
+        vec![Metadata {
+            data: $data,
+            timing: EventTiming::default(),
+        }]
+    );
+
+    ($x:expr, $($tail:tt)*) => (
+        {
+            let mut result = me2data!($x);
+            result.append(&mut me2data!($($tail)*));
+            result
+        }
+    );
+}
+
 macro_rules! metadata {
+    ([$($x:expr),*]) => (
+        vec![ $(metadata!($x)),* ]
+    );
+
     ($data:expr) => {
         Metadata {
             data: $data,
@@ -87,7 +115,7 @@ macro_rules! metadata {
         Metadata {
             data: $data,
             timing: EventTiming {
-                tick: $tick,
+                tick: Option::<u32>::from($tick),
                 offset: $offset,
             },
         }
@@ -244,6 +272,64 @@ impl Default for Metadata {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn from_macro() {
+        assert_eq!(
+            metadata!(MetadataData::Text("this text".to_string())),
+            Metadata {
+                data: MetadataData::Text("this text".to_string()),
+                timing: EventTiming::default(),
+            }
+        );
+
+        assert_eq!(
+            metadata!(MetadataData::Text("this text".to_string()), None, 100),
+            Metadata {
+                data: MetadataData::Text("this text".to_string()),
+                timing: EventTiming {
+                    tick: None,
+                    offset: 100
+                }
+            }
+        );
+
+        assert_eq!(
+            metadata!(MetadataData::Text("this text".to_string()), 50, 100),
+            Metadata {
+                data: MetadataData::Text("this text".to_string()),
+                timing: EventTiming {
+                    tick: Some(50),
+                    offset: 100
+                }
+            }
+        );
+
+        assert_eq!(
+            me2data![
+                MetadataData::Text("this text".to_string()),
+                MetadataData::Tempo(160.0),
+                (MetadataData::EndTrack, Some(50), 100)
+            ],
+            vec![
+                Metadata {
+                    data: MetadataData::Text("this text".to_string()),
+                    timing: EventTiming::default(),
+                },
+                Metadata {
+                    data: MetadataData::Tempo(160.0),
+                    timing: EventTiming::default(),
+                },
+                Metadata {
+                    data: MetadataData::EndTrack,
+                    timing: EventTiming {
+                        tick: Some(50),
+                        offset: 100
+                    },
+                },
+            ]
+        );
+    }
 
     #[test]
     fn try_from() {
