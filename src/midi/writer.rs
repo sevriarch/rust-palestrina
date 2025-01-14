@@ -1,9 +1,6 @@
 use crate::collections::traits::Collection;
 use crate::entities::{key_signature, time_signature, timing::Timing};
-use crate::metadata::{
-    data::{Metadata, MetadataData},
-    list::MetadataList,
-};
+use crate::metadata::{Metadata, MetadataData, MetadataList};
 use crate::score::Score;
 use crate::sequences::melody::{Melody, MelodyMember};
 use anyhow::{anyhow, Result};

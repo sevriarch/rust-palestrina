@@ -23,7 +23,7 @@ const DEBUG = process.env.WATER_DEBUG && process.env.WATER_DEBUG !== '0'
 use crate::collections::traits::Collection;
 use crate::entities::scale::Scale;
 use crate::imports::rasmussen;
-use crate::metadata::data::Metadata;
+use crate::metadata::Metadata;
 use crate::ops::pitch::Pitch;
 use crate::sequences::{note::NoteSeq, numeric::NumericSeq, traits::Sequence};
 use anyhow::Result;

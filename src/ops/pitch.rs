@@ -126,7 +126,7 @@ mod tests {
     use super::*;
     use crate::collections::traits::Collection;
     use crate::entities::timing::DurationalEventTiming;
-    use crate::metadata::list::MetadataList;
+    use crate::metadata::MetadataList;
     use crate::{chordseq, melody, noteseq, numseq};
 
     macro_rules! pitch_trait_test {

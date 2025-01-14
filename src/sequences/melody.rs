@@ -1,7 +1,7 @@
 use crate::algorithms;
 use crate::collections::traits::Collection;
 use crate::entities::timing::{DurationalEventTiming, Timing};
-use crate::metadata::{data::Metadata, list::MetadataList};
+use crate::metadata::{Metadata, MetadataList};
 use crate::sequences::chord::ChordSeq;
 use crate::sequences::note::NoteSeq;
 use crate::sequences::numeric::NumericSeq;
@@ -454,10 +454,7 @@ where
 mod tests {
     use crate::collections::traits::Collection;
     use crate::entities::timing::{DurationalEventTiming, Timing};
-    use crate::metadata::{
-        data::{Metadata, MetadataData},
-        list::MetadataList,
-    };
+    use crate::metadata::{Metadata, MetadataData, MetadataList};
     use crate::sequences::chord::ChordSeq;
     use crate::sequences::melody::{Melody, MelodyMember, DEFAULT_VOLUME};
     use crate::sequences::note::NoteSeq;

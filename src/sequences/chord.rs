@@ -1,5 +1,5 @@
 use crate::collections::traits::Collection;
-use crate::metadata::list::MetadataList;
+use crate::metadata::MetadataList;
 use crate::sequences::melody::Melody;
 use crate::sequences::note::NoteSeq;
 use crate::sequences::numeric::NumericSeq;
@@ -169,7 +169,7 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Seq
 #[cfg(test)]
 mod tests {
     use crate::collections::traits::Collection;
-    use crate::metadata::{data::MetadataData, list::MetadataList};
+    use crate::metadata::{MetadataData, MetadataList};
     use crate::sequences::chord::ChordSeq;
     use crate::sequences::melody::{Melody, MelodyMember};
     use crate::sequences::note::NoteSeq;

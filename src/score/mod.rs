@@ -1,6 +1,6 @@
 use crate::collections::traits::Collection;
 use crate::default_collection_methods;
-use crate::metadata::list::{MetadataList, PushMetadata};
+use crate::metadata::{MetadataList, PushMetadata};
 use crate::sequences::melody::Melody;
 use crate::sequences::traits::Sequence;
 use anyhow::Result;
@@ -164,7 +164,7 @@ where
 mod tests {
     use super::*;
     use crate::entities::timing::{DurationalEventTiming, EventTiming};
-    use crate::metadata::data::{Metadata, MetadataData};
+    use crate::metadata::{Metadata, MetadataData};
     use crate::sequences::melody::MelodyMember;
 
     #[test]
