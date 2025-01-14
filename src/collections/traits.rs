@@ -21,7 +21,7 @@ macro_rules! default_collection_methods {
             self
         }
 
-        fn mutate_each_indexed<F: Fn((usize, &mut $type))>(mut self, f: F) -> Self {
+        fn mutate_each_enumerated<F: Fn((usize, &mut $type))>(mut self, f: F) -> Self {
             self.contents.iter_mut().enumerate().for_each(f);
             self
         }
@@ -89,7 +89,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
     fn new(contents: Vec<T>) -> Self;
 
     fn mutate_each<F: Fn(&mut T)>(self, f: F) -> Self;
-    fn mutate_each_indexed<F: Fn((usize, &mut T))>(self, f: F) -> Self;
+    fn mutate_each_enumerated<F: Fn((usize, &mut T))>(self, f: F) -> Self;
     fn mutate_contents<F: FnOnce(&mut Vec<T>)>(self, f: F) -> Self;
     fn mutate_contents_with_result<F: FnOnce(&mut Vec<T>) -> Result<()>>(
         self,
@@ -330,7 +330,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn mutate_slice_indexed(
+    fn mutate_slice_enumerated(
         self,
         start: i32,
         end: i32,
@@ -388,7 +388,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         })
     }
 
-    fn filter_indexed(self, f: fn(&(usize, &mut T)) -> bool) -> Self {
+    fn filter_enumerated(self, f: fn(&(usize, &mut T)) -> bool) -> Self {
         self.replace_contents(|c| {
             c.iter_mut()
                 .enumerate()
@@ -904,16 +904,16 @@ mod tests {
     }
 
     #[test]
-    fn mutate_slice_indexed() {
+    fn mutate_slice_enumerated() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
         assert!(coll
             .clone()
-            .mutate_slice_indexed(-1, 2, |(i, v)| *v += i as i32)
+            .mutate_slice_enumerated(-1, 2, |(i, v)| *v += i as i32)
             .is_err());
         assert_contents_eq!(
             coll.clone()
-                .mutate_slice_indexed(2, -1, |(i, v)| *v += i as i32),
+                .mutate_slice_enumerated(2, -1, |(i, v)| *v += i as i32),
             vec![0, 2, 5, 7, 9, 6]
         );
     }
@@ -954,14 +954,14 @@ mod tests {
     }
 
     #[test]
-    fn filter_indexed() {
+    fn filter_enumerated() {
         assert_eq!(
-            TestColl::new(vec![0, 2, 3, 4, 5, 6]).filter_indexed(|(_, v)| **v % 2 == 0),
+            TestColl::new(vec![0, 2, 3, 4, 5, 6]).filter_enumerated(|(_, v)| **v % 2 == 0),
             TestColl::new(vec![0, 2, 4, 6])
         );
 
         assert_eq!(
-            TestColl::new(vec![0, 2, 3, 4, 5, 6]).filter_indexed(|(i, _)| (i % 2) == 0),
+            TestColl::new(vec![0, 2, 3, 4, 5, 6]).filter_enumerated(|(i, _)| (i % 2) == 0),
             TestColl::new(vec![0, 3, 5])
         );
     }

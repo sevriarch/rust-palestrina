@@ -371,7 +371,11 @@ pub trait Sequence<
         Ok(self.with_contents(ret))
     }
 
-    fn map_with_indexed(self, f: impl Fn((usize, Vec<&T>)) -> T, seq: Vec<Self>) -> Result<Self> {
+    fn map_with_enumerated(
+        self,
+        f: impl Fn((usize, Vec<&T>)) -> T,
+        seq: Vec<Self>,
+    ) -> Result<Self> {
         let len = self.length();
 
         if seq.iter().any(|s| self.length() != s.length()) {
@@ -862,9 +866,9 @@ mod tests {
     }
 
     #[test]
-    fn test_map_with_indexed() {
+    fn test_map_with_enumerated() {
         assert!(numseq![1, 2, 3]
-            .map_with_indexed(
+            .map_with_enumerated(
                 |(i, v)| v.into_iter().sum::<i32>() * i as i32,
                 vec![numseq![4, 5], numseq![7, 8, 9]]
             )
@@ -872,7 +876,7 @@ mod tests {
 
         assert_eq!(
             numseq![1, 2, 3]
-                .map_with_indexed(
+                .map_with_enumerated(
                     |(i, v)| v.into_iter().sum::<i32>() * i as i32,
                     vec![numseq![4, 5, 6], numseq![7, 8, 9]]
                 )
