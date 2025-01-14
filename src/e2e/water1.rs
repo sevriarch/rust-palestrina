@@ -53,7 +53,7 @@ pub fn build_base_sequences() -> Result<(NoteSeq<i32>, NoteSeq<i32>)> {
         .dedupe()
         .invert(8)?
         .replace_indices(&[0], &[None])?
-        .mutate_each_indexed(|(i, v)| {
+        .mutate_each_enumerated(|(i, v)| {
             if i > 120 && v.is_some_and(|v| v * 110 < (-760 - i as i32)) {
                 v.transpose_pitch(8)
             }
@@ -262,6 +262,78 @@ pub fn tempo_events() -> Result<Vec<Metadata>> {
     .map(|(t, bar)| Metadata::try_from(("tempo", *t as f32, Some((bar - 1) * 2 * TICKS), 0)))
     .collect()
 }
+/*
+fn melody1(n: usize) {
+    //log('entering m1', n)
+
+    let barlen = 8 - n;
+    let len1 = (8 - n) * LEN / 8;
+    let rhy1 = rhythm(n.try_into().unwrap());
+    let vol1 = dynamics1(len1);
+
+    let first = [ 30, 29, 28, 55 ][n];
+    let p_gap = 28 * barlen; // 28 bars
+
+    let mut s_on = vec![ 0 ];
+    let mut s_off = vec![];
+
+    (barlen * first..len1).step_by(p_gap).for_each(|i| {
+        s_off.push(i - 2);
+        s_on.push(i);
+    });
+
+    let sieve = |(i, v)| {
+        let rotator = match v {
+            2 => 5,
+            3 => 1,
+            5 => 3,
+            6 => 0,
+            8 => 4,
+            9 => 2,
+            11 => 6,
+            _ => 0,
+        };
+
+        let m = (48 + v) % 12;
+
+    });
+
+    function sieve1(v, i) {
+        const rotators = { 2: 5, 3: 1, 5: 3, 6: 0, 8: 4, 9: 2, 11: 6 }
+
+        const GAP  = 128 // 16 bars
+        const LPAD = 1024 // 128 bars
+
+        const m = (48 + v) % 12
+        const n = null
+        const s = (i - LPAD) / GAP
+
+        function rotato(x) {
+            if (s < x) { return v }
+            if (s < (13 - x)) { return n }
+            if (s < (14 + x)) { return -v }
+            if (s < (27 - x)) { return n }
+            return v
+        }
+
+        return rotato(rotators[m])
+    }
+
+    return m1
+        .keep(len1)
+        .if(!n)
+            .then(s => s.replaceIndices(-1, null))
+        .mapPitch(sieve1)
+        .transpose(84 - 12 * n)
+        .toMelody()
+        .withDuration(rhy1)
+        .withVolume(vol1)
+        .withStartTick(n * TICKS * 14)
+        .withEventBefore(s_on, 'sustain', 1)
+        .withEventAfter(s_off, 'sustain', 0)
+        .tap(s => logTrack(n, 'part1', s))
+}
+*/
 
 /*
 function melody1(n) {
