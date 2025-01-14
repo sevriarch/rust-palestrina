@@ -127,6 +127,7 @@ mod tests {
     use crate::collections::traits::Collection;
     use crate::entities::timing::DurationalEventTiming;
     use crate::metadata::list::MetadataList;
+    use crate::{chordseq, melody, noteseq, numseq};
 
     macro_rules! pitch_trait_test {
         ($fn:ident, $init:expr, $arg:expr, $ret:expr) => {
@@ -149,37 +150,24 @@ mod tests {
             6,
             MelodyMember::from(vec![10, 11, 12])
         );
+        pitch_trait_test!(transpose_pitch, numseq![4, 5, 6], 6, numseq![10, 11, 12]);
         pitch_trait_test!(
             transpose_pitch,
-            NumericSeq::new(vec![4, 5, 6]),
+            noteseq![4, None, 6],
             6,
-            NumericSeq::new(vec![10, 11, 12])
+            noteseq![10, None, 12]
         );
         pitch_trait_test!(
             transpose_pitch,
-            NoteSeq::new(vec![Some(4), None, Some(6)]),
+            chordseq![[4, 5, 6], [], [7]],
             6,
-            NoteSeq::new(vec![Some(10), None, Some(12)])
+            chordseq![[10, 11, 12], [], [13]]
         );
         pitch_trait_test!(
             transpose_pitch,
-            ChordSeq::new(vec![vec![4, 5, 6], vec![], vec![7]]),
+            melody![[4, 5, 6], [], [7]],
             6,
-            ChordSeq::new(vec![vec![10, 11, 12], vec![], vec![13]])
-        );
-        pitch_trait_test!(
-            transpose_pitch,
-            Melody::new(vec![
-                MelodyMember::from(vec![4, 5, 6]),
-                MelodyMember::from(vec![]),
-                MelodyMember::from(vec![7])
-            ]),
-            6,
-            Melody::new(vec![
-                MelodyMember::from(vec![10, 11, 12]),
-                MelodyMember::from(vec![]),
-                MelodyMember::from(vec![13])
-            ])
+            melody![[10, 11, 12], [], [13]]
         );
     }
 
@@ -196,37 +184,19 @@ mod tests {
             6,
             MelodyMember::from(vec![8, 7, 6])
         );
+        pitch_trait_test!(invert_pitch, numseq![4, 5, 6], 6, numseq![8, 7, 6]);
+        pitch_trait_test!(invert_pitch, noteseq![4, None, 6], 6, noteseq![8, None, 6]);
         pitch_trait_test!(
             invert_pitch,
-            NumericSeq::new(vec![4, 5, 6]),
+            chordseq![[4, 5, 6], [], [7]],
             6,
-            NumericSeq::new(vec![8, 7, 6])
+            chordseq![[8, 7, 6], [], [5]]
         );
         pitch_trait_test!(
             invert_pitch,
-            NoteSeq::new(vec![Some(4), None, Some(6)]),
+            melody![[4, 5, 6], [], [7]],
             6,
-            NoteSeq::new(vec![Some(8), None, Some(6)])
-        );
-        pitch_trait_test!(
-            invert_pitch,
-            ChordSeq::new(vec![vec![4, 5, 6], vec![], vec![7]]),
-            6,
-            ChordSeq::new(vec![vec![8, 7, 6], vec![], vec![5]])
-        );
-        pitch_trait_test!(
-            invert_pitch,
-            Melody::new(vec![
-                MelodyMember::from(vec![4, 5, 6]),
-                MelodyMember::from(vec![]),
-                MelodyMember::from(vec![7])
-            ]),
-            6,
-            Melody::new(vec![
-                MelodyMember::from(vec![8, 7, 6]),
-                MelodyMember::from(vec![]),
-                MelodyMember::from(vec![5])
-            ])
+            melody![[8, 7, 6], [], [5]]
         );
     }
 
@@ -247,18 +217,16 @@ mod tests {
         }
         .is_silent());
         assert!(NumericSeq::<i32>::new(vec![]).is_silent());
-        assert!(!NumericSeq::new(vec![0]).is_silent());
+        assert!(!numseq![0].is_silent());
         assert!(NoteSeq::<i32>::new(vec![]).is_silent());
         assert!(NoteSeq::<i32>::new(vec![None]).is_silent());
-        assert!(!NoteSeq::new(vec![Some(0), None, Some(1)]).is_silent());
+        assert!(!noteseq![0, None, 1].is_silent());
         assert!(ChordSeq::<i32>::new(vec![]).is_silent());
         assert!(ChordSeq::<i32>::new(vec![vec![]]).is_silent());
-        assert!(!ChordSeq::new(vec![vec![0], vec![], vec![1]]).is_silent());
+        assert!(!chordseq![[0], [], [1]].is_silent());
         assert!(Melody::<i32>::new(vec![]).is_silent());
         assert!(Melody::<i32>::try_from(vec![vec![]]).unwrap().is_silent());
-        assert!(!Melody::try_from(vec![vec![0], vec![], vec![1]])
-            .unwrap()
-            .is_silent());
+        assert!(!melody![[0], [], [1]].is_silent());
         assert!(Melody::new(vec![MelodyMember {
             values: vec![0],
             volume: 0,
