@@ -23,6 +23,30 @@ pub enum ChordSeqError {
     InvalidValues,
 }
 
+/*
+ * TODO: is a less clunky version of this possible?
+ *
+#[macro_export]
+macro_rules! chordseq_member {
+    ([$($x:expr),*]) => (
+        Vec::from([ $($x),* ])
+    );
+
+    ($x:expr) => (
+        Vec::from([ $x ])
+    );
+}
+
+#[macro_export]
+macro_rules! chordseq {
+    ($($item:tt),*) => (
+        ChordSeq::new(vec![
+            $(chordseq_member!($item)),*
+        ])
+    );
+}
+*/
+
 #[macro_export]
 macro_rules! chordseq {
     ($([$($x:expr),*]),*) => (

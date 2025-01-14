@@ -153,6 +153,17 @@ pub enum MelodyError {
     InvalidValues,
 }
 
+#[macro_export]
+macro_rules! melody {
+    ($([$($x:expr),*]),*) => (
+        Melody::new(vec![ $(MelodyMember::from(vec![ $($x),* ])),* ])
+    );
+
+    ($($x:expr),*) => (
+        Melody::new(vec![ $(MelodyMember::from(vec![ $x ])),* ])
+    );
+}
+
 macro_rules! try_from_vec {
     (for $($t:ty)*) => ($(
         impl<T> TryFrom<$t> for Melody<T>
@@ -608,14 +619,31 @@ mod tests {
     }
 
     #[test]
-    fn try_from_vec() {
+    fn from_macro() {
         assert_eq!(
-            Melody::try_from(vec![5, 12, 16]).unwrap(),
+            melody![5, 12, 16],
             Melody::new(vec![
                 MelodyMember::from(vec![5]),
                 MelodyMember::from(vec![12]),
                 MelodyMember::from(vec![16]),
             ])
+        );
+
+        assert_eq!(
+            melody![[5], [], [12, 16]],
+            Melody::new(vec![
+                MelodyMember::from(vec![5]),
+                MelodyMember::from(vec![]),
+                MelodyMember::from(vec![12, 16]),
+            ])
+        );
+    }
+
+    #[test]
+    fn try_from_vec() {
+        assert_eq!(
+            Melody::try_from(vec![5, 12, 16]).unwrap(),
+            melody![5, 12, 16]
         );
     }
 
@@ -623,12 +651,7 @@ mod tests {
     fn try_from_vec_of_options() {
         assert_eq!(
             Melody::try_from(vec![Some(5), None, Some(12), Some(16)]).unwrap(),
-            Melody::new(vec![
-                MelodyMember::from(vec![5]),
-                MelodyMember::from(vec![]),
-                MelodyMember::from(vec![12]),
-                MelodyMember::from(vec![16]),
-            ])
+            melody![[5], [], [12], [16]]
         );
     }
 
@@ -636,11 +659,7 @@ mod tests {
     fn try_from_vec_of_vecs() {
         assert_eq!(
             Melody::try_from(vec![vec![5], vec![], vec![12, 16]]).unwrap(),
-            Melody::new(vec![
-                MelodyMember::from(vec![5]),
-                MelodyMember::from(vec![]),
-                MelodyMember::from(vec![12, 16]),
-            ])
+            melody![[5], [], [12, 16]]
         );
     }
 
@@ -653,11 +672,7 @@ mod tests {
                 MelodyMember::from(vec![12, 16]),
             ])
             .unwrap(),
-            Melody::<i32>::new(vec![
-                MelodyMember::from(vec![5]),
-                MelodyMember::from(vec![]),
-                MelodyMember::from(vec![12, 16]),
-            ])
+            melody![[5], [], [12, 16]]
         );
     }
 
@@ -722,12 +737,7 @@ mod tests {
     #[test]
     fn to_flat_pitches() {
         assert_eq!(
-            Melody::<i32>::new(vec![
-                MelodyMember::from(vec![5]),
-                MelodyMember::from(vec![]),
-                MelodyMember::from(vec![12, 16]),
-            ])
-            .to_flat_pitches(),
+            melody![[5], [], [12, 16]].to_flat_pitches(),
             vec![5, 12, 16]
         );
     }
@@ -735,12 +745,7 @@ mod tests {
     #[test]
     fn to_pitches() {
         assert_eq!(
-            Melody::<i32>::new(vec![
-                MelodyMember::from(vec![5]),
-                MelodyMember::from(vec![]),
-                MelodyMember::from(vec![12, 16]),
-            ])
-            .to_pitches(),
+            melody![[5], [], [12, 16]].to_pitches(),
             vec![vec![5], vec![], vec![12, 16]]
         );
     }
@@ -750,35 +755,20 @@ mod tests {
         assert!(Melody::<i32>::new(vec![MelodyMember::from(vec![])])
             .to_numeric_values()
             .is_err());
-        assert!(Melody::<i32>::new(vec![MelodyMember::from(vec![12, 16])])
-            .to_numeric_values()
-            .is_err());
+        assert!(melody![[12, 16]].to_numeric_values().is_err());
         assert_eq!(
-            Melody::<i32>::new(vec![
-                MelodyMember::from(vec![5]),
-                MelodyMember::from(vec![12]),
-                MelodyMember::from(vec![16]),
-            ])
-            .to_numeric_values()
-            .unwrap(),
+            melody![5, 12, 16].to_numeric_values().unwrap(),
             vec![5, 12, 16]
         );
     }
 
     #[test]
     fn to_optional_numeric_values() {
-        assert!(Melody::<i32>::new(vec![MelodyMember::from(vec![12, 16])])
-            .to_optional_numeric_values()
-            .is_err());
+        assert!(melody![[12, 16]].to_optional_numeric_values().is_err());
         assert_eq!(
-            Melody::<i32>::new(vec![
-                MelodyMember::from(vec![5]),
-                MelodyMember::from(vec![]),
-                MelodyMember::from(vec![12]),
-                MelodyMember::from(vec![16]),
-            ])
-            .to_optional_numeric_values()
-            .unwrap(),
+            melody![[5], [], [12], [16]]
+                .to_optional_numeric_values()
+                .unwrap(),
             vec![Some(5), None, Some(12), Some(16)]
         );
     }
