@@ -394,21 +394,23 @@ mod tests {
     use super::*;
     use assert_float_eq::assert_f64_near;
 
-    use crate::numseq;
+    use crate::sequences::chord::ChordSeq;
+    use crate::sequences::note::NoteSeq;
     use crate::sequences::numeric::NumericSeq;
+    use crate::{chordseq, noteseq, numseq};
 
     #[test]
     fn min_value() {
         assert!(NumericSeq::<i64>::new(vec![]).min_value().is_none());
         assert_eq!(numseq![4, 2, 5, 6, 3].min_value(), Some(2));
-        assert_eq!(numseq![4.1, 2.8, 5.4, 6.3, 3.0].min_value(), Some(2.8));
+        assert_eq!(noteseq![4.1, 2.8, 5.4, 6.3, 3.0].min_value(), Some(2.8));
     }
 
     #[test]
     fn max_value() {
         assert!(NumericSeq::<i64>::new(vec![]).max_value().is_none());
         assert_eq!(numseq![4, 2, 5, 6, 3].max_value(), Some(6));
-        assert_eq!(numseq![4.1, 2.8, 5.4, 6.3, 3.0].max_value(), Some(6.3));
+        assert_eq!(chordseq![4.1, 2.8, 5.4, 6.3, 3.0].max_value(), Some(6.3));
     }
 
     #[test]
@@ -426,7 +428,7 @@ mod tests {
             vec![0, 3, 4, 6, 8]
         );
         assert_eq!(
-            numseq![1, 1, 2, 3, 3, 3, 4, 4, 5, 5].find_if_window(2, 2, |s| s[0] == s[1]),
+            noteseq![1, 1, 2, 3, 3, 3, 4, 4, 5, 5].find_if_window(2, 2, |s| s[0] == s[1]),
             vec![0, 4, 6, 8]
         );
         assert_eq!(
@@ -442,7 +444,7 @@ mod tests {
             vec![8, 6, 4, 3, 0]
         );
         assert_eq!(
-            numseq![1, 1, 2, 3, 3, 3, 4, 4, 5, 5].find_if_reverse_window(2, 2, |s| s[0] == s[1]),
+            noteseq![1, 1, 2, 3, 3, 3, 4, 4, 5, 5].find_if_reverse_window(2, 2, |s| s[0] == s[1]),
             vec![8, 6, 4, 0]
         );
         assert_eq!(
@@ -481,8 +483,8 @@ mod tests {
             NumericSeq::<i32>::new(vec![])
         );
         assert_eq!(
-            numseq![1, 6, 4].transpose_to_min(2).unwrap(),
-            numseq![2, 7, 5]
+            chordseq![1, 6, 4].transpose_to_min(2).unwrap(),
+            chordseq![2, 7, 5]
         );
 
         assert_contents_f64_near!(
@@ -498,8 +500,8 @@ mod tests {
             NumericSeq::new(vec![])
         );
         assert_eq!(
-            numseq![1, 6, 4].transpose_to_max(2).unwrap(),
-            numseq![-3, 2, 0]
+            chordseq![1, 6, 4].transpose_to_max(2).unwrap(),
+            chordseq![-3, 2, 0]
         );
 
         assert_contents_f64_near!(
@@ -510,7 +512,11 @@ mod tests {
 
     #[test]
     fn invert() {
-        assert_eq!(numseq![1, 6, 4].invert(2).unwrap(), numseq![3, -2, 0]);
+        assert_eq!(chordseq![1, 6, 4].invert(2).unwrap(), chordseq![3, -2, 0]);
+        assert_eq!(
+            noteseq![1, None, 6, 4].invert(2).unwrap(),
+            noteseq![3, None, -2, 0]
+        );
 
         assert_contents_f64_near!(
             numseq![1.7, 3.4, 6.3].invert(-1.8).unwrap(),
@@ -520,7 +526,11 @@ mod tests {
 
     #[test]
     fn augment() {
-        assert_eq!(numseq![1, 6, 4].augment(2).unwrap(), numseq![2, 12, 8]);
+        assert_eq!(chordseq![1, 6, 4].augment(2).unwrap(), chordseq![2, 12, 8]);
+        assert_eq!(
+            noteseq![1, None, 6, 4].augment(2).unwrap(),
+            noteseq![2, None, 12, 8]
+        );
 
         assert_contents_f64_near!(
             numseq![1.7, 3.4, 6.3].augment(2.0).unwrap(),
@@ -531,7 +541,12 @@ mod tests {
     #[test]
     fn diminish() {
         assert!(numseq![1, 6, 4].diminish(0).is_err());
-        assert_eq!(numseq![1, 6, 4].diminish(2).unwrap(), numseq![0, 3, 2]);
+
+        assert_eq!(chordseq![1, 6, 4].diminish(2).unwrap(), chordseq![0, 3, 2]);
+        assert_eq!(
+            noteseq![1, None, 6, 4].diminish(2).unwrap(),
+            noteseq![0, None, 3, 2]
+        );
 
         assert_contents_f64_near!(
             numseq![1.7, 3.4, 6.3].diminish(2.0).unwrap(),
@@ -542,7 +557,11 @@ mod tests {
     #[test]
     fn modulus() {
         assert!(numseq![-1, 6, 4].modulus(0).is_err());
-        assert_eq!(numseq![-1, 6, 4].modulus(3).unwrap(), numseq![2, 0, 1]);
+        assert_eq!(chordseq![-1, 6, 4].modulus(3).unwrap(), chordseq![2, 0, 1]);
+        assert_eq!(
+            noteseq![-1, None, 6, 4].modulus(3).unwrap(),
+            noteseq![2, None, 0, 1]
+        );
 
         assert_contents_f64_near!(
             numseq![-1.7, 3.4, 6.3].modulus(2.0).unwrap(),
@@ -553,8 +572,8 @@ mod tests {
     #[test]
     fn trim() {
         assert_eq!(
-            numseq![1, 2, 5, 6, 4].trim(2, 5).unwrap(),
-            numseq![2, 2, 5, 5, 4]
+            noteseq![1, None, 2, 5, 6, 4].trim(2, 5).unwrap(),
+            noteseq![2, None, 2, 5, 5, 4]
         );
 
         assert_contents_f64_near!(
@@ -566,8 +585,8 @@ mod tests {
     #[test]
     fn trim_min() {
         assert_eq!(
-            numseq![1, 2, 5, 6, 4].trim_min(2).unwrap(),
-            numseq![2, 2, 5, 6, 4]
+            noteseq![1, None, 2, 5, 6, 4].trim_min(2).unwrap(),
+            noteseq![2, None, 2, 5, 6, 4]
         );
 
         assert_contents_f64_near!(
@@ -579,8 +598,8 @@ mod tests {
     #[test]
     fn trim_max() {
         assert_eq!(
-            numseq![1, 2, 5, 6, 4].trim_max(5).unwrap(),
-            numseq![1, 2, 5, 5, 4]
+            noteseq![1, None, 2, 5, 6, 4].trim_max(5).unwrap(),
+            noteseq![1, None, 2, 5, 5, 4]
         );
 
         assert_contents_f64_near!(
@@ -592,10 +611,10 @@ mod tests {
     #[test]
     fn bounce() {
         assert_eq!(
-            numseq![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+            noteseq![0, None, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
                 .bounce(7, 10)
                 .unwrap(),
-            numseq![8, 7, 8, 9, 10, 9, 8, 7, 8, 9, 10, 9, 8, 7, 8, 9, 10, 9]
+            noteseq![8, None, 7, 8, 9, 10, 9, 8, 7, 8, 9, 10, 9, 8, 7, 8, 9, 10, 9]
         );
 
         assert_contents_f64_near!(
@@ -607,8 +626,8 @@ mod tests {
     #[test]
     fn bounce_min() {
         assert_eq!(
-            numseq![1, 2, 5, 6, 4].bounce_min(2).unwrap(),
-            numseq![3, 2, 5, 6, 4]
+            noteseq![1, None, 2, 5, 6, 4].bounce_min(2).unwrap(),
+            noteseq![3, None, 2, 5, 6, 4]
         );
 
         assert_contents_f64_near!(
@@ -620,8 +639,8 @@ mod tests {
     #[test]
     fn bounce_max() {
         assert_eq!(
-            numseq![1, 2, 5, 6, 4].bounce_max(5).unwrap(),
-            numseq![1, 2, 5, 4, 4]
+            noteseq![1, None, 2, 5, 6, 4].bounce_max(5).unwrap(),
+            noteseq![1, None, 2, 5, 4, 4]
         );
 
         assert_contents_f64_near!(
@@ -651,8 +670,8 @@ mod tests {
         );
 
         assert_eq!(
-            numseq![-1, 0, 1].scale(lydian, 20).unwrap(),
-            numseq![19, 20, 22]
+            noteseq![-1, None, 0, 1].scale(lydian, 20).unwrap(),
+            noteseq![19, None, 20, 22]
         );
     }
 
@@ -669,13 +688,13 @@ mod tests {
         );
 
         assert_eq!(
-            numseq![1, 2, 3, 4, 5]
+            noteseq![1, None, 3, 4, 5]
                 .flat_map_windows(3, 2, |mut w| {
                     w.reverse();
                     w
                 })
                 .unwrap(),
-            numseq![3, 2, 1, 5, 4, 3]
+            noteseq![3, None, 1, 5, 4, 3]
         );
     }
 
@@ -700,7 +719,10 @@ mod tests {
     fn pad() {
         assert_eq!(numseq![1, 2, 3].pad(4, 1), numseq![4, 1, 2, 3]);
 
-        assert_eq!(numseq![1, 2, 3].pad(2, 4), numseq![2, 2, 2, 2, 1, 2, 3]);
+        assert_eq!(
+            noteseq![1, None, 3].pad(Some(2), 4),
+            noteseq![2, 2, 2, 2, 1, None, 3]
+        );
     }
 
     #[test]
@@ -708,8 +730,8 @@ mod tests {
         assert_eq!(numseq![1, 2, 3].pad_right(4, 1), numseq![1, 2, 3, 4]);
 
         assert_eq!(
-            numseq![1, 2, 3].pad_right(2, 4),
-            numseq![1, 2, 3, 2, 2, 2, 2]
+            noteseq![1, None, 3].pad_right(Some(2), 4),
+            noteseq![1, None, 3, 2, 2, 2, 2]
         );
     }
 
@@ -717,7 +739,7 @@ mod tests {
     fn pad_to() {
         assert_eq!(numseq![1, 2, 3].pad_to(4, 3), numseq![1, 2, 3]);
 
-        assert_eq!(numseq![1, 2, 3].pad_to(4, 4), numseq![4, 1, 2, 3]);
+        assert_eq!(noteseq![1, 2, 3].pad_to(Some(4), 4), noteseq![4, 1, 2, 3]);
 
         assert_eq!(numseq![1, 2, 3].pad_to(2, 5), numseq![2, 2, 1, 2, 3]);
     }
@@ -726,7 +748,10 @@ mod tests {
     fn pad_right_to() {
         assert_eq!(numseq![1, 2, 3].pad_right_to(4, 3), numseq![1, 2, 3]);
 
-        assert_eq!(numseq![1, 2, 3].pad_right_to(4, 4), numseq![1, 2, 3, 4]);
+        assert_eq!(
+            noteseq![1, 2, 3].pad_right_to(Some(4), 4),
+            noteseq![1, 2, 3, 4]
+        );
 
         assert_eq!(numseq![1, 2, 3].pad_right_to(2, 5), numseq![1, 2, 3, 2, 2]);
     }
@@ -747,7 +772,10 @@ mod tests {
     #[test]
     fn repeated() {
         assert_eq!(numseq![1, 2, 3].repeated(0), numseq![]);
-        assert_eq!(numseq![1, 2, 3].repeated(2), numseq![1, 2, 3, 1, 2, 3]);
+        assert_eq!(
+            noteseq![1, None, 3].repeated(2),
+            noteseq![1, None, 3, 1, None, 3]
+        );
     }
 
     #[test]
