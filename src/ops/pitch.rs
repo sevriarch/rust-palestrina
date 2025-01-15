@@ -73,7 +73,19 @@ pub trait Pitch<T> {
     ///
     /// This value does not have to be the same type as the pitches being multiplied
     /// (automatic conversion will be performed) and it can be an integer or a float.
+    ///
+    /// Note that in the case where pitches are of an integer type and the multiplier
+    /// is of a floating point type, results will always be rounded down.
     fn augment_pitch<AT: AugDim<T>>(&mut self, n: &AT);
+
+    /// Divide pitches by a specific value.
+    ///
+    /// This value does not have to be the same type as the pitches being divided
+    /// (automatic conversion will be performed) and it can be an integer or a float.
+    ///
+    /// Note that in the case where pitches are of an integer type and the divisor
+    /// is of a floating point type, results will always be rounded down.
+    fn diminish_pitch<AT: AugDim<T>>(&mut self, n: &AT);
 
     /// Is this pitch or pitch container silent?
     fn is_silent(&self) -> bool;
@@ -128,6 +140,10 @@ macro_rules! impl_traits_for_raw_values {
                 n.augment_target(self)
             }
 
+            fn diminish_pitch<MT: AugDim<$ty>>(&mut self, n: &MT) {
+                n.diminish_target(self)
+            }
+
             fn is_silent(&self) -> bool {
                 false
             }
@@ -146,6 +162,12 @@ macro_rules! impl_traits_for_derived_entities {
                 }
             }
 
+            fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
+                if let Some(p) = self.as_mut() {
+                    p.diminish_pitch(n);
+                }
+            }
+
             fn is_silent(&self) -> bool {
                 self.is_none()
             }
@@ -156,6 +178,10 @@ macro_rules! impl_traits_for_derived_entities {
 
             fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
                 self.iter_mut().for_each(|p| p.augment_pitch(n));
+            }
+
+            fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
+                self.iter_mut().for_each(|p| p.diminish_pitch(n));
             }
 
             fn is_silent(&self) -> bool {
@@ -170,6 +196,10 @@ macro_rules! impl_traits_for_derived_entities {
                 self.values.augment_pitch(n);
             }
 
+            fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
+                self.values.diminish_pitch(n);
+            }
+
             fn is_silent(&self) -> bool {
                 self.values.is_empty() || self.volume == 0
             }
@@ -180,6 +210,10 @@ macro_rules! impl_traits_for_derived_entities {
 
             fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
                 self.contents.augment_pitch(n);
+            }
+
+            fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
+                self.contents.diminish_pitch(n);
             }
 
             fn is_silent(&self) -> bool {
@@ -194,6 +228,10 @@ macro_rules! impl_traits_for_derived_entities {
                 self.contents.iter_mut().for_each(|p| p.augment_pitch(n));
             }
 
+            fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
+                self.contents.iter_mut().for_each(|p| p.diminish_pitch(n));
+            }
+
             fn is_silent(&self) -> bool {
                 self.contents.iter().all(|m| m.is_silent())
             }
@@ -206,6 +244,10 @@ macro_rules! impl_traits_for_derived_entities {
                 self.contents.iter_mut().for_each(|p| p.augment_pitch(n));
             }
 
+            fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
+                self.contents.iter_mut().for_each(|p| p.diminish_pitch(n));
+            }
+
             fn is_silent(&self) -> bool {
                 self.contents.iter().all(|m| m.is_silent())
             }
@@ -216,6 +258,10 @@ macro_rules! impl_traits_for_derived_entities {
 
             fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
                 self.contents.iter_mut().for_each(|p| p.augment_pitch(n));
+            }
+
+            fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
+                self.contents.iter_mut().for_each(|p| p.diminish_pitch(n));
             }
 
             fn is_silent(&self) -> bool {
@@ -444,6 +490,146 @@ mod tests {
             melody![[4.0], [], [5.5, 6.5]],
             &3.0,
             melody![[12.0], [], [16.5, 19.5]]
+        );
+    }
+
+    #[test]
+    fn diminish_pitch() {
+        pitch_trait_test!(diminish_pitch, 8, &2, 4);
+        pitch_trait_test!(diminish_pitch, 10, &2.5, 4);
+        pitch_trait_test!(diminish_pitch, 7.5, &3, 2.5);
+        pitch_trait_test!(diminish_pitch, 7.5, &3.0, 2.5);
+        pitch_trait_test!(diminish_pitch, None::<i32>, &2, None);
+        pitch_trait_test!(diminish_pitch, None::<i32>, &2.5, None);
+        pitch_trait_test!(diminish_pitch, None::<f32>, &2, None);
+        pitch_trait_test!(diminish_pitch, None::<f32>, &2.5, None);
+        pitch_trait_test!(diminish_pitch, Some(8), &2, Some(4));
+        pitch_trait_test!(diminish_pitch, Some(10), &2.5, Some(4));
+        pitch_trait_test!(diminish_pitch, Some(7.5), &3, Some(2.5));
+        pitch_trait_test!(diminish_pitch, Some(7.5), &3.0, Some(2.5));
+        pitch_trait_test!(diminish_pitch, vec![8, 10, 14], &2, vec![4, 5, 7]);
+        pitch_trait_test!(diminish_pitch, vec![10, 12, 17], &2.5, vec![4, 4, 6]);
+        pitch_trait_test!(
+            diminish_pitch,
+            vec![12.0, 16.5, 19.5],
+            &3,
+            vec![4.0, 5.5, 6.5]
+        );
+        pitch_trait_test!(
+            diminish_pitch,
+            vec![12.0, 16.5, 19.5],
+            &3.0,
+            vec![4.0, 5.5, 6.5]
+        );
+        pitch_trait_test!(
+            diminish_pitch,
+            MelodyMember::from(vec![8, 10, 14]),
+            &2,
+            MelodyMember::from(vec![4, 5, 7])
+        );
+        pitch_trait_test!(
+            diminish_pitch,
+            MelodyMember::from(vec![10, 12, 17]),
+            &2.5,
+            MelodyMember::from(vec![4, 4, 6])
+        );
+        pitch_trait_test!(
+            diminish_pitch,
+            MelodyMember::from(vec![12.0, 16.5, 19.5]),
+            &3,
+            MelodyMember::from(vec![4.0, 5.5, 6.5])
+        );
+        pitch_trait_test!(
+            diminish_pitch,
+            MelodyMember::from(vec![12.0, 16.5, 19.5]),
+            &3.0,
+            MelodyMember::from(vec![4.0, 5.5, 6.5])
+        );
+        pitch_trait_test!(diminish_pitch, numseq![8, 10, 14], &2, numseq![4, 5, 7]);
+        pitch_trait_test!(diminish_pitch, numseq![10, 12, 17], &2.5, numseq![4, 4, 6]);
+        pitch_trait_test!(
+            diminish_pitch,
+            numseq![12.0, 16.5, 19.5],
+            &3,
+            numseq![4.0, 5.5, 6.5]
+        );
+        pitch_trait_test!(
+            diminish_pitch,
+            numseq![12.0, 16.5, 19.5],
+            &3.0,
+            numseq![4.0, 5.5, 6.5]
+        );
+        pitch_trait_test!(
+            diminish_pitch,
+            noteseq![8, None, 10, 14],
+            &2,
+            noteseq![4, None, 5, 7]
+        );
+        pitch_trait_test!(
+            diminish_pitch,
+            noteseq![10, None, 12, 17],
+            &2.5,
+            noteseq![4, None, 4, 6]
+        );
+        pitch_trait_test!(
+            diminish_pitch,
+            noteseq![12.0, None, 16.5, 19.5],
+            &3,
+            noteseq![4.0, None, 5.5, 6.5]
+        );
+        pitch_trait_test!(
+            diminish_pitch,
+            noteseq![12.0, None, 16.5, 19.5],
+            &3.0,
+            noteseq![4.0, None, 5.5, 6.5]
+        );
+        pitch_trait_test!(
+            diminish_pitch,
+            chordseq![[8], [], [10, 14]],
+            &2,
+            chordseq![[4], [], [5, 7]]
+        );
+        pitch_trait_test!(
+            diminish_pitch,
+            chordseq![[10], [], [12, 17]],
+            &2.5,
+            chordseq![[4], [], [4, 6]]
+        );
+        pitch_trait_test!(
+            diminish_pitch,
+            chordseq![[12.0], [], [16.5, 19.5]],
+            &3,
+            chordseq![[4.0], [], [5.5, 6.5]]
+        );
+        pitch_trait_test!(
+            diminish_pitch,
+            chordseq![[12.0], [], [16.5, 19.5]],
+            &3.0,
+            chordseq![[4.0], [], [5.5, 6.5]]
+        );
+        pitch_trait_test!(
+            diminish_pitch,
+            melody![[8], [], [10, 14]],
+            &2,
+            melody![[4], [], [5, 7]]
+        );
+        pitch_trait_test!(
+            diminish_pitch,
+            melody![[10], [], [12, 17]],
+            &2.5,
+            melody![[4], [], [4, 6]]
+        );
+        pitch_trait_test!(
+            diminish_pitch,
+            melody![[12.0], [], [16.5, 19.5]],
+            &3,
+            melody![[4.0], [], [5.5, 6.5]]
+        );
+        pitch_trait_test!(
+            diminish_pitch,
+            melody![[12.0], [], [16.5, 19.5]],
+            &3.0,
+            melody![[4.0], [], [5.5, 6.5]]
         );
     }
 
