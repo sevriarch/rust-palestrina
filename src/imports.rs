@@ -1,3 +1,7 @@
+//! A module containing methods for creating various numeric sequences which
+//! may be of musical interest.
+//!
+//! Many of these sequences can be found at [OEIS](https:://oeis.org).
 use std::f64::consts::PI;
 
 fn is_prime(n: &i32) -> bool {
