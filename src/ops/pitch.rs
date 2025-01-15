@@ -87,6 +87,9 @@ pub trait Pitch<T> {
     /// is of a floating point type, results will always be rounded down.
     fn diminish_pitch<AT: AugDim<T>>(&mut self, n: &AT);
 
+    /// Replace any pitches below the passed argument with the passed argument.
+    fn trim_min(&mut self, n: T);
+
     /// Is this pitch or pitch container silent?
     fn is_silent(&self) -> bool;
 }
@@ -147,6 +150,12 @@ macro_rules! impl_traits_for_raw_values {
             fn is_silent(&self) -> bool {
                 false
             }
+
+            fn trim_min(&mut self, n: $ty) {
+                if *self < n {
+                    *self = n;
+                }
+            }
         }
     )*)
 }
@@ -154,7 +163,7 @@ macro_rules! impl_traits_for_raw_values {
 macro_rules! impl_traits_for_derived_entities {
     (for $($ty:ident)*) => ($(
         impl Pitch<$ty> for Option<$ty> {
-            impl_fns_for_option!($ty, for transpose_pitch invert_pitch);
+            impl_fns_for_option!($ty, for transpose_pitch invert_pitch trim_min);
 
             fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
                 if let Some(p) = self.as_mut() {
@@ -174,7 +183,7 @@ macro_rules! impl_traits_for_derived_entities {
         }
 
         impl Pitch<$ty> for Vec<$ty> {
-            impl_fns_for_vec!($ty, for transpose_pitch invert_pitch);
+            impl_fns_for_vec!($ty, for transpose_pitch invert_pitch trim_min);
 
             fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
                 self.iter_mut().for_each(|p| p.augment_pitch(n));
@@ -190,7 +199,7 @@ macro_rules! impl_traits_for_derived_entities {
         }
 
         impl Pitch<$ty> for MelodyMember<$ty> {
-            impl_fns_for_melody_member!($ty, for transpose_pitch invert_pitch);
+            impl_fns_for_melody_member!($ty, for transpose_pitch invert_pitch trim_min);
 
             fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
                 self.values.augment_pitch(n);
@@ -206,7 +215,7 @@ macro_rules! impl_traits_for_derived_entities {
         }
 
         impl Pitch<$ty> for NumericSeq<$ty> {
-            impl_fns_for_seq!($ty, for transpose_pitch invert_pitch);
+            impl_fns_for_seq!($ty, for transpose_pitch invert_pitch trim_min);
 
             fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
                 self.contents.augment_pitch(n);
@@ -222,7 +231,7 @@ macro_rules! impl_traits_for_derived_entities {
         }
 
         impl Pitch<$ty> for NoteSeq<$ty> {
-            impl_fns_for_seq!($ty, for transpose_pitch invert_pitch);
+            impl_fns_for_seq!($ty, for transpose_pitch invert_pitch trim_min);
 
             fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
                 self.contents.iter_mut().for_each(|p| p.augment_pitch(n));
@@ -238,7 +247,7 @@ macro_rules! impl_traits_for_derived_entities {
         }
 
         impl Pitch<$ty> for ChordSeq<$ty> {
-            impl_fns_for_seq!($ty, for transpose_pitch invert_pitch);
+            impl_fns_for_seq!($ty, for transpose_pitch invert_pitch trim_min);
 
             fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
                 self.contents.iter_mut().for_each(|p| p.augment_pitch(n));
@@ -254,7 +263,7 @@ macro_rules! impl_traits_for_derived_entities {
         }
 
         impl Pitch<$ty> for Melody<$ty> {
-            impl_fns_for_seq!($ty, for transpose_pitch invert_pitch);
+            impl_fns_for_seq!($ty, for transpose_pitch invert_pitch trim_min);
 
             fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
                 self.contents.iter_mut().for_each(|p| p.augment_pitch(n));
@@ -630,6 +639,40 @@ mod tests {
             melody![[12.0], [], [16.5, 19.5]],
             &3.0,
             melody![[4.0], [], [5.5, 6.5]]
+        );
+    }
+
+    #[test]
+    fn trim_min() {
+        pitch_trait_test!(trim_min, 5, 3, 5);
+        pitch_trait_test!(trim_min, 3, 5, 5);
+        pitch_trait_test!(trim_min, None, 5, None);
+        pitch_trait_test!(trim_min, Some(5), 3, Some(5));
+        pitch_trait_test!(trim_min, Some(3), 5, Some(5));
+        pitch_trait_test!(
+            trim_min,
+            MelodyMember::from(vec![5.0, 3.0]),
+            4.0,
+            MelodyMember::from(vec![5.0, 4.0])
+        );
+        pitch_trait_test!(trim_min, numseq![5.0, 3.0], 4.0, numseq![5.0, 4.0]);
+        pitch_trait_test!(
+            trim_min,
+            noteseq![5.0, None, 3.0],
+            4.0,
+            noteseq![5.0, None, 4.0]
+        );
+        pitch_trait_test!(
+            trim_min,
+            chordseq![[5.0], [], [4.5, 3.0]],
+            4.0,
+            chordseq![[5.0], [], [4.5, 4.0]]
+        );
+        pitch_trait_test!(
+            trim_min,
+            melody![[5.0], [], [4.5, 3.0]],
+            4.0,
+            melody![[5.0], [], [4.5, 4.0]]
         );
     }
 
