@@ -1,84 +1,75 @@
 use std::f64::consts::PI;
 
-fn is_prime(n: i32) -> bool {
-    let max = (n as f64).sqrt() as i32 + 1;
+fn is_prime(n: &i32) -> bool {
+    let max = (*n as f64).sqrt() as i32 + 1;
 
     for i in 2..max {
-        if n % i == 0 {
+        if *n % i == 0 {
             return false;
         }
     }
 
-    n > 1
+    *n > 1
 }
 
+/// Return the first len prime numbers.
+/// See: OEIS A000040
 pub fn primes(n: usize) -> Vec<i32> {
-    let mut ret = Vec::with_capacity(n);
-
-    if n == 0 {
-        return ret;
-    }
-
-    let mut curr = 2;
-    let mut count = 0;
-
-    loop {
-        if is_prime(curr) {
-            ret.push(curr);
-            count += 1;
-            if count >= n {
-                break;
-            }
-        }
-
-        curr += 1;
-    }
-
-    ret
+    (2..).filter(is_prime).take(n).collect()
 }
 
+/// Return the first n primepis (primepi(n) = number of primes <= n).
+/// See: OEIS A000720
 pub fn primepi(n: usize) -> Vec<i32> {
-    let mut ret = Vec::with_capacity(n);
     let mut count = 0;
 
-    for i in 0..n {
-        if is_prime(i as i32) {
-            count += 1;
-        }
-
-        ret.push(count);
-    }
-
-    ret
+    (0..n as i32)
+        .map(|i| {
+            if is_prime(&i) {
+                count += 1;
+            }
+            count
+        })
+        .collect()
 }
 
+/// Return the first n squares.
+/// See: OEIS A000290
 pub fn squares(n: usize) -> Vec<i32> {
     (0..n as i32).map(|v| v * v).collect()
 }
 
+/// Return the integer part of the first n square roots.
+/// See: OEIS A000196
 pub fn sqrt_floor(n: usize) -> Vec<i32> {
     (0..n).map(|v| (v as f64).sqrt() as i32).collect()
 }
 
+/// Return the nearest integer to the first n square roots.
+/// See: OEIS A000194
 pub fn sqrt_round(n: usize) -> Vec<i32> {
     (0..n)
         .map(|v| (v as f64).powf(0.5).round() as i32)
         .collect()
 }
 
+/// Return the first n square roots, rounded up.
+/// See: OEIS A003059
 pub fn sqrt_ceil(n: usize) -> Vec<i32> {
     (0..n).map(|v| (v as f64).powf(0.5).ceil() as i32).collect()
 }
 
+/// Return the first n bigomegas.
+/// See: OEIS A001222
 pub fn bigomega(n: usize) -> Vec<i32> {
-    let primes = &primes(n);
+    let primes = primes(n);
 
-    (0..n)
+    (0..n as i32)
         .map(|v| {
-            let mut num = v as i32;
+            let mut num = v;
             let mut ct = 0;
 
-            for prime in primes {
+            for prime in primes.iter() {
                 while num >= *prime && num % *prime == 0 {
                     num /= *prime;
 
@@ -91,18 +82,21 @@ pub fn bigomega(n: usize) -> Vec<i32> {
         .collect()
 }
 
+/// Return the first n triangular numbers.
+/// See: OEIS A000217
 pub fn triangular(n: usize) -> Vec<i32> {
     let mut tot = 0;
-    let mut ret = Vec::with_capacity(n);
 
-    for i in 0..n {
-        tot += i as i32;
-        ret.push(tot);
-    }
-
-    ret
+    (0..n as i32)
+        .map(|v| {
+            tot += v;
+            tot
+        })
+        .collect()
 }
 
+/// Return the first n Fibonacci numbers.
+/// See: OEIS A000045
 pub fn fibonacci(n: usize) -> Vec<i32> {
     match n {
         0 => vec![],
@@ -122,6 +116,8 @@ pub fn fibonacci(n: usize) -> Vec<i32> {
     }
 }
 
+/// Return the number of runs in the binary expansion of the first n numbers.
+/// See: OEIS A005811
 pub fn binary_runs(n: usize) -> Vec<i32> {
     (0..n)
         .map(|v| {
@@ -145,6 +141,8 @@ pub fn binary_runs(n: usize) -> Vec<i32> {
         .collect()
 }
 
+/// Return the first n members of Per Nørgård's infinity series.
+/// See: OEIS A004718
 pub fn infinity(n: usize) -> Vec<i32> {
     let mut ret = Vec::with_capacity(n);
 
@@ -162,6 +160,8 @@ pub fn infinity(n: usize) -> Vec<i32> {
     ret
 }
 
+/// Return the first n members of Per Nørgård's rhythmic infinity series.
+/// See: OEIS A073334  
 pub fn infinity_rhythmic(n: usize) -> Vec<i32> {
     if n == 0 {
         return vec![];
@@ -175,38 +175,48 @@ pub fn infinity_rhythmic(n: usize) -> Vec<i32> {
     (0..n).map(|v| fib[4 + bin[v] as usize]).collect()
 }
 
-fn infinity_var1_index(n: usize) -> i32 {
-    if n == 0 {
-        return 0;
-    }
-
-    match n % 3 {
-        0 => -infinity_var1_index(n / 3),
-        1 => infinity_var1_index(n / 3) - 2,
-        _ => infinity_var1_index(n / 3) - 1,
-    }
-}
-
+/// Return the first n members of the first variant of Per Nørgård's infinity series.
+/// See: OEIS A256184
 pub fn infinity_var1(n: usize) -> Vec<i32> {
-    (0..n).map(infinity_var1_index).collect()
-}
+    let mut ret = Vec::with_capacity(n);
 
-fn infinity_var2_index(n: usize) -> i32 {
-    if n == 0 {
-        return 0;
+    if n > 0 {
+        ret.push(0);
     }
 
-    match n % 3 {
-        0 => -infinity_var2_index(n / 3),
-        1 => infinity_var2_index(n / 3) - 3,
-        _ => -2 - infinity_var2_index(n / 3),
+    for i in 1..n {
+        ret.push(match i % 3 {
+            0 => -ret[i / 3],
+            1 => ret[i / 3] - 2,
+            _ => ret[i / 3] - 1,
+        })
     }
+
+    ret
 }
 
+/// Return the first n members of the second variant of Per Nørgård's infinity series.
+/// See: OEIS A256185
 pub fn infinity_var2(n: usize) -> Vec<i32> {
-    (0..n).map(infinity_var2_index).collect()
+    let mut ret = Vec::with_capacity(n);
+
+    if n > 0 {
+        ret.push(0);
+    }
+
+    for i in 1..n {
+        ret.push(match i % 3 {
+            0 => -ret[i / 3],
+            1 => ret[i / 3] - 3,
+            _ => -2 - ret[i / 3],
+        })
+    }
+
+    ret
 }
 
+/// Return the first n members of Karl Aage Rasmussen's sequence.
+/// See: OEIS A056239
 pub fn rasmussen(n: usize) -> Vec<i32> {
     let ppi = primepi(n);
     let primes = &primes(n);
@@ -229,12 +239,15 @@ pub fn rasmussen(n: usize) -> Vec<i32> {
         .collect()
 }
 
+/// Return the first n members of a sequence created by me.
 pub fn my1(n: usize) -> Vec<i32> {
     let tri = triangular(n + 1);
 
     (1..=n).map(|v| tri[v] % (v as f64).sqrt() as i32).collect()
 }
 
+/// Return the first n members of a sequence containing the bits of n in reverse order.
+/// See: OEIS A030101
 pub fn bitrev(n: u64) -> Vec<i32> {
     (0..n)
         .map(|v| {
@@ -260,10 +273,15 @@ pub fn bitrev(n: u64) -> Vec<i32> {
         .collect()
 }
 
+/// Return n identical values.
 pub fn constant<T: Clone>(n: usize, v: T) -> Vec<T> {
     vec![v; n]
 }
 
+/// Return a sinusoidal wave of length n.
+/// Second argument is the difference between highest possible and lowest possible value.
+/// Third argument is the angle that the first value corresponds to.
+/// Fourth argument is the angle that the last value corresponds to.
 pub fn sinusoidal<T: Into<f64>>(n: usize, width: T, first_angle: T, last_angle: T) -> Vec<i32> {
     let width: f64 = width.into();
     let last_angle: f64 = last_angle.into();
@@ -280,6 +298,9 @@ pub fn sinusoidal<T: Into<f64>>(n: usize, width: T, first_angle: T, last_angle: 
         .collect()
 }
 
+/// Return a series of length n, where the second argument denotes the first value in it and
+/// the third argument denotes the last value in it. Values increase linearly and are rounded
+/// down.
 pub fn linear(n: usize, first_value: i32, last_value: i32) -> Vec<i32> {
     let difference = (last_value - first_value) as f32 / (n - 1) as f32;
 
