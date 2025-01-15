@@ -5,9 +5,77 @@ use crate::sequences::{
     numeric::NumericSeq,
 };
 
+pub trait AugDim<MT> {
+    fn augment_target(&self, v: &mut MT);
+    fn diminish_target(&self, v: &mut MT);
+}
+
+macro_rules! single_conv_aug_dim {
+    ($type:ident for $($target:ty)*) => ($(
+        impl AugDim<$target> for $type {
+            fn augment_target(&self, v: &mut $target) {
+                *v *= (*self as $target);
+            }
+
+            fn diminish_target(&self, v: &mut $target) {
+                *v /= (*self as $target);
+            }
+        }
+    )*)
+}
+
+macro_rules! double_conv_aug_dim {
+    ($type:ident for $($target:ty)*) => ($(
+        impl AugDim<$target> for $type {
+            fn augment_target(&self, v: &mut $target) {
+                *v = ((*v as $type) * self) as $target;
+            }
+
+            fn diminish_target(&self, v: &mut $target) {
+                *v = ((*v as $type) / self) as $target;
+            }
+        }
+    )*)
+}
+
+macro_rules! make_double_conv_aug_dim {
+    (for $($ty:ident)*) => ($(
+        double_conv_aug_dim!($ty for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128);
+    )*)
+}
+
+macro_rules! make_single_conv_aug_dim_int {
+    (for $($ty:ident)*) => ($(
+        single_conv_aug_dim!($ty for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128);
+    )*)
+}
+
+macro_rules! make_single_conv_aug_dim_float {
+    (for $($ty:ident)*) => ($(
+        single_conv_aug_dim!($ty for f32 f64);
+    )*)
+}
+
+make_single_conv_aug_dim_int!(for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128);
+make_single_conv_aug_dim_float!(for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64);
+make_double_conv_aug_dim!(for f32 f64);
+
+/// A trait that implements various operations that can be executed on pitches
+/// or containers for pitches.
 pub trait Pitch<T> {
+    /// Transpose pitches up or down.
     fn transpose_pitch(&mut self, n: T);
+
+    /// Invert pitches around a specific value.
     fn invert_pitch(&mut self, n: T);
+
+    /// Multiply pitches by a specific value.
+    ///
+    /// This value does not have to be the same type as the pitches being multiplied
+    /// (automatic conversion will be performed) and it can be an integer or a float.
+    fn augment_pitch<AT: AugDim<T>>(&mut self, n: &AT);
+
+    /// Is this pitch or pitch container silent?
     fn is_silent(&self) -> bool;
 }
 
@@ -56,13 +124,27 @@ macro_rules! impl_traits_for_raw_values {
                 *self = n + n - *self
             }
 
+            fn augment_pitch<MT: AugDim<$ty>>(&mut self, n: &MT) {
+                n.augment_target(self)
+            }
+
             fn is_silent(&self) -> bool {
                 false
             }
         }
+    )*)
+}
 
+macro_rules! impl_traits_for_derived_entities {
+    (for $($ty:ident)*) => ($(
         impl Pitch<$ty> for Option<$ty> {
             impl_fns_for_option!($ty, for transpose_pitch invert_pitch);
+
+            fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
+                if let Some(p) = self.as_mut() {
+                    p.augment_pitch(n);
+                }
+            }
 
             fn is_silent(&self) -> bool {
                 self.is_none()
@@ -72,6 +154,10 @@ macro_rules! impl_traits_for_raw_values {
         impl Pitch<$ty> for Vec<$ty> {
             impl_fns_for_vec!($ty, for transpose_pitch invert_pitch);
 
+            fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
+                self.iter_mut().for_each(|p| p.augment_pitch(n));
+            }
+
             fn is_silent(&self) -> bool {
                 self.is_empty()
             }
@@ -79,6 +165,10 @@ macro_rules! impl_traits_for_raw_values {
 
         impl Pitch<$ty> for MelodyMember<$ty> {
             impl_fns_for_melody_member!($ty, for transpose_pitch invert_pitch);
+
+            fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
+                self.values.augment_pitch(n);
+            }
 
             fn is_silent(&self) -> bool {
                 self.values.is_empty() || self.volume == 0
@@ -88,6 +178,10 @@ macro_rules! impl_traits_for_raw_values {
         impl Pitch<$ty> for NumericSeq<$ty> {
             impl_fns_for_seq!($ty, for transpose_pitch invert_pitch);
 
+            fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
+                self.contents.augment_pitch(n);
+            }
+
             fn is_silent(&self) -> bool {
                 self.contents.is_empty()
             }
@@ -95,6 +189,10 @@ macro_rules! impl_traits_for_raw_values {
 
         impl Pitch<$ty> for NoteSeq<$ty> {
             impl_fns_for_seq!($ty, for transpose_pitch invert_pitch);
+
+            fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
+                self.contents.iter_mut().for_each(|p| p.augment_pitch(n));
+            }
 
             fn is_silent(&self) -> bool {
                 self.contents.iter().all(|m| m.is_silent())
@@ -104,6 +202,10 @@ macro_rules! impl_traits_for_raw_values {
         impl Pitch<$ty> for ChordSeq<$ty> {
             impl_fns_for_seq!($ty, for transpose_pitch invert_pitch);
 
+            fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
+                self.contents.iter_mut().for_each(|p| p.augment_pitch(n));
+            }
+
             fn is_silent(&self) -> bool {
                 self.contents.iter().all(|m| m.is_silent())
             }
@@ -111,6 +213,10 @@ macro_rules! impl_traits_for_raw_values {
 
         impl Pitch<$ty> for Melody<$ty> {
             impl_fns_for_seq!($ty, for transpose_pitch invert_pitch);
+
+            fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
+                self.contents.iter_mut().for_each(|p| p.augment_pitch(n));
+            }
 
             fn is_silent(&self) -> bool {
                 self.contents.iter().all(|m| m.is_silent())
@@ -120,6 +226,7 @@ macro_rules! impl_traits_for_raw_values {
 }
 
 impl_traits_for_raw_values!(for i8 i16 i32 i64 isize u8 u16 u32 u64 usize f32 f64);
+impl_traits_for_derived_entities!(for i8 i16 i32 i64 isize u8 u16 u32 u64 usize f32 f64);
 
 #[cfg(test)]
 mod tests {
@@ -197,6 +304,146 @@ mod tests {
             melody![[4, 5, 6], [], [7]],
             6,
             melody![[8, 7, 6], [], [5]]
+        );
+    }
+
+    #[test]
+    fn augment_pitch() {
+        pitch_trait_test!(augment_pitch, 4, &2, 8);
+        pitch_trait_test!(augment_pitch, 4, &2.5, 10);
+        pitch_trait_test!(augment_pitch, 2.5, &3, 7.5);
+        pitch_trait_test!(augment_pitch, 2.5, &3.0, 7.5);
+        pitch_trait_test!(augment_pitch, None::<i32>, &2, None);
+        pitch_trait_test!(augment_pitch, None::<i32>, &2.5, None);
+        pitch_trait_test!(augment_pitch, None::<f32>, &2, None);
+        pitch_trait_test!(augment_pitch, None::<f32>, &2.5, None);
+        pitch_trait_test!(augment_pitch, Some(4), &2, Some(8));
+        pitch_trait_test!(augment_pitch, Some(4), &2.5, Some(10));
+        pitch_trait_test!(augment_pitch, Some(2.5), &3, Some(7.5));
+        pitch_trait_test!(augment_pitch, Some(2.5), &3.0, Some(7.5));
+        pitch_trait_test!(augment_pitch, vec![4, 5, 7], &2, vec![8, 10, 14]);
+        pitch_trait_test!(augment_pitch, vec![4, 5, 7], &2.5, vec![10, 12, 17]);
+        pitch_trait_test!(
+            augment_pitch,
+            vec![4.0, 5.5, 6.5],
+            &3,
+            vec![12.0, 16.5, 19.5]
+        );
+        pitch_trait_test!(
+            augment_pitch,
+            vec![4.0, 5.5, 6.5],
+            &3.0,
+            vec![12.0, 16.5, 19.5]
+        );
+        pitch_trait_test!(
+            augment_pitch,
+            MelodyMember::from(vec![4, 5, 7]),
+            &2,
+            MelodyMember::from(vec![8, 10, 14])
+        );
+        pitch_trait_test!(
+            augment_pitch,
+            MelodyMember::from(vec![4, 5, 7]),
+            &2.5,
+            MelodyMember::from(vec![10, 12, 17])
+        );
+        pitch_trait_test!(
+            augment_pitch,
+            MelodyMember::from(vec![4.0, 5.5, 6.5]),
+            &3,
+            MelodyMember::from(vec![12.0, 16.5, 19.5])
+        );
+        pitch_trait_test!(
+            augment_pitch,
+            MelodyMember::from(vec![4.0, 5.5, 6.5]),
+            &3.0,
+            MelodyMember::from(vec![12.0, 16.5, 19.5])
+        );
+        pitch_trait_test!(augment_pitch, numseq![4, 5, 7], &2, numseq![8, 10, 14]);
+        pitch_trait_test!(augment_pitch, numseq![4, 5, 7], &2.5, numseq![10, 12, 17]);
+        pitch_trait_test!(
+            augment_pitch,
+            numseq![4.0, 5.5, 6.5],
+            &3,
+            numseq![12.0, 16.5, 19.5]
+        );
+        pitch_trait_test!(
+            augment_pitch,
+            numseq![4.0, 5.5, 6.5],
+            &3.0,
+            numseq![12.0, 16.5, 19.5]
+        );
+        pitch_trait_test!(
+            augment_pitch,
+            noteseq![4, None, 5, 7],
+            &2,
+            noteseq![8, None, 10, 14]
+        );
+        pitch_trait_test!(
+            augment_pitch,
+            noteseq![4, None, 5, 7],
+            &2.5,
+            noteseq![10, None, 12, 17]
+        );
+        pitch_trait_test!(
+            augment_pitch,
+            noteseq![4.0, None, 5.5, 6.5],
+            &3,
+            noteseq![12.0, None, 16.5, 19.5]
+        );
+        pitch_trait_test!(
+            augment_pitch,
+            noteseq![4.0, None, 5.5, 6.5],
+            &3.0,
+            noteseq![12.0, None, 16.5, 19.5]
+        );
+        pitch_trait_test!(
+            augment_pitch,
+            chordseq![[4], [], [5, 7]],
+            &2,
+            chordseq![[8], [], [10, 14]]
+        );
+        pitch_trait_test!(
+            augment_pitch,
+            chordseq![[4], [], [5, 7]],
+            &2.5,
+            chordseq![[10], [], [12, 17]]
+        );
+        pitch_trait_test!(
+            augment_pitch,
+            chordseq![[4.0], [], [5.5, 6.5]],
+            &3,
+            chordseq![[12.0], [], [16.5, 19.5]]
+        );
+        pitch_trait_test!(
+            augment_pitch,
+            chordseq![[4.0], [], [5.5, 6.5]],
+            &3.0,
+            chordseq![[12.0], [], [16.5, 19.5]]
+        );
+        pitch_trait_test!(
+            augment_pitch,
+            melody![[4], [], [5, 7]],
+            &2,
+            melody![[8], [], [10, 14]]
+        );
+        pitch_trait_test!(
+            augment_pitch,
+            melody![[4], [], [5, 7]],
+            &2.5,
+            melody![[10], [], [12, 17]]
+        );
+        pitch_trait_test!(
+            augment_pitch,
+            melody![[4.0], [], [5.5, 6.5]],
+            &3,
+            melody![[12.0], [], [16.5, 19.5]]
+        );
+        pitch_trait_test!(
+            augment_pitch,
+            melody![[4.0], [], [5.5, 6.5]],
+            &3.0,
+            melody![[12.0], [], [16.5, 19.5]]
         );
     }
 
