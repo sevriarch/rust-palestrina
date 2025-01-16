@@ -442,21 +442,11 @@ mod tests {
     use crate::metadata::MetadataList;
     use crate::{chordseq, melody, noteseq, numseq};
 
-    macro_rules! pitch_trait_test {
-        ($fn:ident, $init:expr, $arg:expr, $ret:expr) => {
-            assert_eq!($init.$fn($arg), $ret);
-        };
-
-        ($fn:ident, $init:expr, $arg1:expr, $arg2:expr, $ret:expr) => {
-            assert_eq!($init.$fn($arg1, $arg2j), $ret);
-        };
-    }
-
     #[test]
     fn transpose_pitch() {
         macro_rules! transpose_pitch_test {
             ($init:expr, $arg:expr, $ret:expr) => {
-                pitch_trait_test!(transpose_pitch, $init, $arg, $ret);
+                assert_eq!($init.transpose_pitch($arg), $ret);
             };
         }
 
@@ -488,7 +478,7 @@ mod tests {
     fn invert_pitch() {
         macro_rules! invert_pitch_test {
             ($init:expr, $arg:expr, $ret:expr) => {
-                pitch_trait_test!(invert_pitch, $init, $arg, $ret);
+                assert_eq!($init.invert_pitch($arg), $ret);
             };
         }
 
@@ -696,7 +686,7 @@ mod tests {
     fn modulus() {
         macro_rules! modulus_test {
             ($init:expr, $arg:expr, $ret:expr) => {
-                pitch_trait_test!(modulus, $init, $arg, $ret);
+                assert_eq!($init.modulus($arg), $ret);
             };
         }
 
@@ -729,7 +719,7 @@ mod tests {
     fn trim_min() {
         macro_rules! trim_min_test {
             ($init:expr, $arg:expr, $ret:expr) => {
-                pitch_trait_test!(trim_min, $init, $arg, $ret);
+                assert_eq!($init.trim_min($arg), $ret);
             };
         }
 
@@ -762,7 +752,7 @@ mod tests {
     fn trim_max() {
         macro_rules! trim_max_test {
             ($init:expr, $arg:expr, $ret:expr) => {
-                pitch_trait_test!(trim_max, $init, $arg, $ret);
+                assert_eq!($init.trim_max($arg), $ret);
             };
         }
 
