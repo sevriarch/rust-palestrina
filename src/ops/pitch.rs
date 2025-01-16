@@ -120,6 +120,11 @@ where
     /// Invert any pitches above the passed argument.
     fn bounce_max(self, n: T) -> Self;
 
+    /// If a pitch is not in between the two values passed, invert it between the
+    /// two repeardly until it is. If the two values passed are identical, this
+    /// will set all pitches to that value.
+    fn bounce(self, first: T, second: T) -> Self;
+
     /// Is this pitch or pitch container silent?
     fn is_silent(&self) -> bool;
 }
@@ -171,12 +176,12 @@ macro_rules! impl_traits_for_raw_values {
             }
 
             fn trim(mut self, first: $ty, second: $ty) -> Self {
-                let (low, hi) = if first > second { (second, first ) } else { (first, second) };
+                let (min, max) = if first > second { (second, first ) } else { (first, second) };
 
-                if self < low {
-                    self = low;
-                } else if self > hi {
-                    self = hi;
+                if self < min {
+                    self = min;
+                } else if self > max {
+                    self = max;
                 }
                 self
             }
@@ -196,6 +201,31 @@ macro_rules! impl_traits_for_raw_values {
                 if self > n {
                     self = n + n - self;
                 }
+                self
+            }
+
+            fn bounce(mut self, first: $ty, second: $ty) -> Self {
+                let (min, max) = if first > second { (second, first ) } else { (first, second) };
+
+                let diff = max - min;
+
+                if self < min {
+                let mut modulus = (min - self) % (diff + diff);
+
+                if modulus > diff {
+                    modulus = diff + diff - modulus;
+                }
+
+                self = min + modulus;
+            } else if self > max {
+                let mut modulus = (self - max) % (diff + diff);
+
+                if modulus > diff {
+                    modulus = diff + diff - modulus;
+                }
+
+                self = max - modulus;
+            }
                 self
             }
         }
@@ -260,6 +290,13 @@ macro_rules! impl_other_fns_for_seq {
             self
         }
 
+        fn bounce(mut self, first: $ty, second: $ty) -> Self {
+            self.contents.iter_mut().for_each(|p| {
+                *p = p.bounce(first, second);
+            });
+            self
+        }
+
         fn is_silent(&self) -> bool {
             self.contents.iter().all(|m| m.is_silent())
         }
@@ -299,6 +336,15 @@ macro_rules! impl_other_fns_for_chordseq {
             self.contents.iter_mut().for_each(|p| {
                 p.iter_mut().for_each(|v| {
                     *v = v.trim(first, second);
+                });
+            });
+            self
+        }
+
+        fn bounce(mut self, first: $ty, second: $ty) -> Self {
+            self.contents.iter_mut().for_each(|p| {
+                p.iter_mut().for_each(|v| {
+                    *v = v.bounce(first, second);
                 });
             });
             self
@@ -348,6 +394,15 @@ macro_rules! impl_other_fns_for_melody {
             self
         }
 
+        fn bounce(mut self, first: $ty, second: $ty) -> Self {
+            self.contents.iter_mut().for_each(|p| {
+                p.values.iter_mut().for_each(|v| {
+                    *v = v.bounce(first, second);
+                });
+            });
+            self
+        }
+
         fn is_silent(&self) -> bool {
             self.contents.iter().all(|m| m.is_silent())
         }
@@ -369,6 +424,10 @@ macro_rules! impl_traits_for_derived_entities {
 
             fn trim(self, first: $ty, last: $ty) -> Self {
                 self.map(|p| p.trim(first, last))
+            }
+
+            fn bounce(self, first: $ty, last: $ty) -> Self {
+                self.map(|p| p.bounce(first, last))
             }
 
             fn is_silent(&self) -> bool {
@@ -394,6 +453,11 @@ macro_rules! impl_traits_for_derived_entities {
                 self
             }
 
+            fn bounce(mut self, first: $ty, last: $ty) -> Self {
+                self = self.into_iter().map(|p| p.bounce(first, last)).collect();
+                self
+            }
+
             fn is_silent(&self) -> bool {
                 self.is_empty()
             }
@@ -414,6 +478,11 @@ macro_rules! impl_traits_for_derived_entities {
 
             fn trim(mut self, first: $ty, last: $ty) -> Self {
                 self.values = self.values.trim(first, last);
+                self
+            }
+
+            fn bounce(mut self, first: $ty, last: $ty) -> Self {
+                self.values = self.values.bounce(first, last);
                 self
             }
 
@@ -454,6 +523,7 @@ mod tests {
     use crate::entities::timing::DurationalEventTiming;
     use crate::metadata::MetadataList;
     use crate::{chordseq, melody, noteseq, numseq};
+    use assert_float_eq::expect_f64_near;
 
     #[test]
     fn transpose_pitch() {
@@ -901,6 +971,60 @@ mod tests {
             4.0,
             melody![[3.0], [], [3.5, 3.0]]
         );
+    }
+
+    #[test]
+    fn bounce() {
+        macro_rules! bounce_test {
+            ($init:expr, $arg1:expr, $arg2:expr, $ret:expr) => {
+                assert_eq!($init.bounce($arg1, $arg2), $ret);
+            };
+        }
+
+        macro_rules! bounce_seq_test {
+            ($init:expr, $arg1:expr, $arg2:expr, $ret:expr) => {
+                let result = $init.bounce($arg1, $arg2);
+                let expected = $ret;
+
+                result
+                    .contents
+                    .into_iter()
+                    .zip(expected.contents.into_iter())
+                    .enumerate()
+                    .for_each(|(i, (ret, exp))| {
+                        assert!(
+                            expect_f64_near!(ret, exp).is_ok(),
+                            "index {i} failed: expected {ret}, got {exp}"
+                        );
+                    });
+            };
+        }
+
+        bounce_test!(2, 3, 6, 4);
+        bounce_test!(4, 3, 6, 4);
+        bounce_test!(8, 3, 6, 4);
+        bounce_test!(-1, 3, 6, 5);
+        bounce_test!(11, 3, 6, 5);
+        bounce_test!(None, 6, 3, None);
+        bounce_test!(Some(2), 6, 3, Some(4));
+        bounce_test!(Some(4), 6, 3, Some(4));
+        bounce_test!(Some(8), 6, 3, Some(4));
+        bounce_test!(vec![2, 4, 8, -1, 11], 3, 6, vec![4, 4, 4, 5, 5]);
+        bounce_test!(
+            MelodyMember::from(vec![2, 4, 8, -1, 11]),
+            3,
+            6,
+            MelodyMember::from(vec![4, 4, 4, 5, 5])
+        );
+        bounce_seq_test!(
+            numseq![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
+            4.2,
+            5.6,
+            numseq![4.6, 4.8, 5.4, 4.4, 5.0, 5.2, 4.2, 5.2, 5.0, 4.4]
+        );
+        bounce_test!(noteseq![2, None, 4, 8], 3, 6, noteseq![4, None, 4, 4]);
+        bounce_test!(chordseq![[2], [], [4, 8]], 3, 6, chordseq![[4], [], [4, 4]]);
+        bounce_test!(melody![[2], [], [4, 8]], 3, 6, melody![[4], [], [4, 4]]);
     }
 
     #[test]
