@@ -318,7 +318,6 @@ macro_rules! impl_traits_for_raw_values {
                 } else if self > hi {
                     self = hi;
                 }
-
                 self
             }
 
@@ -342,7 +341,7 @@ macro_rules! impl_traits_for_derived_entities {
                 self.map(|p| p.diminish_pitch(n))
             }
 
-            fn trim(mut self, first: $ty, last: $ty) -> Self {
+            fn trim(self, first: $ty, last: $ty) -> Self {
                 self.map(|p| p.trim(first, last))
             }
 
