@@ -310,6 +310,12 @@ mod tests {
             x.$fn($arg);
             assert_eq!(x, $ret);
         };
+
+        ($fn:ident, $init:expr, $arg1:expr, $arg2:expr, $ret:expr) => {
+            let mut x = $init;
+            x.$fn($arg1, $arg2);
+            assert_eq!(x, $ret);
+        };
     }
 
     #[test]
@@ -729,9 +735,7 @@ mod tests {
     fn trim() {
         macro_rules! trim_test {
             ($init:expr, $first:expr, $second:expr, $ret:expr) => {
-                let mut x = $init;
-                x.trim($first, $second);
-                assert_eq!(x, $ret);
+                pitch_trait_test!(trim, $init, $first, $second, $ret);
             };
         }
 
