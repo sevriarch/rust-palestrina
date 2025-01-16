@@ -209,7 +209,9 @@ macro_rules! impl_traits_for_raw_values {
 
                 let diff = max - min;
 
-                if self < min {
+                if diff.is_zero() {
+                    self = min;
+                } else if self < min {
                 let mut modulus = (min - self) % (diff + diff);
 
                 if modulus > diff {
@@ -1005,11 +1007,14 @@ mod tests {
         bounce_test!(8, 3, 6, 4);
         bounce_test!(-1, 3, 6, 5);
         bounce_test!(11, 3, 6, 5);
+        bounce_test!(11, 6, 6, 6);
         bounce_test!(None, 6, 3, None);
         bounce_test!(Some(2), 6, 3, Some(4));
         bounce_test!(Some(4), 6, 3, Some(4));
         bounce_test!(Some(8), 6, 3, Some(4));
+        bounce_test!(Some(8), 6, 6, Some(6));
         bounce_test!(vec![2, 4, 8, -1, 11], 3, 6, vec![4, 4, 4, 5, 5]);
+        bounce_test!(vec![2, 4, 8, -1, 11], 6, 6, vec![6, 6, 6, 6, 6]);
         bounce_test!(
             MelodyMember::from(vec![2, 4, 8, -1, 11]),
             3,
@@ -1025,6 +1030,7 @@ mod tests {
         bounce_test!(noteseq![2, None, 4, 8], 3, 6, noteseq![4, None, 4, 4]);
         bounce_test!(chordseq![[2], [], [4, 8]], 3, 6, chordseq![[4], [], [4, 4]]);
         bounce_test!(melody![[2], [], [4, 8]], 3, 6, melody![[4], [], [4, 4]]);
+        bounce_test!(melody![[2], [], [4, 8]], 6, 6, melody![[6], [], [6, 6]]);
     }
 
     #[test]
