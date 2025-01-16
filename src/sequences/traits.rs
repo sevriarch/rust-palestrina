@@ -111,53 +111,6 @@ pub trait Sequence<
         }
     }
 
-    fn bounce(self, min: PitchType, max: PitchType) -> Result<Self, String> {
-        let diff = max - min;
-
-        if diff < PitchType::from(0) {
-            return Err(format!(
-                "min {:?} must not be higher than max {:?}",
-                min, max
-            ));
-        }
-
-        Ok(self.mutate_pitches(|v| {
-            if *v < min {
-                let mut modulus = (min - *v) % (diff + diff);
-
-                if modulus > diff {
-                    modulus = diff + diff - modulus;
-                }
-
-                *v = min + modulus;
-            } else if *v > max {
-                let mut modulus = (*v - max) % (diff + diff);
-
-                if modulus > diff {
-                    modulus = diff + diff - modulus;
-                }
-
-                *v = max - modulus;
-            }
-        }))
-    }
-
-    fn bounce_min(self, min: PitchType) -> Result<Self, String> {
-        Ok(self.mutate_pitches(|v| {
-            if *v < min {
-                *v = min + min - *v;
-            }
-        }))
-    }
-
-    fn bounce_max(self, max: PitchType) -> Result<Self, String> {
-        Ok(self.mutate_pitches(|v| {
-            if *v > max {
-                *v = max + max - *v;
-            }
-        }))
-    }
-
     fn collect_windows(&self, len: usize, step: usize) -> Vec<Vec<T>> {
         let c = self.cts_ref();
         let max = c.len() - len;
@@ -460,47 +413,6 @@ mod tests {
         assert_contents_f64_near!(
             numseq![1.7, 3.4, 6.3].transpose_to_max(-1.8).unwrap(),
             numseq![-6.4, -4.7, -1.8]
-        );
-    }
-
-    #[test]
-    fn bounce() {
-        assert_eq!(
-            noteseq![0, None, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
-                .bounce(7, 10)
-                .unwrap(),
-            noteseq![8, None, 7, 8, 9, 10, 9, 8, 7, 8, 9, 10, 9, 8, 7, 8, 9, 10, 9]
-        );
-
-        assert_contents_f64_near!(
-            numseq![1.7, 3.4, 6.3].bounce(2.0, 3.0).unwrap(),
-            numseq![2.3, 2.6, 2.3]
-        );
-    }
-
-    #[test]
-    fn bounce_min() {
-        assert_eq!(
-            noteseq![1, None, 2, 5, 6, 4].bounce_min(2).unwrap(),
-            noteseq![3, None, 2, 5, 6, 4]
-        );
-
-        assert_contents_f64_near!(
-            numseq![1.7, 3.4, 6.3].bounce_min(2.0).unwrap(),
-            numseq![2.3, 3.4, 6.3]
-        );
-    }
-
-    #[test]
-    fn bounce_max() {
-        assert_eq!(
-            noteseq![1, None, 2, 5, 6, 4].bounce_max(5).unwrap(),
-            noteseq![1, None, 2, 5, 4, 4]
-        );
-
-        assert_contents_f64_near!(
-            numseq![1.7, 3.4, 6.3].bounce_max(5.0).unwrap(),
-            numseq![1.7, 3.4, 3.7]
         );
     }
 
