@@ -30,13 +30,13 @@ fn make_overlay() -> Result<NumericSeq<i32>> {
 
     overlay
         .mutate_slice(bar(29), bar(37), |v| {
-            v.invert_pitch(max);
+            *v = v.invert_pitch(max);
         })?
         .mutate_slice(bar(37), bar(45), |v| {
             *v = min - (*v as f64 / 2.0).floor() as i32
         })?
         .mutate_slice(bar(61), bar(69), |v| {
-            v.invert_pitch(max);
+            *v = v.invert_pitch(max);
         })?
         .set_slice(bar(69), bar(73), min)?
         .set_slice(bar(73), bar(77), max + 8)?

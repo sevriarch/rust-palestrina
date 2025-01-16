@@ -65,10 +65,10 @@ make_double_conv_aug_dim!(for f32 f64);
 /// or containers for pitches.
 pub trait Pitch<T> {
     /// Transpose pitches up or down.
-    fn transpose_pitch(&mut self, n: T) -> &Self;
+    fn transpose_pitch(self, n: T) -> Self;
 
     /// Invert pitches around a specific value.
-    fn invert_pitch(&mut self, n: T) -> &Self;
+    fn invert_pitch(self, n: T) -> Self;
 
     /// Multiply pitches by a specific value.
     ///
@@ -96,13 +96,13 @@ pub trait Pitch<T> {
     ///
     /// Note that if the argument passed is zero and any pitches are mutated, the
     /// program will panic.
-    fn modulus(&mut self, n: T) -> &Self;
+    fn modulus(self, n: T) -> Self;
 
     /// Replace any pitches below the passed argument with the passed argument.
-    fn trim_min(&mut self, n: T) -> &Self;
+    fn trim_min(self, n: T) -> Self;
 
     /// Replace any pitches above the passed argument with the passed argument.
-    fn trim_max(&mut self, n: T) -> &Self;
+    fn trim_max(self, n: T) -> Self;
 
     /// Replace any pitches below the lower argument with the lower argument.
     /// Replace any pitches above the higher argument with the higher argument.
@@ -114,9 +114,9 @@ pub trait Pitch<T> {
 
 macro_rules! impl_fns_for_option {
     ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(&mut self, n: $ty) -> &Self {
+        fn $fn(mut self, n: $ty) -> Self {
             if let Some(p) = self.as_mut() {
-                p.$fn(n);
+                self = Some(p.$fn(n));
             }
             self
         }
@@ -125,8 +125,8 @@ macro_rules! impl_fns_for_option {
 
 macro_rules! impl_fns_for_vec {
     ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(&mut self, n: $ty) -> &Self {
-            self.iter_mut().for_each(|p| { p.$fn(n); });
+        fn $fn(mut self, n: $ty) -> Self {
+            self.iter_mut().for_each(|p| { *p = p.$fn(n); });
             self
         }
     )*)
@@ -134,8 +134,8 @@ macro_rules! impl_fns_for_vec {
 
 macro_rules! impl_fns_for_melody_member {
     ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(&mut self, n: $ty) -> &Self {
-            self.values.iter_mut().for_each(|p| { p.$fn(n); });
+        fn $fn(mut self, n: $ty) -> Self {
+            self.values.iter_mut().for_each(|p| { *p = p.$fn(n); });
             self
         }
     )*)
@@ -143,8 +143,8 @@ macro_rules! impl_fns_for_melody_member {
 
 macro_rules! impl_fns_for_seq {
     ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(&mut self, n: $ty) -> &Self {
-            self.contents.iter_mut().for_each(|p| { p.$fn(n); });
+        fn $fn(mut self, n: $ty) -> Self {
+            self.contents.iter_mut().for_each(|p| { *p = p.$fn(n); });
             self
         }
     )*)
@@ -181,8 +181,8 @@ macro_rules! impl_other_fns_for_seq {
 
 macro_rules! impl_fns_for_chordseq {
     ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(&mut self, n: $ty) -> &Self {
-            self.contents.iter_mut().for_each(|p| { p.iter_mut().for_each(|v| { v.$fn(n); }); });
+        fn $fn(mut self, n: $ty) -> Self {
+            self.contents.iter_mut().for_each(|p| { p.iter_mut().for_each(|v| { *v = v.$fn(n); }); });
             self
         }
     )*)
@@ -225,8 +225,8 @@ macro_rules! impl_other_fns_for_chordseq {
 
 macro_rules! impl_fns_for_melody {
     ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(&mut self, n: $ty) -> &Self {
-            self.contents.iter_mut().for_each(|p| { p.values.iter_mut().for_each(|v| { v.$fn(n); }); });
+        fn $fn(mut self, n: $ty) -> Self {
+            self.contents.iter_mut().for_each(|p| { p.values.iter_mut().for_each(|v| { *v = v.$fn(n); }); });
             self
         }
     )*)
@@ -270,13 +270,13 @@ macro_rules! impl_other_fns_for_melody {
 macro_rules! impl_traits_for_raw_values {
     (for $($ty:ident)*) => ($(
         impl Pitch<$ty> for $ty {
-            fn transpose_pitch(&mut self, n: $ty) -> &Self {
-                *self += n;
+            fn transpose_pitch(mut self, n: $ty) -> Self {
+                self += n;
                 self
             }
 
-            fn invert_pitch(&mut self, n: $ty) -> &Self {
-                *self = n + n - *self;
+            fn invert_pitch(mut self, n: $ty) -> Self {
+                self = n + n - self;
                 self
             }
 
@@ -290,25 +290,25 @@ macro_rules! impl_traits_for_raw_values {
                 self
             }
 
-            fn modulus(&mut self, n: $ty) -> &Self {
+            fn modulus(mut self, n: $ty) -> Self {
                 // Can't use n.abs() as it's not implemented for unsigned ints
                 let n = if n < $ty::zero() { $ty::zero() - n } else { n };
-                let ret = *self % n;
+                let ret = self % n;
 
-                *self = if ret < $ty::zero() { ret + n } else { ret };
+                self = if ret < $ty::zero() { ret + n } else { ret };
                 self
             }
 
-            fn trim_min(&mut self, n: $ty) -> &Self {
-                if *self < n {
-                    *self = n;
+            fn trim_min(mut self, n: $ty) -> Self {
+                if self < n {
+                    self = n;
                 }
                 self
             }
 
-            fn trim_max(&mut self, n: $ty) -> &Self {
-                if *self > n {
-                    *self = n;
+            fn trim_max(mut self, n: $ty) -> Self {
+                if self > n {
+                    self = n;
                 }
                 self
             }
@@ -444,19 +444,11 @@ mod tests {
 
     macro_rules! pitch_trait_test {
         ($fn:ident, $init:expr, $arg:expr, $ret:expr) => {
-            let mut init = $init;
-            let ret = init.$fn($arg);
-
-            assert_eq!(*ret, $ret);
-            assert_eq!(init, $ret);
+            assert_eq!($init.$fn($arg), $ret);
         };
 
         ($fn:ident, $init:expr, $arg1:expr, $arg2:expr, $ret:expr) => {
-            let mut init = $init;
-            let ret = init.$fn($arg1, $arg2);
-
-            assert_eq!(*ret, $ret);
-            assert_eq!(init, $ret);
+            assert_eq!($init.$fn($arg1, $arg2j), $ret);
         };
     }
 
