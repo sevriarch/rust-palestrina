@@ -111,57 +111,6 @@ pub trait Sequence<
         }
     }
 
-    fn invert(self, t: PitchType) -> Result<Self> {
-        Ok(self.mutate_pitches(algorithms::invert(&t)))
-    }
-
-    fn augment<MT>(self, t: MT) -> Result<Self>
-    where
-        MT: algorithms::AugDim<PitchType>,
-    {
-        Ok(self.mutate_pitches(algorithms::augment(&t)))
-    }
-
-    fn diminish<MT>(self, t: MT) -> Result<Self>
-    where
-        MT: algorithms::AugDim<PitchType> + Num,
-    {
-        match algorithms::diminish(&t) {
-            Ok(f) => Ok(self.mutate_pitches(f)),
-            Err(e) => Err(anyhow!(e)),
-        }
-    }
-
-    fn modulus(self, t: PitchType) -> Result<Self> {
-        match algorithms::modulus(&t) {
-            Ok(f) => Ok(self.mutate_pitches(f)),
-            Err(e) => Err(anyhow!(e)),
-        }
-    }
-
-    fn trim(self, min: PitchType, max: PitchType) -> Result<Self> {
-        match algorithms::trim(Some(&min), Some(&max)) {
-            Ok(f) => Ok(self.mutate_pitches(f)),
-            Err(e) => Err(anyhow!(e)),
-        }
-    }
-
-    fn trim_min(self, min: PitchType) -> Result<Self> {
-        Ok(self.mutate_pitches(|v| {
-            if *v < min {
-                *v = min;
-            }
-        }))
-    }
-
-    fn trim_max(self, max: PitchType) -> Result<Self, String> {
-        Ok(self.mutate_pitches(|v| {
-            if *v > max {
-                *v = max;
-            }
-        }))
-    }
-
     fn bounce(self, min: PitchType, max: PitchType) -> Result<Self, String> {
         let diff = max - min;
 
@@ -515,104 +464,6 @@ mod tests {
     }
 
     #[test]
-    fn invert() {
-        assert_eq!(chordseq![1, 6, 4].invert(2).unwrap(), chordseq![3, -2, 0]);
-        assert_eq!(
-            noteseq![1, None, 6, 4].invert(2).unwrap(),
-            noteseq![3, None, -2, 0]
-        );
-
-        assert_contents_f64_near!(
-            numseq![1.7, 3.4, 6.3].invert(-1.8).unwrap(),
-            numseq![-5.3, -7.0, -9.9]
-        );
-    }
-
-    #[test]
-    fn augment() {
-        assert_eq!(chordseq![1, 6, 4].augment(2).unwrap(), chordseq![2, 12, 8]);
-        assert_eq!(
-            noteseq![1, None, 6, 4].augment(2).unwrap(),
-            noteseq![2, None, 12, 8]
-        );
-
-        assert_contents_f64_near!(
-            numseq![1.7, 3.4, 6.3].augment(2.0).unwrap(),
-            numseq![3.4, 6.8, 12.6]
-        );
-    }
-
-    #[test]
-    fn diminish() {
-        assert!(numseq![1, 6, 4].diminish(0).is_err());
-
-        assert_eq!(chordseq![1, 6, 4].diminish(2).unwrap(), chordseq![0, 3, 2]);
-        assert_eq!(
-            noteseq![1, None, 6, 4].diminish(2).unwrap(),
-            noteseq![0, None, 3, 2]
-        );
-
-        assert_contents_f64_near!(
-            numseq![1.7, 3.4, 6.3].diminish(2.0).unwrap(),
-            numseq![0.85, 1.7, 3.15]
-        );
-    }
-
-    #[test]
-    fn modulus() {
-        assert!(numseq![-1, 6, 4].modulus(0).is_err());
-        assert_eq!(chordseq![-1, 6, 4].modulus(3).unwrap(), chordseq![2, 0, 1]);
-        assert_eq!(
-            noteseq![-1, None, 6, 4].modulus(3).unwrap(),
-            noteseq![2, None, 0, 1]
-        );
-
-        assert_contents_f64_near!(
-            numseq![-1.7, 3.4, 6.3].modulus(2.0).unwrap(),
-            numseq![0.3, 1.4, 0.3]
-        );
-    }
-
-    #[test]
-    fn trim() {
-        assert_eq!(
-            noteseq![1, None, 2, 5, 6, 4].trim(2, 5).unwrap(),
-            noteseq![2, None, 2, 5, 5, 4]
-        );
-
-        assert_contents_f64_near!(
-            numseq![1.7, 3.4, 6.3].trim(2.0, 5.0).unwrap(),
-            numseq![2.0, 3.4, 5.0]
-        );
-    }
-
-    #[test]
-    fn trim_min() {
-        assert_eq!(
-            noteseq![1, None, 2, 5, 6, 4].trim_min(2).unwrap(),
-            noteseq![2, None, 2, 5, 6, 4]
-        );
-
-        assert_contents_f64_near!(
-            numseq![2.0, 3.4, 6.3].trim_min(2.0).unwrap(),
-            numseq![2.0, 3.4, 6.3]
-        );
-    }
-
-    #[test]
-    fn trim_max() {
-        assert_eq!(
-            noteseq![1, None, 2, 5, 6, 4].trim_max(5).unwrap(),
-            noteseq![1, None, 2, 5, 5, 4]
-        );
-
-        assert_contents_f64_near!(
-            numseq![1.7, 3.4, 6.3].trim_max(5.0).unwrap(),
-            numseq![1.7, 3.4, 5.0]
-        );
-    }
-
-    #[test]
     fn bounce() {
         assert_eq!(
             noteseq![0, None, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
@@ -883,16 +734,5 @@ mod tests {
                 .unwrap(),
             numseq![0, 15, 36]
         );
-    }
-
-    #[test]
-    fn test_chaining() {
-        fn chained_methods() -> Result<NumericSeq<i32>> {
-            let ret = numseq![1, 2, 3].augment(3)?.transpose(1)?.invert(13)?;
-
-            Ok(ret)
-        }
-
-        assert_eq!(chained_methods().unwrap(), numseq![22, 19, 16])
     }
 }

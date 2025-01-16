@@ -49,20 +49,23 @@ pub fn build_base_sequences() -> Result<(NoteSeq<i32>, NoteSeq<i32>)> {
     let m1 = base
         .clone()
         .keep_nth(2)?
-        .modulus(33)?
+        .modulus(33)
+        .clone()
         .dedupe()
-        .invert(8)?
+        .invert_pitch(8)
+        .clone()
         .replace_indices(&[0], &[None])?
         .mutate_each_enumerated(|(i, v)| {
             if i > 120 && v.is_some_and(|v| v * 110 < (-760 - i as i32)) {
-                v.transpose_pitch(8)
+                v.transpose_pitch(8);
             }
         })
         .scale(Scale::from_name("octatonic21")?, 0)?;
     let m2 = base
         .clone()
         .drop_nth(2)?
-        .modulus(33)?
+        .modulus(33)
+        .clone()
         .dedupe()
         .transpose(-16)?
         .retrograde()?

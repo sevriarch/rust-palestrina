@@ -65,10 +65,10 @@ make_double_conv_aug_dim!(for f32 f64);
 /// or containers for pitches.
 pub trait Pitch<T> {
     /// Transpose pitches up or down.
-    fn transpose_pitch(&mut self, n: T);
+    fn transpose_pitch(&mut self, n: T) -> &Self;
 
     /// Invert pitches around a specific value.
-    fn invert_pitch(&mut self, n: T);
+    fn invert_pitch(&mut self, n: T) -> &Self;
 
     /// Multiply pitches by a specific value.
     ///
@@ -77,7 +77,7 @@ pub trait Pitch<T> {
     ///
     /// Note that in the case where pitches are of an integer type and the multiplier
     /// is of a floating point type, results will always be rounded down.
-    fn augment_pitch<AT: AugDim<T>>(&mut self, n: &AT);
+    fn augment_pitch<AT: AugDim<T>>(&mut self, n: &AT) -> &Self;
 
     /// Divide pitches by a specific value.
     ///
@@ -90,23 +90,23 @@ pub trait Pitch<T> {
     ///
     /// In the case where pitches are of an integer type and the divisor is of a
     /// floating point type, results will always be rounded down.
-    fn diminish_pitch<AT: AugDim<T>>(&mut self, n: &AT);
+    fn diminish_pitch<AT: AugDim<T>>(&mut self, n: &AT) -> &Self;
 
     /// Euclidean remainder of the value (ie: modulus that cannot be lower than zero).
     ///
     /// Note that if the argument passed is zero and any pitches are mutated, the
     /// program will panic.
-    fn modulus(&mut self, n: T);
+    fn modulus(&mut self, n: T) -> &Self;
 
     /// Replace any pitches below the passed argument with the passed argument.
-    fn trim_min(&mut self, n: T);
+    fn trim_min(&mut self, n: T) -> &Self;
 
     /// Replace any pitches above the passed argument with the passed argument.
-    fn trim_max(&mut self, n: T);
+    fn trim_max(&mut self, n: T) -> &Self;
 
     /// Replace any pitches below the lower argument with the lower argument.
     /// Replace any pitches above the higher argument with the higher argument.
-    fn trim(&mut self, first: T, second: T);
+    fn trim(&mut self, first: T, second: T) -> &Self;
 
     /// Is this pitch or pitch container silent?
     fn is_silent(&self) -> bool;
@@ -114,50 +114,151 @@ pub trait Pitch<T> {
 
 macro_rules! impl_fns_for_option {
     ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(&mut self, n: $ty) {
+        fn $fn(&mut self, n: $ty) -> &Self {
             if let Some(p) = self.as_mut() {
                 p.$fn(n);
             }
+            self
         }
     )*)
 }
 
 macro_rules! impl_fns_for_vec {
     ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(&mut self, n: $ty) {
-            self.iter_mut().for_each(|p| p.$fn(n));
+        fn $fn(&mut self, n: $ty) -> &Self {
+            self.iter_mut().for_each(|p| { p.$fn(n); });
+            self
         }
     )*)
 }
 
 macro_rules! impl_fns_for_melody_member {
     ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(&mut self, n: $ty) {
-            self.values.$fn(n)
+        fn $fn(&mut self, n: $ty) -> &Self {
+            self.values.iter_mut().for_each(|p| { p.$fn(n); });
+            self
         }
     )*)
 }
 
 macro_rules! impl_fns_for_seq {
     ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(&mut self, n: $ty) {
-            self.contents.iter_mut().for_each(|p| p.$fn(n));
+        fn $fn(&mut self, n: $ty) -> &Self {
+            self.contents.iter_mut().for_each(|p| { p.$fn(n); });
+            self
         }
     )*)
 }
 
 macro_rules! impl_other_fns_for_seq {
     ($ty:ident) => {
-        fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
-            self.contents.iter_mut().for_each(|p| p.augment_pitch(n));
+        fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) -> &Self {
+            self.contents.iter_mut().for_each(|p| {
+                p.augment_pitch(n);
+            });
+            self
         }
 
-        fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
-            self.contents.iter_mut().for_each(|p| p.diminish_pitch(n));
+        fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) -> &Self {
+            self.contents.iter_mut().for_each(|p| {
+                p.diminish_pitch(n);
+            });
+            self
         }
 
-        fn trim(&mut self, first: $ty, second: $ty) {
-            self.contents.iter_mut().for_each(|p| p.trim(first, second));
+        fn trim(&mut self, first: $ty, second: $ty) -> &Self {
+            self.contents.iter_mut().for_each(|p| {
+                p.trim(first, second);
+            });
+            self
+        }
+
+        fn is_silent(&self) -> bool {
+            self.contents.iter().all(|m| m.is_silent())
+        }
+    };
+}
+
+macro_rules! impl_fns_for_chordseq {
+    ($ty:ident, for $($fn:ident)*) => ($(
+        fn $fn(&mut self, n: $ty) -> &Self {
+            self.contents.iter_mut().for_each(|p| { p.iter_mut().for_each(|v| { v.$fn(n); }); });
+            self
+        }
+    )*)
+}
+
+macro_rules! impl_other_fns_for_chordseq {
+    ($ty:ident) => {
+        fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) -> &Self {
+            self.contents.iter_mut().for_each(|p| {
+                p.iter_mut().for_each(|v| {
+                    v.augment_pitch(n);
+                });
+            });
+            self
+        }
+
+        fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) -> &Self {
+            self.contents.iter_mut().for_each(|p| {
+                p.iter_mut().for_each(|v| {
+                    v.diminish_pitch(n);
+                });
+            });
+            self
+        }
+
+        fn trim(&mut self, first: $ty, second: $ty) -> &Self {
+            self.contents.iter_mut().for_each(|p| {
+                p.iter_mut().for_each(|v| {
+                    v.trim(first, second);
+                });
+            });
+            self
+        }
+
+        fn is_silent(&self) -> bool {
+            self.contents.iter().all(|m| m.is_silent())
+        }
+    };
+}
+
+macro_rules! impl_fns_for_melody {
+    ($ty:ident, for $($fn:ident)*) => ($(
+        fn $fn(&mut self, n: $ty) -> &Self {
+            self.contents.iter_mut().for_each(|p| { p.values.iter_mut().for_each(|v| { v.$fn(n); }); });
+            self
+        }
+    )*)
+}
+
+macro_rules! impl_other_fns_for_melody {
+    ($ty:ident) => {
+        fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) -> &Self {
+            self.contents.iter_mut().for_each(|p| {
+                p.values.iter_mut().for_each(|v| {
+                    v.augment_pitch(n);
+                });
+            });
+            self
+        }
+
+        fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) -> &Self {
+            self.contents.iter_mut().for_each(|p| {
+                p.values.iter_mut().for_each(|v| {
+                    v.diminish_pitch(n);
+                });
+            });
+            self
+        }
+
+        fn trim(&mut self, first: $ty, second: $ty) -> &Self {
+            self.contents.iter_mut().for_each(|p| {
+                p.values.iter_mut().for_each(|v| {
+                    v.trim(first, second);
+                });
+            });
+            self
         }
 
         fn is_silent(&self) -> bool {
@@ -169,43 +270,50 @@ macro_rules! impl_other_fns_for_seq {
 macro_rules! impl_traits_for_raw_values {
     (for $($ty:ident)*) => ($(
         impl Pitch<$ty> for $ty {
-            fn transpose_pitch(&mut self, n: $ty) {
-                *self += n
+            fn transpose_pitch(&mut self, n: $ty) -> &Self {
+                *self += n;
+                self
             }
 
-            fn invert_pitch(&mut self, n: $ty) {
-                *self = n + n - *self
+            fn invert_pitch(&mut self, n: $ty) -> &Self {
+                *self = n + n - *self;
+                self
             }
 
-            fn augment_pitch<MT: AugDim<$ty>>(&mut self, n: &MT) {
-                n.augment_target(self)
+            fn augment_pitch<MT: AugDim<$ty>>(&mut self, n: &MT) -> &Self {
+                n.augment_target(self);
+                self
             }
 
-            fn diminish_pitch<MT: AugDim<$ty>>(&mut self, n: &MT) {
-                n.diminish_target(self)
+            fn diminish_pitch<MT: AugDim<$ty>>(&mut self, n: &MT) -> &Self {
+                n.diminish_target(self);
+                self
             }
 
-            fn modulus(&mut self, n: $ty) {
+            fn modulus(&mut self, n: $ty) -> &Self {
                 // Can't use n.abs() as it's not implemented for unsigned ints
                 let n = if n < $ty::zero() { $ty::zero() - n } else { n };
                 let ret = *self % n;
 
                 *self = if ret < $ty::zero() { ret + n } else { ret };
+                self
             }
 
-            fn trim_min(&mut self, n: $ty) {
+            fn trim_min(&mut self, n: $ty) -> &Self {
                 if *self < n {
                     *self = n;
                 }
+                self
             }
 
-            fn trim_max(&mut self, n: $ty) {
+            fn trim_max(&mut self, n: $ty) -> &Self {
                 if *self > n {
                     *self = n;
                 }
+                self
             }
 
-            fn trim(&mut self, first: $ty, second: $ty) {
+            fn trim(&mut self, first: $ty, second: $ty) -> &Self {
                 let (low, hi) = if first > second { (second, first ) } else { (first, second) };
 
                 if *self < low {
@@ -213,6 +321,8 @@ macro_rules! impl_traits_for_raw_values {
                 } else if *self > hi {
                     *self = hi;
                 }
+
+                self
             }
 
             fn is_silent(&self) -> bool {
@@ -227,22 +337,25 @@ macro_rules! impl_traits_for_derived_entities {
         impl Pitch<$ty> for Option<$ty> {
             impl_fns_for_option!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max);
 
-            fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
+            fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) -> &Self {
                 if let Some(p) = self.as_mut() {
                     p.augment_pitch(n);
                 }
+                self
             }
 
-            fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
+            fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) -> &Self {
                 if let Some(p) = self.as_mut() {
                     p.diminish_pitch(n);
                 }
+                self
             }
 
-            fn trim(&mut self, first: $ty, last: $ty) {
+            fn trim(&mut self, first: $ty, last: $ty) -> &Self {
                 if let Some(p) = self.as_mut() {
                     p.trim(first, last);
                 }
+                self
             }
 
             fn is_silent(&self) -> bool {
@@ -253,16 +366,19 @@ macro_rules! impl_traits_for_derived_entities {
         impl Pitch<$ty> for Vec<$ty> {
             impl_fns_for_vec!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max);
 
-            fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
-                self.iter_mut().for_each(|p| p.augment_pitch(n));
+            fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) -> &Self {
+                self.iter_mut().for_each(|p| { p.augment_pitch(n); });
+                self
             }
 
-            fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
-                self.iter_mut().for_each(|p| p.diminish_pitch(n));
+            fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) -> &Self {
+                self.iter_mut().for_each(|p| { p.diminish_pitch(n); });
+                self
             }
 
-            fn trim(&mut self, first: $ty, last: $ty) {
-                self.iter_mut().for_each(|p| p.trim(first, last));
+            fn trim(&mut self, first: $ty, last: $ty) -> &Self {
+                self.iter_mut().for_each(|p| { p.trim(first, last); });
+                self
             }
 
             fn is_silent(&self) -> bool {
@@ -273,16 +389,19 @@ macro_rules! impl_traits_for_derived_entities {
         impl Pitch<$ty> for MelodyMember<$ty> {
             impl_fns_for_melody_member!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max);
 
-            fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
-                self.values.augment_pitch(n);
+            fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) -> &Self {
+                self.values.iter_mut().for_each(|p| { p.augment_pitch(n); });
+                self
             }
 
-            fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
-                self.values.diminish_pitch(n);
+            fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) -> &Self {
+                self.values.iter_mut().for_each(|p| { p.diminish_pitch(n); });
+                self
             }
 
-            fn trim(&mut self, first: $ty, last: $ty) {
-                self.values.trim(first, last);
+            fn trim(&mut self, first: $ty, last: $ty) -> &Self {
+                self.values.iter_mut().for_each(|p| { p.trim(first, last); });
+                self
             }
 
             fn is_silent(&self) -> bool {
@@ -301,13 +420,13 @@ macro_rules! impl_traits_for_derived_entities {
         }
 
         impl Pitch<$ty> for ChordSeq<$ty> {
-            impl_fns_for_seq!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max);
-            impl_other_fns_for_seq!($ty);
+            impl_fns_for_chordseq!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max);
+            impl_other_fns_for_chordseq!($ty);
         }
 
         impl Pitch<$ty> for Melody<$ty> {
-            impl_fns_for_seq!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max);
-            impl_other_fns_for_seq!($ty);
+            impl_fns_for_melody!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max);
+            impl_other_fns_for_melody!($ty);
         }
     )*)
 }
@@ -325,15 +444,19 @@ mod tests {
 
     macro_rules! pitch_trait_test {
         ($fn:ident, $init:expr, $arg:expr, $ret:expr) => {
-            let mut x = $init;
-            x.$fn($arg);
-            assert_eq!(x, $ret);
+            let mut init = $init;
+            let ret = init.$fn($arg);
+
+            assert_eq!(*ret, $ret);
+            assert_eq!(init, $ret);
         };
 
         ($fn:ident, $init:expr, $arg1:expr, $arg2:expr, $ret:expr) => {
-            let mut x = $init;
-            x.$fn($arg1, $arg2);
-            assert_eq!(x, $ret);
+            let mut init = $init;
+            let ret = init.$fn($arg1, $arg2);
+
+            assert_eq!(*ret, $ret);
+            assert_eq!(init, $ret);
         };
     }
 
@@ -347,7 +470,7 @@ mod tests {
 
         transpose_pitch_test!(5, 6, 11);
         transpose_pitch_test!(5.5, 6.0, 11.5);
-        transpose_pitch_test!(None, 6, None);
+        transpose_pitch_test!(None::<i32>, 6, None);
         transpose_pitch_test!(Some(5), 6, Some(11));
         transpose_pitch_test!(vec![4, 5, 6], 6, vec![10, 11, 12]);
         transpose_pitch_test!(
