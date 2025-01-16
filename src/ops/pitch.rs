@@ -93,6 +93,10 @@ pub trait Pitch<T> {
     /// Replace any pitches above the passed argument with the passed argument.
     fn trim_max(&mut self, n: T);
 
+    /// Replace any pitches below the lower argument with the lower argument.
+    /// Replace any pitches above the higher argument with the higher argument.
+    fn trim(&mut self, first: T, second: T);
+
     /// Is this pitch or pitch container silent?
     fn is_silent(&self) -> bool;
 }
@@ -131,6 +135,26 @@ macro_rules! impl_fns_for_seq {
     )*)
 }
 
+macro_rules! impl_other_fns_for_seq {
+    ($ty:ident) => {
+        fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
+            self.contents.iter_mut().for_each(|p| p.augment_pitch(n));
+        }
+
+        fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
+            self.contents.iter_mut().for_each(|p| p.diminish_pitch(n));
+        }
+
+        fn trim(&mut self, first: $ty, second: $ty) {
+            self.contents.iter_mut().for_each(|p| p.trim(first, second));
+        }
+
+        fn is_silent(&self) -> bool {
+            self.contents.iter().all(|m| m.is_silent())
+        }
+    };
+}
+
 macro_rules! impl_traits_for_raw_values {
     (for $($ty:ident)*) => ($(
         impl Pitch<$ty> for $ty {
@@ -165,6 +189,16 @@ macro_rules! impl_traits_for_raw_values {
                     *self = n;
                 }
             }
+
+            fn trim(&mut self, first: $ty, second: $ty) {
+                let (low, hi) = if first > second { (second, first ) } else { (first, second) };
+
+                if *self < low {
+                    *self = low;
+                } else if *self > hi {
+                    *self = hi;
+                }
+            }
         }
     )*)
 }
@@ -186,6 +220,12 @@ macro_rules! impl_traits_for_derived_entities {
                 }
             }
 
+            fn trim(&mut self, first: $ty, last: $ty) {
+                if let Some(p) = self.as_mut() {
+                    p.trim(first, last);
+                }
+            }
+
             fn is_silent(&self) -> bool {
                 self.is_none()
             }
@@ -200,6 +240,10 @@ macro_rules! impl_traits_for_derived_entities {
 
             fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
                 self.iter_mut().for_each(|p| p.diminish_pitch(n));
+            }
+
+            fn trim(&mut self, first: $ty, last: $ty) {
+                self.iter_mut().for_each(|p| p.trim(first, last));
             }
 
             fn is_silent(&self) -> bool {
@@ -218,6 +262,10 @@ macro_rules! impl_traits_for_derived_entities {
                 self.values.diminish_pitch(n);
             }
 
+            fn trim(&mut self, first: $ty, last: $ty) {
+                self.values.trim(first, last);
+            }
+
             fn is_silent(&self) -> bool {
                 self.values.is_empty() || self.volume == 0
             }
@@ -225,66 +273,22 @@ macro_rules! impl_traits_for_derived_entities {
 
         impl Pitch<$ty> for NumericSeq<$ty> {
             impl_fns_for_seq!($ty, for transpose_pitch invert_pitch trim_min trim_max);
-
-            fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
-                self.contents.augment_pitch(n);
-            }
-
-            fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
-                self.contents.diminish_pitch(n);
-            }
-
-            fn is_silent(&self) -> bool {
-                self.contents.is_empty()
-            }
+            impl_other_fns_for_seq!($ty);
         }
 
         impl Pitch<$ty> for NoteSeq<$ty> {
             impl_fns_for_seq!($ty, for transpose_pitch invert_pitch trim_min trim_max);
-
-            fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
-                self.contents.iter_mut().for_each(|p| p.augment_pitch(n));
-            }
-
-            fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
-                self.contents.iter_mut().for_each(|p| p.diminish_pitch(n));
-            }
-
-            fn is_silent(&self) -> bool {
-                self.contents.iter().all(|m| m.is_silent())
-            }
+            impl_other_fns_for_seq!($ty);
         }
 
         impl Pitch<$ty> for ChordSeq<$ty> {
             impl_fns_for_seq!($ty, for transpose_pitch invert_pitch trim_min trim_max);
-
-            fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
-                self.contents.iter_mut().for_each(|p| p.augment_pitch(n));
-            }
-
-            fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
-                self.contents.iter_mut().for_each(|p| p.diminish_pitch(n));
-            }
-
-            fn is_silent(&self) -> bool {
-                self.contents.iter().all(|m| m.is_silent())
-            }
+            impl_other_fns_for_seq!($ty);
         }
 
         impl Pitch<$ty> for Melody<$ty> {
             impl_fns_for_seq!($ty, for transpose_pitch invert_pitch trim_min trim_max);
-
-            fn augment_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
-                self.contents.iter_mut().for_each(|p| p.augment_pitch(n));
-            }
-
-            fn diminish_pitch<AT: AugDim<$ty>>(&mut self, n: &AT) {
-                self.contents.iter_mut().for_each(|p| p.diminish_pitch(n));
-            }
-
-            fn is_silent(&self) -> bool {
-                self.contents.iter().all(|m| m.is_silent())
-            }
+            impl_other_fns_for_seq!($ty);
         }
     )*)
 }
@@ -658,6 +662,7 @@ mod tests {
         pitch_trait_test!(trim_min, None, 5, None);
         pitch_trait_test!(trim_min, Some(5), 3, Some(5));
         pitch_trait_test!(trim_min, Some(3), 5, Some(5));
+        pitch_trait_test!(trim_min, vec![5.0, 3.0], 4.0, vec![5.0, 4.0]);
         pitch_trait_test!(
             trim_min,
             MelodyMember::from(vec![5.0, 3.0]),
@@ -692,6 +697,7 @@ mod tests {
         pitch_trait_test!(trim_max, None, 5, None);
         pitch_trait_test!(trim_max, Some(5), 3, Some(3));
         pitch_trait_test!(trim_max, Some(3), 5, Some(3));
+        pitch_trait_test!(trim_max, vec![5.0, 3.0], 4.0, vec![4.0, 3.0]);
         pitch_trait_test!(
             trim_max,
             MelodyMember::from(vec![5.0, 3.0]),
@@ -716,6 +722,51 @@ mod tests {
             melody![[5.0], [], [4.5, 3.0]],
             4.0,
             melody![[4.0], [], [4.0, 3.0]]
+        );
+    }
+
+    #[test]
+    fn trim() {
+        macro_rules! trim_test {
+            ($init:expr, $first:expr, $second:expr, $ret:expr) => {
+                let mut x = $init;
+                x.trim($first, $second);
+                assert_eq!(x, $ret);
+            };
+        }
+
+        trim_test!(2, 3, 5, 3);
+        trim_test!(4, 3, 5, 4);
+        trim_test!(6, 3, 5, 5);
+        trim_test!(None, 3, 5, None);
+        trim_test!(Some(2), 3, 5, Some(3));
+        trim_test!(Some(4), 3, 5, Some(4));
+        trim_test!(Some(6), 3, 5, Some(5));
+        trim_test!(vec![2, 4, 6], 3, 5, vec![3, 4, 5]);
+        trim_test!(
+            MelodyMember::from(vec![2.0, 4.0, 6.0]),
+            5.0,
+            3.0,
+            MelodyMember::from(vec![3.0, 4.0, 5.0])
+        );
+        trim_test!(numseq![2.0, 4.0, 6.0], 3.0, 5.0, numseq![3.0, 4.0, 5.0]);
+        trim_test!(
+            noteseq![2.0, None, 4.0, 6.0],
+            3.0,
+            5.0,
+            noteseq![3.0, None, 4.0, 5.0]
+        );
+        trim_test!(
+            chordseq![[2.0], [], [4.0, 6.0]],
+            5.0,
+            3.0,
+            chordseq![[3.0], [], [4.0, 5.0]]
+        );
+        trim_test!(
+            melody![[2.0], [], [4.0, 6.0]],
+            3.0,
+            5.0,
+            melody![[3.0], [], [4.0, 5.0]]
         );
     }
 
