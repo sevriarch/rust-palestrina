@@ -6,7 +6,10 @@ use crate::sequences::{
 };
 use num_traits::Zero;
 
-pub trait AugDim<MT> {
+pub trait AugDim<MT>
+where
+    MT: Copy,
+{
     fn augment_target(&self, v: &mut MT);
     fn diminish_target(&self, v: &mut MT);
 }
@@ -63,7 +66,10 @@ make_double_conv_aug_dim!(for f32 f64);
 
 /// A trait that implements various operations that can be executed on pitches
 /// or containers for pitches.
-pub trait Pitch<T> {
+pub trait Pitch<T>
+where
+    T: Copy,
+{
     /// Transpose pitches up or down.
     fn transpose_pitch(self, n: T) -> Self;
 
@@ -77,7 +83,7 @@ pub trait Pitch<T> {
     ///
     /// Note that in the case where pitches are of an integer type and the multiplier
     /// is of a floating point type, results will always be rounded down.
-    fn augment_pitch<AT: AugDim<T>>(self, n: &AT) -> Self;
+    fn augment_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self;
 
     /// Divide pitches by a specific value.
     ///
@@ -90,7 +96,7 @@ pub trait Pitch<T> {
     ///
     /// In the case where pitches are of an integer type and the divisor is of a
     /// floating point type, results will always be rounded down.
-    fn diminish_pitch<AT: AugDim<T>>(self, n: &AT) -> Self;
+    fn diminish_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self;
 
     /// Euclidean remainder of the value (ie: modulus that cannot be lower than zero).
     ///
@@ -112,158 +118,6 @@ pub trait Pitch<T> {
     fn is_silent(&self) -> bool;
 }
 
-macro_rules! impl_fns_for_option {
-    ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(self, n: $ty) -> Self {
-            self.map(|v| v.$fn(n))
-        }
-    )*)
-}
-
-macro_rules! impl_fns_for_vec {
-    ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(mut self, n: $ty) -> Self {
-            self.iter_mut().for_each(|p| { *p = p.$fn(n); });
-            self
-        }
-    )*)
-}
-
-macro_rules! impl_fns_for_melody_member {
-    ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(mut self, n: $ty) -> Self {
-            self.values.iter_mut().for_each(|p| { *p = p.$fn(n); });
-            self
-        }
-    )*)
-}
-
-macro_rules! impl_fns_for_seq {
-    ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(mut self, n: $ty) -> Self {
-            self.contents.iter_mut().for_each(|p| { *p = p.$fn(n); });
-            self
-        }
-    )*)
-}
-
-macro_rules! impl_other_fns_for_seq {
-    ($ty:ident) => {
-        fn augment_pitch<AT: AugDim<$ty>>(mut self, n: &AT) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                *p = p.augment_pitch(n);
-            });
-            self
-        }
-
-        fn diminish_pitch<AT: AugDim<$ty>>(mut self, n: &AT) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                *p = p.diminish_pitch(n);
-            });
-            self
-        }
-
-        fn trim(mut self, first: $ty, second: $ty) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                *p = p.trim(first, second);
-            });
-            self
-        }
-
-        fn is_silent(&self) -> bool {
-            self.contents.iter().all(|m| m.is_silent())
-        }
-    };
-}
-
-macro_rules! impl_fns_for_chordseq {
-    ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(mut self, n: $ty) -> Self {
-            self.contents.iter_mut().for_each(|p| { p.iter_mut().for_each(|v| { *v = v.$fn(n); }); });
-            self
-        }
-    )*)
-}
-
-macro_rules! impl_other_fns_for_chordseq {
-    ($ty:ident) => {
-        fn augment_pitch<AT: AugDim<$ty>>(mut self, n: &AT) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                p.iter_mut().for_each(|v| {
-                    *v = v.augment_pitch(n);
-                });
-            });
-            self
-        }
-
-        fn diminish_pitch<AT: AugDim<$ty>>(mut self, n: &AT) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                p.iter_mut().for_each(|v| {
-                    *v = v.diminish_pitch(n);
-                });
-            });
-            self
-        }
-
-        fn trim(mut self, first: $ty, second: $ty) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                p.iter_mut().for_each(|v| {
-                    *v = v.trim(first, second);
-                });
-            });
-            self
-        }
-
-        fn is_silent(&self) -> bool {
-            self.contents.iter().all(|m| m.is_silent())
-        }
-    };
-}
-
-macro_rules! impl_fns_for_melody {
-    ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(mut self, n: $ty) -> Self {
-            self.contents.iter_mut().for_each(|p| { p.values.iter_mut().for_each(|v| { *v = v.$fn(n); }); });
-            self
-        }
-    )*)
-}
-
-macro_rules! impl_other_fns_for_melody {
-    ($ty:ident) => {
-        fn augment_pitch<AT: AugDim<$ty>>(mut self, n: &AT) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                p.values.iter_mut().for_each(|v| {
-                    *v = v.augment_pitch(n);
-                });
-            });
-            self
-        }
-
-        fn diminish_pitch<AT: AugDim<$ty>>(mut self, n: &AT) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                p.values.iter_mut().for_each(|v| {
-                    *v = v.diminish_pitch(n);
-                });
-            });
-            self
-        }
-
-        fn trim(mut self, first: $ty, second: $ty) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                p.values.iter_mut().for_each(|v| {
-                    *v = v.trim(first, second);
-                });
-            });
-            self
-        }
-
-        fn is_silent(&self) -> bool {
-            self.contents.iter().all(|m| m.is_silent())
-        }
-    };
-}
-
 macro_rules! impl_traits_for_raw_values {
     (for $($ty:ident)*) => ($(
         impl Pitch<$ty> for $ty {
@@ -277,12 +131,12 @@ macro_rules! impl_traits_for_raw_values {
                 self
             }
 
-            fn augment_pitch<MT: AugDim<$ty>>(mut self, n: &MT) -> Self {
+            fn augment_pitch<MT: AugDim<$ty> + Copy>(mut self, n: MT) -> Self {
                 n.augment_target(&mut self);
                 self
             }
 
-            fn diminish_pitch<MT: AugDim<$ty>>(mut self, n: &MT) -> Self {
+            fn diminish_pitch<MT: AugDim<$ty> + Copy>(mut self, n: MT) -> Self {
                 n.diminish_target(&mut self);
                 self
             }
@@ -328,16 +182,168 @@ macro_rules! impl_traits_for_raw_values {
     )*)
 }
 
+macro_rules! impl_fns_for_option {
+    ($ty:ident, for $($fn:ident)*) => ($(
+        fn $fn(self, n: $ty) -> Self {
+            self.map(|v| v.$fn(n))
+        }
+    )*)
+}
+
+macro_rules! impl_fns_for_vec {
+    ($ty:ident, for $($fn:ident)*) => ($(
+        fn $fn(mut self, n: $ty) -> Self {
+            self.iter_mut().for_each(|p| { *p = p.$fn(n); });
+            self
+        }
+    )*)
+}
+
+macro_rules! impl_fns_for_melody_member {
+    ($ty:ident, for $($fn:ident)*) => ($(
+        fn $fn(mut self, n: $ty) -> Self {
+            self.values.iter_mut().for_each(|p| { *p = p.$fn(n); });
+            self
+        }
+    )*)
+}
+
+macro_rules! impl_fns_for_seq {
+    ($ty:ident, for $($fn:ident)*) => ($(
+        fn $fn(mut self, n: $ty) -> Self {
+            self.contents.iter_mut().for_each(|p| { *p = p.$fn(n); });
+            self
+        }
+    )*)
+}
+
+macro_rules! impl_other_fns_for_seq {
+    ($ty:ident) => {
+        fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
+            self.contents.iter_mut().for_each(|p| {
+                *p = p.augment_pitch(n);
+            });
+            self
+        }
+
+        fn diminish_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
+            self.contents.iter_mut().for_each(|p| {
+                *p = p.diminish_pitch(n);
+            });
+            self
+        }
+
+        fn trim(mut self, first: $ty, second: $ty) -> Self {
+            self.contents.iter_mut().for_each(|p| {
+                *p = p.trim(first, second);
+            });
+            self
+        }
+
+        fn is_silent(&self) -> bool {
+            self.contents.iter().all(|m| m.is_silent())
+        }
+    };
+}
+
+macro_rules! impl_fns_for_chordseq {
+    ($ty:ident, for $($fn:ident)*) => ($(
+        fn $fn(mut self, n: $ty) -> Self {
+            self.contents.iter_mut().for_each(|p| { p.iter_mut().for_each(|v| { *v = v.$fn(n); }); });
+            self
+        }
+    )*)
+}
+
+macro_rules! impl_other_fns_for_chordseq {
+    ($ty:ident) => {
+        fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
+            self.contents.iter_mut().for_each(|p| {
+                p.iter_mut().for_each(|v| {
+                    *v = v.augment_pitch(n);
+                });
+            });
+            self
+        }
+
+        fn diminish_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
+            self.contents.iter_mut().for_each(|p| {
+                p.iter_mut().for_each(|v| {
+                    *v = v.diminish_pitch(n);
+                });
+            });
+            self
+        }
+
+        fn trim(mut self, first: $ty, second: $ty) -> Self {
+            self.contents.iter_mut().for_each(|p| {
+                p.iter_mut().for_each(|v| {
+                    *v = v.trim(first, second);
+                });
+            });
+            self
+        }
+
+        fn is_silent(&self) -> bool {
+            self.contents.iter().all(|m| m.is_silent())
+        }
+    };
+}
+
+macro_rules! impl_fns_for_melody {
+    ($ty:ident, for $($fn:ident)*) => ($(
+        fn $fn(mut self, n: $ty) -> Self {
+            self.contents.iter_mut().for_each(|p| { p.values.iter_mut().for_each(|v| { *v = v.$fn(n); }); });
+            self
+        }
+    )*)
+}
+
+macro_rules! impl_other_fns_for_melody {
+    ($ty:ident) => {
+        fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
+            self.contents.iter_mut().for_each(|p| {
+                p.values.iter_mut().for_each(|v| {
+                    *v = v.augment_pitch(n);
+                });
+            });
+            self
+        }
+
+        fn diminish_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
+            self.contents.iter_mut().for_each(|p| {
+                p.values.iter_mut().for_each(|v| {
+                    *v = v.diminish_pitch(n);
+                });
+            });
+            self
+        }
+
+        fn trim(mut self, first: $ty, second: $ty) -> Self {
+            self.contents.iter_mut().for_each(|p| {
+                p.values.iter_mut().for_each(|v| {
+                    *v = v.trim(first, second);
+                });
+            });
+            self
+        }
+
+        fn is_silent(&self) -> bool {
+            self.contents.iter().all(|m| m.is_silent())
+        }
+    };
+}
+
 macro_rules! impl_traits_for_derived_entities {
     (for $($ty:ident)*) => ($(
         impl Pitch<$ty> for Option<$ty> {
             impl_fns_for_option!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max);
 
-            fn augment_pitch<AT: AugDim<$ty>>(self, n: &AT) -> Self {
+            fn augment_pitch<AT: AugDim<$ty> + Copy>(self, n: AT) -> Self {
                 self.map(|p| p.augment_pitch(n))
             }
 
-            fn diminish_pitch<AT: AugDim<$ty>>(self, n: &AT) -> Self {
+            fn diminish_pitch<AT: AugDim<$ty> + Copy>(self, n: AT) -> Self {
                 self.map(|p| p.diminish_pitch(n))
             }
 
@@ -353,12 +359,12 @@ macro_rules! impl_traits_for_derived_entities {
         impl Pitch<$ty> for Vec<$ty> {
             impl_fns_for_vec!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max);
 
-            fn augment_pitch<AT: AugDim<$ty>>(mut self, n: &AT) -> Self {
+            fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
                 self.iter_mut().for_each(|p| { *p = p.augment_pitch(n); });
                 self
             }
 
-            fn diminish_pitch<AT: AugDim<$ty>>(mut self, n: &AT) -> Self {
+            fn diminish_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
                 self.iter_mut().for_each(|p| { *p = p.diminish_pitch(n); });
                 self
             }
@@ -376,12 +382,12 @@ macro_rules! impl_traits_for_derived_entities {
         impl Pitch<$ty> for MelodyMember<$ty> {
             impl_fns_for_melody_member!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max);
 
-            fn augment_pitch<AT: AugDim<$ty>>(mut self, n: &AT) -> Self {
+            fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
                 self.values.iter_mut().for_each(|p| { *p = p.augment_pitch(n); });
                 self
             }
 
-            fn diminish_pitch<AT: AugDim<$ty>>(mut self, n: &AT) -> Self {
+            fn diminish_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
                 self.values.iter_mut().for_each(|p| { *p = p.diminish_pitch(n); });
                 self
             }
@@ -497,84 +503,84 @@ mod tests {
             };
         }
 
-        augment_pitch_test!(4, &2, 8);
-        augment_pitch_test!(4, &2.5, 10);
-        augment_pitch_test!(2.5, &3, 7.5);
-        augment_pitch_test!(2.5, &3.0, 7.5);
-        augment_pitch_test!(None::<i32>, &2, None);
-        augment_pitch_test!(None::<i32>, &2.5, None);
-        augment_pitch_test!(None::<f32>, &2, None);
-        augment_pitch_test!(None::<f32>, &2.5, None);
-        augment_pitch_test!(Some(4), &2, Some(8));
-        augment_pitch_test!(Some(4), &2.5, Some(10));
-        augment_pitch_test!(Some(2.5), &3, Some(7.5));
-        augment_pitch_test!(Some(2.5), &3.0, Some(7.5));
-        augment_pitch_test!(vec![4, 5, 7], &2, vec![8, 10, 14]);
-        augment_pitch_test!(vec![4, 5, 7], &2.5, vec![10, 12, 17]);
-        augment_pitch_test!(vec![4.0, 5.5, 6.5], &3, vec![12.0, 16.5, 19.5]);
-        augment_pitch_test!(vec![4.0, 5.5, 6.5], &3.0, vec![12.0, 16.5, 19.5]);
+        augment_pitch_test!(4, 2, 8);
+        augment_pitch_test!(4, 2.5, 10);
+        augment_pitch_test!(2.5, 3, 7.5);
+        augment_pitch_test!(2.5, 3.0, 7.5);
+        augment_pitch_test!(None::<i32>, 2, None);
+        augment_pitch_test!(None::<i32>, 2.5, None);
+        augment_pitch_test!(None::<f32>, 2, None);
+        augment_pitch_test!(None::<f32>, 2.5, None);
+        augment_pitch_test!(Some(4), 2, Some(8));
+        augment_pitch_test!(Some(4), 2.5, Some(10));
+        augment_pitch_test!(Some(2.5), 3, Some(7.5));
+        augment_pitch_test!(Some(2.5), 3.0, Some(7.5));
+        augment_pitch_test!(vec![4, 5, 7], 2, vec![8, 10, 14]);
+        augment_pitch_test!(vec![4, 5, 7], 2.5, vec![10, 12, 17]);
+        augment_pitch_test!(vec![4.0, 5.5, 6.5], 3, vec![12.0, 16.5, 19.5]);
+        augment_pitch_test!(vec![4.0, 5.5, 6.5], 3.0, vec![12.0, 16.5, 19.5]);
         augment_pitch_test!(
             MelodyMember::from(vec![4, 5, 7]),
-            &2,
+            2,
             MelodyMember::from(vec![8, 10, 14])
         );
         augment_pitch_test!(
             MelodyMember::from(vec![4, 5, 7]),
-            &2.5,
+            2.5,
             MelodyMember::from(vec![10, 12, 17])
         );
         augment_pitch_test!(
             MelodyMember::from(vec![4.0, 5.5, 6.5]),
-            &3,
+            3,
             MelodyMember::from(vec![12.0, 16.5, 19.5])
         );
         augment_pitch_test!(
             MelodyMember::from(vec![4.0, 5.5, 6.5]),
-            &3.0,
+            3.0,
             MelodyMember::from(vec![12.0, 16.5, 19.5])
         );
-        augment_pitch_test!(numseq![4, 5, 7], &2, numseq![8, 10, 14]);
-        augment_pitch_test!(numseq![4, 5, 7], &2.5, numseq![10, 12, 17]);
-        augment_pitch_test!(numseq![4.0, 5.5, 6.5], &3, numseq![12.0, 16.5, 19.5]);
-        augment_pitch_test!(numseq![4.0, 5.5, 6.5], &3.0, numseq![12.0, 16.5, 19.5]);
-        augment_pitch_test!(noteseq![4, None, 5, 7], &2, noteseq![8, None, 10, 14]);
-        augment_pitch_test!(noteseq![4, None, 5, 7], &2.5, noteseq![10, None, 12, 17]);
+        augment_pitch_test!(numseq![4, 5, 7], 2, numseq![8, 10, 14]);
+        augment_pitch_test!(numseq![4, 5, 7], 2.5, numseq![10, 12, 17]);
+        augment_pitch_test!(numseq![4.0, 5.5, 6.5], 3, numseq![12.0, 16.5, 19.5]);
+        augment_pitch_test!(numseq![4.0, 5.5, 6.5], 3.0, numseq![12.0, 16.5, 19.5]);
+        augment_pitch_test!(noteseq![4, None, 5, 7], 2, noteseq![8, None, 10, 14]);
+        augment_pitch_test!(noteseq![4, None, 5, 7], 2.5, noteseq![10, None, 12, 17]);
         augment_pitch_test!(
             noteseq![4.0, None, 5.5, 6.5],
-            &3,
+            3,
             noteseq![12.0, None, 16.5, 19.5]
         );
         augment_pitch_test!(
             noteseq![4.0, None, 5.5, 6.5],
-            &3.0,
+            3.0,
             noteseq![12.0, None, 16.5, 19.5]
         );
-        augment_pitch_test!(chordseq![[4], [], [5, 7]], &2, chordseq![[8], [], [10, 14]]);
+        augment_pitch_test!(chordseq![[4], [], [5, 7]], 2, chordseq![[8], [], [10, 14]]);
         augment_pitch_test!(
             chordseq![[4], [], [5, 7]],
-            &2.5,
+            2.5,
             chordseq![[10], [], [12, 17]]
         );
         augment_pitch_test!(
             chordseq![[4.0], [], [5.5, 6.5]],
-            &3,
+            3,
             chordseq![[12.0], [], [16.5, 19.5]]
         );
         augment_pitch_test!(
             chordseq![[4.0], [], [5.5, 6.5]],
-            &3.0,
+            3.0,
             chordseq![[12.0], [], [16.5, 19.5]]
         );
-        augment_pitch_test!(melody![[4], [], [5, 7]], &2, melody![[8], [], [10, 14]]);
-        augment_pitch_test!(melody![[4], [], [5, 7]], &2.5, melody![[10], [], [12, 17]]);
+        augment_pitch_test!(melody![[4], [], [5, 7]], 2, melody![[8], [], [10, 14]]);
+        augment_pitch_test!(melody![[4], [], [5, 7]], 2.5, melody![[10], [], [12, 17]]);
         augment_pitch_test!(
             melody![[4.0], [], [5.5, 6.5]],
-            &3,
+            3,
             melody![[12.0], [], [16.5, 19.5]]
         );
         augment_pitch_test!(
             melody![[4.0], [], [5.5, 6.5]],
-            &3.0,
+            3.0,
             melody![[12.0], [], [16.5, 19.5]]
         );
     }
@@ -587,84 +593,84 @@ mod tests {
             };
         }
 
-        diminish_pitch_test!(8, &2, 4);
-        diminish_pitch_test!(10, &2.5, 4);
-        diminish_pitch_test!(7.5, &3, 2.5);
-        diminish_pitch_test!(7.5, &3.0, 2.5);
-        diminish_pitch_test!(None::<i32>, &2, None);
-        diminish_pitch_test!(None::<i32>, &2.5, None);
-        diminish_pitch_test!(None::<f32>, &2, None);
-        diminish_pitch_test!(None::<f32>, &2.5, None);
-        diminish_pitch_test!(Some(8), &2, Some(4));
-        diminish_pitch_test!(Some(10), &2.5, Some(4));
-        diminish_pitch_test!(Some(7.5), &3, Some(2.5));
-        diminish_pitch_test!(Some(7.5), &3.0, Some(2.5));
-        diminish_pitch_test!(vec![8, 10, 14], &2, vec![4, 5, 7]);
-        diminish_pitch_test!(vec![10, 12, 17], &2.5, vec![4, 4, 6]);
-        diminish_pitch_test!(vec![12.0, 16.5, 19.5], &3, vec![4.0, 5.5, 6.5]);
-        diminish_pitch_test!(vec![12.0, 16.5, 19.5], &3.0, vec![4.0, 5.5, 6.5]);
+        diminish_pitch_test!(8, 2, 4);
+        diminish_pitch_test!(10, 2.5, 4);
+        diminish_pitch_test!(7.5, 3, 2.5);
+        diminish_pitch_test!(7.5, 3.0, 2.5);
+        diminish_pitch_test!(None::<i32>, 2, None);
+        diminish_pitch_test!(None::<i32>, 2.5, None);
+        diminish_pitch_test!(None::<f32>, 2, None);
+        diminish_pitch_test!(None::<f32>, 2.5, None);
+        diminish_pitch_test!(Some(8), 2, Some(4));
+        diminish_pitch_test!(Some(10), 2.5, Some(4));
+        diminish_pitch_test!(Some(7.5), 3, Some(2.5));
+        diminish_pitch_test!(Some(7.5), 3.0, Some(2.5));
+        diminish_pitch_test!(vec![8, 10, 14], 2, vec![4, 5, 7]);
+        diminish_pitch_test!(vec![10, 12, 17], 2.5, vec![4, 4, 6]);
+        diminish_pitch_test!(vec![12.0, 16.5, 19.5], 3, vec![4.0, 5.5, 6.5]);
+        diminish_pitch_test!(vec![12.0, 16.5, 19.5], 3.0, vec![4.0, 5.5, 6.5]);
         diminish_pitch_test!(
             MelodyMember::from(vec![8, 10, 14]),
-            &2,
+            2,
             MelodyMember::from(vec![4, 5, 7])
         );
         diminish_pitch_test!(
             MelodyMember::from(vec![10, 12, 17]),
-            &2.5,
+            2.5,
             MelodyMember::from(vec![4, 4, 6])
         );
         diminish_pitch_test!(
             MelodyMember::from(vec![12.0, 16.5, 19.5]),
-            &3,
+            3,
             MelodyMember::from(vec![4.0, 5.5, 6.5])
         );
         diminish_pitch_test!(
             MelodyMember::from(vec![12.0, 16.5, 19.5]),
-            &3.0,
+            3.0,
             MelodyMember::from(vec![4.0, 5.5, 6.5])
         );
-        diminish_pitch_test!(numseq![8, 10, 14], &2, numseq![4, 5, 7]);
-        diminish_pitch_test!(numseq![10, 12, 17], &2.5, numseq![4, 4, 6]);
-        diminish_pitch_test!(numseq![12.0, 16.5, 19.5], &3, numseq![4.0, 5.5, 6.5]);
-        diminish_pitch_test!(numseq![12.0, 16.5, 19.5], &3.0, numseq![4.0, 5.5, 6.5]);
-        diminish_pitch_test!(noteseq![8, None, 10, 14], &2, noteseq![4, None, 5, 7]);
-        diminish_pitch_test!(noteseq![10, None, 12, 17], &2.5, noteseq![4, None, 4, 6]);
+        diminish_pitch_test!(numseq![8, 10, 14], 2, numseq![4, 5, 7]);
+        diminish_pitch_test!(numseq![10, 12, 17], 2.5, numseq![4, 4, 6]);
+        diminish_pitch_test!(numseq![12.0, 16.5, 19.5], 3, numseq![4.0, 5.5, 6.5]);
+        diminish_pitch_test!(numseq![12.0, 16.5, 19.5], 3.0, numseq![4.0, 5.5, 6.5]);
+        diminish_pitch_test!(noteseq![8, None, 10, 14], 2, noteseq![4, None, 5, 7]);
+        diminish_pitch_test!(noteseq![10, None, 12, 17], 2.5, noteseq![4, None, 4, 6]);
         diminish_pitch_test!(
             noteseq![12.0, None, 16.5, 19.5],
-            &3,
+            3,
             noteseq![4.0, None, 5.5, 6.5]
         );
         diminish_pitch_test!(
             noteseq![12.0, None, 16.5, 19.5],
-            &3.0,
+            3.0,
             noteseq![4.0, None, 5.5, 6.5]
         );
-        diminish_pitch_test!(chordseq![[8], [], [10, 14]], &2, chordseq![[4], [], [5, 7]]);
+        diminish_pitch_test!(chordseq![[8], [], [10, 14]], 2, chordseq![[4], [], [5, 7]]);
         diminish_pitch_test!(
             chordseq![[10], [], [12, 17]],
-            &2.5,
+            2.5,
             chordseq![[4], [], [4, 6]]
         );
         diminish_pitch_test!(
             chordseq![[12.0], [], [16.5, 19.5]],
-            &3,
+            3,
             chordseq![[4.0], [], [5.5, 6.5]]
         );
         diminish_pitch_test!(
             chordseq![[12.0], [], [16.5, 19.5]],
-            &3.0,
+            3.0,
             chordseq![[4.0], [], [5.5, 6.5]]
         );
-        diminish_pitch_test!(melody![[8], [], [10, 14]], &2, melody![[4], [], [5, 7]]);
-        diminish_pitch_test!(melody![[10], [], [12, 17]], &2.5, melody![[4], [], [4, 6]]);
+        diminish_pitch_test!(melody![[8], [], [10, 14]], 2, melody![[4], [], [5, 7]]);
+        diminish_pitch_test!(melody![[10], [], [12, 17]], 2.5, melody![[4], [], [4, 6]]);
         diminish_pitch_test!(
             melody![[12.0], [], [16.5, 19.5]],
-            &3,
+            3,
             melody![[4.0], [], [5.5, 6.5]]
         );
         diminish_pitch_test!(
             melody![[12.0], [], [16.5, 19.5]],
-            &3.0,
+            3.0,
             melody![[4.0], [], [5.5, 6.5]]
         );
     }
