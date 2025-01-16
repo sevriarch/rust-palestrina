@@ -84,11 +84,18 @@ pub trait Pitch<T> {
     /// This value does not have to be the same type as the pitches being divided
     /// (automatic conversion will be performed) and it can be an integer or a float.
     ///
-    /// Note that in the case where pitches are of an integer type and the divisor
-    /// is of a floating point type, results will always be rounded down.
+    /// Notes:
+    ///
+    /// If the divisor is zero and any pitches are divided, the program will panic.
+    ///
+    /// In the case where pitches are of an integer type and the divisor is of a
+    /// floating point type, results will always be rounded down.
     fn diminish_pitch<AT: AugDim<T>>(&mut self, n: &AT);
 
     /// Euclidean remainder of the value (ie: modulus that cannot be lower than zero).
+    ///
+    /// Note that if the argument passed is zero and any pitches are mutated, the
+    /// program will panic.
     fn modulus(&mut self, n: T);
 
     /// Replace any pitches below the passed argument with the passed argument.
