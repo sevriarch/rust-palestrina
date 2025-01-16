@@ -114,6 +114,12 @@ where
     /// Replace any pitches above the higher argument with the higher argument.
     fn trim(self, first: T, second: T) -> Self;
 
+    /// Invert any pitches below the passed argument.
+    fn bounce_min(self, n: T) -> Self;
+
+    /// Invert any pitches above the passed argument.
+    fn bounce_max(self, n: T) -> Self;
+
     /// Is this pitch or pitch container silent?
     fn is_silent(&self) -> bool;
 }
@@ -177,6 +183,20 @@ macro_rules! impl_traits_for_raw_values {
 
             fn is_silent(&self) -> bool {
                 false
+            }
+
+            fn bounce_min(mut self, n: $ty) -> Self {
+                if self < n {
+                    self = n + n - self;
+                }
+                self
+            }
+
+            fn bounce_max(mut self, n: $ty) -> Self {
+                if self > n {
+                    self = n + n - self;
+                }
+                self
             }
         }
     )*)
@@ -337,7 +357,7 @@ macro_rules! impl_other_fns_for_melody {
 macro_rules! impl_traits_for_derived_entities {
     (for $($ty:ident)*) => ($(
         impl Pitch<$ty> for Option<$ty> {
-            impl_fns_for_option!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max);
+            impl_fns_for_option!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
 
             fn augment_pitch<AT: AugDim<$ty> + Copy>(self, n: AT) -> Self {
                 self.map(|p| p.augment_pitch(n))
@@ -357,7 +377,7 @@ macro_rules! impl_traits_for_derived_entities {
         }
 
         impl Pitch<$ty> for Vec<$ty> {
-            impl_fns_for_vec!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max);
+            impl_fns_for_vec!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
 
             fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
                 self.iter_mut().for_each(|p| { *p = p.augment_pitch(n); });
@@ -380,7 +400,7 @@ macro_rules! impl_traits_for_derived_entities {
         }
 
         impl Pitch<$ty> for MelodyMember<$ty> {
-            impl_fns_for_melody_member!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max);
+            impl_fns_for_melody_member!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
 
             fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
                 self.values.iter_mut().for_each(|p| { *p = p.augment_pitch(n); });
@@ -403,22 +423,22 @@ macro_rules! impl_traits_for_derived_entities {
         }
 
         impl Pitch<$ty> for NumericSeq<$ty> {
-            impl_fns_for_seq!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max);
+            impl_fns_for_seq!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
             impl_other_fns_for_seq!($ty);
         }
 
         impl Pitch<$ty> for NoteSeq<$ty> {
-            impl_fns_for_seq!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max);
+            impl_fns_for_seq!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
             impl_other_fns_for_seq!($ty);
         }
 
         impl Pitch<$ty> for ChordSeq<$ty> {
-            impl_fns_for_chordseq!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max);
+            impl_fns_for_chordseq!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
             impl_other_fns_for_chordseq!($ty);
         }
 
         impl Pitch<$ty> for Melody<$ty> {
-            impl_fns_for_melody!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max);
+            impl_fns_for_melody!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
             impl_other_fns_for_melody!($ty);
         }
     )*)
@@ -814,6 +834,72 @@ mod tests {
             3.0,
             5.0,
             melody![[3.0], [], [4.0, 5.0]]
+        );
+    }
+
+    #[test]
+    fn bounce_min() {
+        macro_rules! bounce_min_test {
+            ($init:expr, $arg:expr, $ret:expr) => {
+                assert_eq!($init.bounce_min($arg), $ret);
+            };
+        }
+
+        bounce_min_test!(5, 3, 5);
+        bounce_min_test!(3, 5, 7);
+        bounce_min_test!(None, 5, None);
+        bounce_min_test!(Some(5), 3, Some(5));
+        bounce_min_test!(Some(3), 5, Some(7));
+        bounce_min_test!(vec![5.0, 3.0], 4.0, vec![5.0, 5.0]);
+        bounce_min_test!(
+            MelodyMember::from(vec![5.0, 3.0]),
+            4.0,
+            MelodyMember::from(vec![5.0, 5.0])
+        );
+        bounce_min_test!(numseq![5.0, 3.0], 4.0, numseq![5.0, 5.0]);
+        bounce_min_test!(noteseq![5.0, None, 3.0], 4.0, noteseq![5.0, None, 5.0]);
+        bounce_min_test!(
+            chordseq![[5.0], [], [4.5, 3.0]],
+            4.0,
+            chordseq![[5.0], [], [4.5, 5.0]]
+        );
+        bounce_min_test!(
+            melody![[5.0], [], [4.5, 3.0]],
+            4.0,
+            melody![[5.0], [], [4.5, 5.0]]
+        );
+    }
+
+    #[test]
+    fn bounce_max() {
+        macro_rules! bounce_max_test {
+            ($init:expr, $arg:expr, $ret:expr) => {
+                assert_eq!($init.bounce_max($arg), $ret);
+            };
+        }
+
+        bounce_max_test!(5, 3, 1);
+        bounce_max_test!(3, 5, 3);
+        bounce_max_test!(None, 5, None);
+        bounce_max_test!(Some(5), 3, Some(1));
+        bounce_max_test!(Some(3), 5, Some(3));
+        bounce_max_test!(vec![5.0, 3.0], 4.0, vec![3.0, 3.0]);
+        bounce_max_test!(
+            MelodyMember::from(vec![3.0, 5.0]),
+            4.0,
+            MelodyMember::from(vec![3.0, 3.0])
+        );
+        bounce_max_test!(numseq![5.0, 3.0], 4.0, numseq![3.0, 3.0]);
+        bounce_max_test!(noteseq![5.0, None, 3.0], 4.0, noteseq![3.0, None, 3.0]);
+        bounce_max_test!(
+            chordseq![[5.0], [], [4.5, 3.0]],
+            4.0,
+            chordseq![[3.0], [], [3.5, 3.0]]
+        );
+        bounce_max_test!(
+            melody![[5.0], [], [4.5, 3.0]],
+            4.0,
+            melody![[3.0], [], [3.5, 3.0]]
         );
     }
 
