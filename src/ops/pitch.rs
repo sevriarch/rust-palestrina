@@ -106,7 +106,7 @@ pub trait Pitch<T> {
 
     /// Replace any pitches below the lower argument with the lower argument.
     /// Replace any pitches above the higher argument with the higher argument.
-    fn trim(&mut self, first: T, second: T) -> &Self;
+    fn trim(self, first: T, second: T) -> Self;
 
     /// Is this pitch or pitch container silent?
     fn is_silent(&self) -> bool;
@@ -166,9 +166,9 @@ macro_rules! impl_other_fns_for_seq {
             self
         }
 
-        fn trim(&mut self, first: $ty, second: $ty) -> &Self {
+        fn trim(mut self, first: $ty, second: $ty) -> Self {
             self.contents.iter_mut().for_each(|p| {
-                p.trim(first, second);
+                *p = p.trim(first, second);
             });
             self
         }
@@ -208,10 +208,10 @@ macro_rules! impl_other_fns_for_chordseq {
             self
         }
 
-        fn trim(&mut self, first: $ty, second: $ty) -> &Self {
+        fn trim(mut self, first: $ty, second: $ty) -> Self {
             self.contents.iter_mut().for_each(|p| {
                 p.iter_mut().for_each(|v| {
-                    v.trim(first, second);
+                    *v = v.trim(first, second);
                 });
             });
             self
@@ -252,10 +252,10 @@ macro_rules! impl_other_fns_for_melody {
             self
         }
 
-        fn trim(&mut self, first: $ty, second: $ty) -> &Self {
+        fn trim(mut self, first: $ty, second: $ty) -> Self {
             self.contents.iter_mut().for_each(|p| {
                 p.values.iter_mut().for_each(|v| {
-                    v.trim(first, second);
+                    *v = v.trim(first, second);
                 });
             });
             self
@@ -313,13 +313,13 @@ macro_rules! impl_traits_for_raw_values {
                 self
             }
 
-            fn trim(&mut self, first: $ty, second: $ty) -> &Self {
+            fn trim(mut self, first: $ty, second: $ty) -> Self {
                 let (low, hi) = if first > second { (second, first ) } else { (first, second) };
 
-                if *self < low {
-                    *self = low;
-                } else if *self > hi {
-                    *self = hi;
+                if self < low {
+                    self = low;
+                } else if self > hi {
+                    self = hi;
                 }
 
                 self
@@ -351,9 +351,9 @@ macro_rules! impl_traits_for_derived_entities {
                 self
             }
 
-            fn trim(&mut self, first: $ty, last: $ty) -> &Self {
+            fn trim(mut self, first: $ty, last: $ty) -> Self {
                 if let Some(p) = self.as_mut() {
-                    p.trim(first, last);
+                    self = Some(p.trim(first, last));
                 }
                 self
             }
@@ -376,8 +376,8 @@ macro_rules! impl_traits_for_derived_entities {
                 self
             }
 
-            fn trim(&mut self, first: $ty, last: $ty) -> &Self {
-                self.iter_mut().for_each(|p| { p.trim(first, last); });
+            fn trim(mut self, first: $ty, last: $ty) -> Self {
+                self = self.into_iter().map(|p| p.trim(first, last)).collect();
                 self
             }
 
@@ -399,8 +399,8 @@ macro_rules! impl_traits_for_derived_entities {
                 self
             }
 
-            fn trim(&mut self, first: $ty, last: $ty) -> &Self {
-                self.values.iter_mut().for_each(|p| { p.trim(first, last); });
+            fn trim(mut self, first: $ty, last: $ty) -> Self {
+                self.values = self.values.trim(first, last);
                 self
             }
 
@@ -803,7 +803,7 @@ mod tests {
     fn trim() {
         macro_rules! trim_test {
             ($init:expr, $first:expr, $second:expr, $ret:expr) => {
-                pitch_trait_test!(trim, $init, $first, $second, $ret);
+                assert_eq!($init.trim($first, $second), $ret);
             };
         }
 
