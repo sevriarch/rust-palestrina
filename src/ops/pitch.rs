@@ -320,32 +320,30 @@ mod tests {
 
     #[test]
     fn transpose_pitch() {
-        pitch_trait_test!(transpose_pitch, 5, 6, 11);
-        pitch_trait_test!(transpose_pitch, 5.5, 6.0, 11.5);
-        pitch_trait_test!(transpose_pitch, None, 6, None);
-        pitch_trait_test!(transpose_pitch, Some(5), 6, Some(11));
-        pitch_trait_test!(transpose_pitch, vec![4, 5, 6], 6, vec![10, 11, 12]);
-        pitch_trait_test!(
-            transpose_pitch,
+        macro_rules! transpose_pitch_test {
+            ($init:expr, $arg:expr, $ret:expr) => {
+                pitch_trait_test!(transpose_pitch, $init, $arg, $ret);
+            };
+        }
+
+        transpose_pitch_test!(5, 6, 11);
+        transpose_pitch_test!(5.5, 6.0, 11.5);
+        transpose_pitch_test!(None, 6, None);
+        transpose_pitch_test!(Some(5), 6, Some(11));
+        transpose_pitch_test!(vec![4, 5, 6], 6, vec![10, 11, 12]);
+        transpose_pitch_test!(
             MelodyMember::from(vec![4, 5, 6]),
             6,
             MelodyMember::from(vec![10, 11, 12])
         );
-        pitch_trait_test!(transpose_pitch, numseq![4, 5, 6], 6, numseq![10, 11, 12]);
-        pitch_trait_test!(
-            transpose_pitch,
-            noteseq![4, None, 6],
-            6,
-            noteseq![10, None, 12]
-        );
-        pitch_trait_test!(
-            transpose_pitch,
+        transpose_pitch_test!(numseq![4, 5, 6], 6, numseq![10, 11, 12]);
+        transpose_pitch_test!(noteseq![4, None, 6], 6, noteseq![10, None, 12]);
+        transpose_pitch_test!(
             chordseq![[4, 5, 6], [], [7]],
             6,
             chordseq![[10, 11, 12], [], [13]]
         );
-        pitch_trait_test!(
-            transpose_pitch,
+        transpose_pitch_test!(
             melody![[4, 5, 6], [], [7]],
             6,
             melody![[10, 11, 12], [], [13]]
@@ -354,167 +352,116 @@ mod tests {
 
     #[test]
     fn invert_pitch() {
-        pitch_trait_test!(invert_pitch, 5, 6, 7);
-        pitch_trait_test!(invert_pitch, 5.5, 6.0, 6.5);
-        pitch_trait_test!(invert_pitch, None, 6, None);
-        pitch_trait_test!(invert_pitch, Some(5), 6, Some(7));
-        pitch_trait_test!(invert_pitch, vec![4, 5, 6], 6, vec![8, 7, 6]);
-        pitch_trait_test!(
-            invert_pitch,
+        macro_rules! invert_pitch_test {
+            ($init:expr, $arg:expr, $ret:expr) => {
+                pitch_trait_test!(invert_pitch, $init, $arg, $ret);
+            };
+        }
+
+        invert_pitch_test!(5, 6, 7);
+        invert_pitch_test!(5.5, 6.0, 6.5);
+        invert_pitch_test!(None, 6, None);
+        invert_pitch_test!(Some(5), 6, Some(7));
+        invert_pitch_test!(vec![4, 5, 6], 6, vec![8, 7, 6]);
+        invert_pitch_test!(
             MelodyMember::from(vec![4, 5, 6]),
             6,
             MelodyMember::from(vec![8, 7, 6])
         );
-        pitch_trait_test!(invert_pitch, numseq![4, 5, 6], 6, numseq![8, 7, 6]);
-        pitch_trait_test!(invert_pitch, noteseq![4, None, 6], 6, noteseq![8, None, 6]);
-        pitch_trait_test!(
-            invert_pitch,
+        invert_pitch_test!(numseq![4, 5, 6], 6, numseq![8, 7, 6]);
+        invert_pitch_test!(noteseq![4, None, 6], 6, noteseq![8, None, 6]);
+        invert_pitch_test!(
             chordseq![[4, 5, 6], [], [7]],
             6,
             chordseq![[8, 7, 6], [], [5]]
         );
-        pitch_trait_test!(
-            invert_pitch,
-            melody![[4, 5, 6], [], [7]],
-            6,
-            melody![[8, 7, 6], [], [5]]
-        );
+        invert_pitch_test!(melody![[4, 5, 6], [], [7]], 6, melody![[8, 7, 6], [], [5]]);
     }
 
     #[test]
     fn augment_pitch() {
-        pitch_trait_test!(augment_pitch, 4, &2, 8);
-        pitch_trait_test!(augment_pitch, 4, &2.5, 10);
-        pitch_trait_test!(augment_pitch, 2.5, &3, 7.5);
-        pitch_trait_test!(augment_pitch, 2.5, &3.0, 7.5);
-        pitch_trait_test!(augment_pitch, None::<i32>, &2, None);
-        pitch_trait_test!(augment_pitch, None::<i32>, &2.5, None);
-        pitch_trait_test!(augment_pitch, None::<f32>, &2, None);
-        pitch_trait_test!(augment_pitch, None::<f32>, &2.5, None);
-        pitch_trait_test!(augment_pitch, Some(4), &2, Some(8));
-        pitch_trait_test!(augment_pitch, Some(4), &2.5, Some(10));
-        pitch_trait_test!(augment_pitch, Some(2.5), &3, Some(7.5));
-        pitch_trait_test!(augment_pitch, Some(2.5), &3.0, Some(7.5));
-        pitch_trait_test!(augment_pitch, vec![4, 5, 7], &2, vec![8, 10, 14]);
-        pitch_trait_test!(augment_pitch, vec![4, 5, 7], &2.5, vec![10, 12, 17]);
-        pitch_trait_test!(
-            augment_pitch,
-            vec![4.0, 5.5, 6.5],
-            &3,
-            vec![12.0, 16.5, 19.5]
-        );
-        pitch_trait_test!(
-            augment_pitch,
-            vec![4.0, 5.5, 6.5],
-            &3.0,
-            vec![12.0, 16.5, 19.5]
-        );
-        pitch_trait_test!(
-            augment_pitch,
+        macro_rules! augment_pitch_test {
+            ($init:expr, $arg:expr, $ret:expr) => {
+                pitch_trait_test!(augment_pitch, $init, $arg, $ret);
+            };
+        }
+
+        augment_pitch_test!(4, &2, 8);
+        augment_pitch_test!(4, &2.5, 10);
+        augment_pitch_test!(2.5, &3, 7.5);
+        augment_pitch_test!(2.5, &3.0, 7.5);
+        augment_pitch_test!(None::<i32>, &2, None);
+        augment_pitch_test!(None::<i32>, &2.5, None);
+        augment_pitch_test!(None::<f32>, &2, None);
+        augment_pitch_test!(None::<f32>, &2.5, None);
+        augment_pitch_test!(Some(4), &2, Some(8));
+        augment_pitch_test!(Some(4), &2.5, Some(10));
+        augment_pitch_test!(Some(2.5), &3, Some(7.5));
+        augment_pitch_test!(Some(2.5), &3.0, Some(7.5));
+        augment_pitch_test!(vec![4, 5, 7], &2, vec![8, 10, 14]);
+        augment_pitch_test!(vec![4, 5, 7], &2.5, vec![10, 12, 17]);
+        augment_pitch_test!(vec![4.0, 5.5, 6.5], &3, vec![12.0, 16.5, 19.5]);
+        augment_pitch_test!(vec![4.0, 5.5, 6.5], &3.0, vec![12.0, 16.5, 19.5]);
+        augment_pitch_test!(
             MelodyMember::from(vec![4, 5, 7]),
             &2,
             MelodyMember::from(vec![8, 10, 14])
         );
-        pitch_trait_test!(
-            augment_pitch,
+        augment_pitch_test!(
             MelodyMember::from(vec![4, 5, 7]),
             &2.5,
             MelodyMember::from(vec![10, 12, 17])
         );
-        pitch_trait_test!(
-            augment_pitch,
+        augment_pitch_test!(
             MelodyMember::from(vec![4.0, 5.5, 6.5]),
             &3,
             MelodyMember::from(vec![12.0, 16.5, 19.5])
         );
-        pitch_trait_test!(
-            augment_pitch,
+        augment_pitch_test!(
             MelodyMember::from(vec![4.0, 5.5, 6.5]),
             &3.0,
             MelodyMember::from(vec![12.0, 16.5, 19.5])
         );
-        pitch_trait_test!(augment_pitch, numseq![4, 5, 7], &2, numseq![8, 10, 14]);
-        pitch_trait_test!(augment_pitch, numseq![4, 5, 7], &2.5, numseq![10, 12, 17]);
-        pitch_trait_test!(
-            augment_pitch,
-            numseq![4.0, 5.5, 6.5],
-            &3,
-            numseq![12.0, 16.5, 19.5]
-        );
-        pitch_trait_test!(
-            augment_pitch,
-            numseq![4.0, 5.5, 6.5],
-            &3.0,
-            numseq![12.0, 16.5, 19.5]
-        );
-        pitch_trait_test!(
-            augment_pitch,
-            noteseq![4, None, 5, 7],
-            &2,
-            noteseq![8, None, 10, 14]
-        );
-        pitch_trait_test!(
-            augment_pitch,
-            noteseq![4, None, 5, 7],
-            &2.5,
-            noteseq![10, None, 12, 17]
-        );
-        pitch_trait_test!(
-            augment_pitch,
+        augment_pitch_test!(numseq![4, 5, 7], &2, numseq![8, 10, 14]);
+        augment_pitch_test!(numseq![4, 5, 7], &2.5, numseq![10, 12, 17]);
+        augment_pitch_test!(numseq![4.0, 5.5, 6.5], &3, numseq![12.0, 16.5, 19.5]);
+        augment_pitch_test!(numseq![4.0, 5.5, 6.5], &3.0, numseq![12.0, 16.5, 19.5]);
+        augment_pitch_test!(noteseq![4, None, 5, 7], &2, noteseq![8, None, 10, 14]);
+        augment_pitch_test!(noteseq![4, None, 5, 7], &2.5, noteseq![10, None, 12, 17]);
+        augment_pitch_test!(
             noteseq![4.0, None, 5.5, 6.5],
             &3,
             noteseq![12.0, None, 16.5, 19.5]
         );
-        pitch_trait_test!(
-            augment_pitch,
+        augment_pitch_test!(
             noteseq![4.0, None, 5.5, 6.5],
             &3.0,
             noteseq![12.0, None, 16.5, 19.5]
         );
-        pitch_trait_test!(
-            augment_pitch,
-            chordseq![[4], [], [5, 7]],
-            &2,
-            chordseq![[8], [], [10, 14]]
-        );
-        pitch_trait_test!(
-            augment_pitch,
+        augment_pitch_test!(chordseq![[4], [], [5, 7]], &2, chordseq![[8], [], [10, 14]]);
+        augment_pitch_test!(
             chordseq![[4], [], [5, 7]],
             &2.5,
             chordseq![[10], [], [12, 17]]
         );
-        pitch_trait_test!(
-            augment_pitch,
+        augment_pitch_test!(
             chordseq![[4.0], [], [5.5, 6.5]],
             &3,
             chordseq![[12.0], [], [16.5, 19.5]]
         );
-        pitch_trait_test!(
-            augment_pitch,
+        augment_pitch_test!(
             chordseq![[4.0], [], [5.5, 6.5]],
             &3.0,
             chordseq![[12.0], [], [16.5, 19.5]]
         );
-        pitch_trait_test!(
-            augment_pitch,
-            melody![[4], [], [5, 7]],
-            &2,
-            melody![[8], [], [10, 14]]
-        );
-        pitch_trait_test!(
-            augment_pitch,
-            melody![[4], [], [5, 7]],
-            &2.5,
-            melody![[10], [], [12, 17]]
-        );
-        pitch_trait_test!(
-            augment_pitch,
+        augment_pitch_test!(melody![[4], [], [5, 7]], &2, melody![[8], [], [10, 14]]);
+        augment_pitch_test!(melody![[4], [], [5, 7]], &2.5, melody![[10], [], [12, 17]]);
+        augment_pitch_test!(
             melody![[4.0], [], [5.5, 6.5]],
             &3,
             melody![[12.0], [], [16.5, 19.5]]
         );
-        pitch_trait_test!(
-            augment_pitch,
+        augment_pitch_test!(
             melody![[4.0], [], [5.5, 6.5]],
             &3.0,
             melody![[12.0], [], [16.5, 19.5]]
@@ -523,138 +470,88 @@ mod tests {
 
     #[test]
     fn diminish_pitch() {
-        pitch_trait_test!(diminish_pitch, 8, &2, 4);
-        pitch_trait_test!(diminish_pitch, 10, &2.5, 4);
-        pitch_trait_test!(diminish_pitch, 7.5, &3, 2.5);
-        pitch_trait_test!(diminish_pitch, 7.5, &3.0, 2.5);
-        pitch_trait_test!(diminish_pitch, None::<i32>, &2, None);
-        pitch_trait_test!(diminish_pitch, None::<i32>, &2.5, None);
-        pitch_trait_test!(diminish_pitch, None::<f32>, &2, None);
-        pitch_trait_test!(diminish_pitch, None::<f32>, &2.5, None);
-        pitch_trait_test!(diminish_pitch, Some(8), &2, Some(4));
-        pitch_trait_test!(diminish_pitch, Some(10), &2.5, Some(4));
-        pitch_trait_test!(diminish_pitch, Some(7.5), &3, Some(2.5));
-        pitch_trait_test!(diminish_pitch, Some(7.5), &3.0, Some(2.5));
-        pitch_trait_test!(diminish_pitch, vec![8, 10, 14], &2, vec![4, 5, 7]);
-        pitch_trait_test!(diminish_pitch, vec![10, 12, 17], &2.5, vec![4, 4, 6]);
-        pitch_trait_test!(
-            diminish_pitch,
-            vec![12.0, 16.5, 19.5],
-            &3,
-            vec![4.0, 5.5, 6.5]
-        );
-        pitch_trait_test!(
-            diminish_pitch,
-            vec![12.0, 16.5, 19.5],
-            &3.0,
-            vec![4.0, 5.5, 6.5]
-        );
-        pitch_trait_test!(
-            diminish_pitch,
+        macro_rules! diminish_pitch_test {
+            ($init:expr, $arg:expr, $ret:expr) => {
+                pitch_trait_test!(diminish_pitch, $init, $arg, $ret);
+            };
+        }
+
+        diminish_pitch_test!(8, &2, 4);
+        diminish_pitch_test!(10, &2.5, 4);
+        diminish_pitch_test!(7.5, &3, 2.5);
+        diminish_pitch_test!(7.5, &3.0, 2.5);
+        diminish_pitch_test!(None::<i32>, &2, None);
+        diminish_pitch_test!(None::<i32>, &2.5, None);
+        diminish_pitch_test!(None::<f32>, &2, None);
+        diminish_pitch_test!(None::<f32>, &2.5, None);
+        diminish_pitch_test!(Some(8), &2, Some(4));
+        diminish_pitch_test!(Some(10), &2.5, Some(4));
+        diminish_pitch_test!(Some(7.5), &3, Some(2.5));
+        diminish_pitch_test!(Some(7.5), &3.0, Some(2.5));
+        diminish_pitch_test!(vec![8, 10, 14], &2, vec![4, 5, 7]);
+        diminish_pitch_test!(vec![10, 12, 17], &2.5, vec![4, 4, 6]);
+        diminish_pitch_test!(vec![12.0, 16.5, 19.5], &3, vec![4.0, 5.5, 6.5]);
+        diminish_pitch_test!(vec![12.0, 16.5, 19.5], &3.0, vec![4.0, 5.5, 6.5]);
+        diminish_pitch_test!(
             MelodyMember::from(vec![8, 10, 14]),
             &2,
             MelodyMember::from(vec![4, 5, 7])
         );
-        pitch_trait_test!(
-            diminish_pitch,
+        diminish_pitch_test!(
             MelodyMember::from(vec![10, 12, 17]),
             &2.5,
             MelodyMember::from(vec![4, 4, 6])
         );
-        pitch_trait_test!(
-            diminish_pitch,
+        diminish_pitch_test!(
             MelodyMember::from(vec![12.0, 16.5, 19.5]),
             &3,
             MelodyMember::from(vec![4.0, 5.5, 6.5])
         );
-        pitch_trait_test!(
-            diminish_pitch,
+        diminish_pitch_test!(
             MelodyMember::from(vec![12.0, 16.5, 19.5]),
             &3.0,
             MelodyMember::from(vec![4.0, 5.5, 6.5])
         );
-        pitch_trait_test!(diminish_pitch, numseq![8, 10, 14], &2, numseq![4, 5, 7]);
-        pitch_trait_test!(diminish_pitch, numseq![10, 12, 17], &2.5, numseq![4, 4, 6]);
-        pitch_trait_test!(
-            diminish_pitch,
-            numseq![12.0, 16.5, 19.5],
-            &3,
-            numseq![4.0, 5.5, 6.5]
-        );
-        pitch_trait_test!(
-            diminish_pitch,
-            numseq![12.0, 16.5, 19.5],
-            &3.0,
-            numseq![4.0, 5.5, 6.5]
-        );
-        pitch_trait_test!(
-            diminish_pitch,
-            noteseq![8, None, 10, 14],
-            &2,
-            noteseq![4, None, 5, 7]
-        );
-        pitch_trait_test!(
-            diminish_pitch,
-            noteseq![10, None, 12, 17],
-            &2.5,
-            noteseq![4, None, 4, 6]
-        );
-        pitch_trait_test!(
-            diminish_pitch,
+        diminish_pitch_test!(numseq![8, 10, 14], &2, numseq![4, 5, 7]);
+        diminish_pitch_test!(numseq![10, 12, 17], &2.5, numseq![4, 4, 6]);
+        diminish_pitch_test!(numseq![12.0, 16.5, 19.5], &3, numseq![4.0, 5.5, 6.5]);
+        diminish_pitch_test!(numseq![12.0, 16.5, 19.5], &3.0, numseq![4.0, 5.5, 6.5]);
+        diminish_pitch_test!(noteseq![8, None, 10, 14], &2, noteseq![4, None, 5, 7]);
+        diminish_pitch_test!(noteseq![10, None, 12, 17], &2.5, noteseq![4, None, 4, 6]);
+        diminish_pitch_test!(
             noteseq![12.0, None, 16.5, 19.5],
             &3,
             noteseq![4.0, None, 5.5, 6.5]
         );
-        pitch_trait_test!(
-            diminish_pitch,
+        diminish_pitch_test!(
             noteseq![12.0, None, 16.5, 19.5],
             &3.0,
             noteseq![4.0, None, 5.5, 6.5]
         );
-        pitch_trait_test!(
-            diminish_pitch,
-            chordseq![[8], [], [10, 14]],
-            &2,
-            chordseq![[4], [], [5, 7]]
-        );
-        pitch_trait_test!(
-            diminish_pitch,
+        diminish_pitch_test!(chordseq![[8], [], [10, 14]], &2, chordseq![[4], [], [5, 7]]);
+        diminish_pitch_test!(
             chordseq![[10], [], [12, 17]],
             &2.5,
             chordseq![[4], [], [4, 6]]
         );
-        pitch_trait_test!(
-            diminish_pitch,
+        diminish_pitch_test!(
             chordseq![[12.0], [], [16.5, 19.5]],
             &3,
             chordseq![[4.0], [], [5.5, 6.5]]
         );
-        pitch_trait_test!(
-            diminish_pitch,
+        diminish_pitch_test!(
             chordseq![[12.0], [], [16.5, 19.5]],
             &3.0,
             chordseq![[4.0], [], [5.5, 6.5]]
         );
-        pitch_trait_test!(
-            diminish_pitch,
-            melody![[8], [], [10, 14]],
-            &2,
-            melody![[4], [], [5, 7]]
-        );
-        pitch_trait_test!(
-            diminish_pitch,
-            melody![[10], [], [12, 17]],
-            &2.5,
-            melody![[4], [], [4, 6]]
-        );
-        pitch_trait_test!(
-            diminish_pitch,
+        diminish_pitch_test!(melody![[8], [], [10, 14]], &2, melody![[4], [], [5, 7]]);
+        diminish_pitch_test!(melody![[10], [], [12, 17]], &2.5, melody![[4], [], [4, 6]]);
+        diminish_pitch_test!(
             melody![[12.0], [], [16.5, 19.5]],
             &3,
             melody![[4.0], [], [5.5, 6.5]]
         );
-        pitch_trait_test!(
-            diminish_pitch,
+        diminish_pitch_test!(
             melody![[12.0], [], [16.5, 19.5]],
             &3.0,
             melody![[4.0], [], [5.5, 6.5]]
