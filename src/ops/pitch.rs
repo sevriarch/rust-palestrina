@@ -114,11 +114,8 @@ pub trait Pitch<T> {
 
 macro_rules! impl_fns_for_option {
     ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(mut self, n: $ty) -> Self {
-            if let Some(p) = self.as_mut() {
-                self = Some(p.$fn(n));
-            }
-            self
+        fn $fn(self, n: $ty) -> Self {
+            self.map(|v| v.$fn(n))
         }
     )*)
 }
@@ -337,25 +334,16 @@ macro_rules! impl_traits_for_derived_entities {
         impl Pitch<$ty> for Option<$ty> {
             impl_fns_for_option!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max);
 
-            fn augment_pitch<AT: AugDim<$ty>>(mut self, n: &AT) -> Self {
-                if let Some(p) = self.as_mut() {
-                    self = Some(p.augment_pitch(n));
-                }
-                self
+            fn augment_pitch<AT: AugDim<$ty>>(self, n: &AT) -> Self {
+                self.map(|p| p.augment_pitch(n))
             }
 
-            fn diminish_pitch<AT: AugDim<$ty>>(mut self, n: &AT) -> Self {
-                if let Some(p) = self.as_mut() {
-                    self = Some(p.diminish_pitch(n));
-                }
-                self
+            fn diminish_pitch<AT: AugDim<$ty>>(self, n: &AT) -> Self {
+                self.map(|p| p.diminish_pitch(n))
             }
 
             fn trim(mut self, first: $ty, last: $ty) -> Self {
-                if let Some(p) = self.as_mut() {
-                    self = Some(p.trim(first, last));
-                }
-                self
+                self.map(|p| p.trim(first, last))
             }
 
             fn is_silent(&self) -> bool {
