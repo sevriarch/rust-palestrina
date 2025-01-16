@@ -663,33 +663,31 @@ mod tests {
 
     #[test]
     fn trim_min() {
-        pitch_trait_test!(trim_min, 5, 3, 5);
-        pitch_trait_test!(trim_min, 3, 5, 5);
-        pitch_trait_test!(trim_min, None, 5, None);
-        pitch_trait_test!(trim_min, Some(5), 3, Some(5));
-        pitch_trait_test!(trim_min, Some(3), 5, Some(5));
-        pitch_trait_test!(trim_min, vec![5.0, 3.0], 4.0, vec![5.0, 4.0]);
-        pitch_trait_test!(
-            trim_min,
+        macro_rules! trim_min_test {
+            ($init:expr, $arg:expr, $ret:expr) => {
+                pitch_trait_test!(trim_min, $init, $arg, $ret);
+            };
+        }
+
+        trim_min_test!(5, 3, 5);
+        trim_min_test!(3, 5, 5);
+        trim_min_test!(None, 5, None);
+        trim_min_test!(Some(5), 3, Some(5));
+        trim_min_test!(Some(3), 5, Some(5));
+        trim_min_test!(vec![5.0, 3.0], 4.0, vec![5.0, 4.0]);
+        trim_min_test!(
             MelodyMember::from(vec![5.0, 3.0]),
             4.0,
             MelodyMember::from(vec![5.0, 4.0])
         );
-        pitch_trait_test!(trim_min, numseq![5.0, 3.0], 4.0, numseq![5.0, 4.0]);
-        pitch_trait_test!(
-            trim_min,
-            noteseq![5.0, None, 3.0],
-            4.0,
-            noteseq![5.0, None, 4.0]
-        );
-        pitch_trait_test!(
-            trim_min,
+        trim_min_test!(numseq![5.0, 3.0], 4.0, numseq![5.0, 4.0]);
+        trim_min_test!(noteseq![5.0, None, 3.0], 4.0, noteseq![5.0, None, 4.0]);
+        trim_min_test!(
             chordseq![[5.0], [], [4.5, 3.0]],
             4.0,
             chordseq![[5.0], [], [4.5, 4.0]]
         );
-        pitch_trait_test!(
-            trim_min,
+        trim_min_test!(
             melody![[5.0], [], [4.5, 3.0]],
             4.0,
             melody![[5.0], [], [4.5, 4.0]]
@@ -698,33 +696,31 @@ mod tests {
 
     #[test]
     fn trim_max() {
-        pitch_trait_test!(trim_max, 5, 3, 3);
-        pitch_trait_test!(trim_max, 3, 5, 3);
-        pitch_trait_test!(trim_max, None, 5, None);
-        pitch_trait_test!(trim_max, Some(5), 3, Some(3));
-        pitch_trait_test!(trim_max, Some(3), 5, Some(3));
-        pitch_trait_test!(trim_max, vec![5.0, 3.0], 4.0, vec![4.0, 3.0]);
-        pitch_trait_test!(
-            trim_max,
+        macro_rules! trim_max_test {
+            ($init:expr, $arg:expr, $ret:expr) => {
+                pitch_trait_test!(trim_max, $init, $arg, $ret);
+            };
+        }
+
+        trim_max_test!(5, 3, 3);
+        trim_max_test!(3, 5, 3);
+        trim_max_test!(None, 5, None);
+        trim_max_test!(Some(5), 3, Some(3));
+        trim_max_test!(Some(3), 5, Some(3));
+        trim_max_test!(vec![5.0, 3.0], 4.0, vec![4.0, 3.0]);
+        trim_max_test!(
             MelodyMember::from(vec![5.0, 3.0]),
             4.0,
             MelodyMember::from(vec![4.0, 3.0])
         );
-        pitch_trait_test!(trim_max, numseq![5.0, 3.0], 4.0, numseq![4.0, 3.0]);
-        pitch_trait_test!(
-            trim_max,
-            noteseq![5.0, None, 3.0],
-            4.0,
-            noteseq![4.0, None, 3.0]
-        );
-        pitch_trait_test!(
-            trim_max,
+        trim_max_test!(numseq![5.0, 3.0], 4.0, numseq![4.0, 3.0]);
+        trim_max_test!(noteseq![5.0, None, 3.0], 4.0, noteseq![4.0, None, 3.0]);
+        trim_max_test!(
             chordseq![[5.0], [], [4.5, 3.0]],
             4.0,
             chordseq![[4.0], [], [4.0, 3.0]]
         );
-        pitch_trait_test!(
-            trim_max,
+        trim_max_test!(
             melody![[5.0], [], [4.5, 3.0]],
             4.0,
             melody![[4.0], [], [4.0, 3.0]]
