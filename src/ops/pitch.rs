@@ -4,7 +4,9 @@ use crate::sequences::{
     note::NoteSeq,
     numeric::NumericSeq,
 };
+use anyhow::{anyhow, Result};
 use num_traits::Zero;
+use thiserror::Error;
 
 pub trait AugDim<MT>
 where
@@ -64,6 +66,12 @@ make_single_conv_aug_dim_int!(for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64
 make_single_conv_aug_dim_float!(for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64);
 make_double_conv_aug_dim!(for f32 f64);
 
+#[derive(Clone, Error, Debug)]
+pub enum PitchError {
+    #[error("{0} operation generated no pitches when a pitch was required")]
+    RequiredPitchAbsent(String),
+}
+
 /// A trait that implements various operations that can be executed on pitches
 /// or containers for pitches.
 pub trait Pitch<T>
@@ -72,6 +80,12 @@ where
 {
     /// A map operation on pitches.
     fn map_pitch<MapT: Fn(&T) -> T>(self, f: MapT) -> Self;
+
+    /// A map operation on pitches that removes pitches where the map operation
+    /// returns None, but retains those where the map operation returns Some(pitch).
+    fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(self, f: MapT) -> Result<Self>
+    where
+        Self: std::marker::Sized;
 
     /// Transpose pitches up or down.
     fn transpose_pitch(self, n: T) -> Self;
@@ -139,6 +153,15 @@ macro_rules! impl_traits_for_pitches {
             fn map_pitch<MapT: Fn(&$ty) -> $ty>(mut self, f: MapT) -> Self {
                 self = f(&self);
                 self
+            }
+
+            fn filter_map_pitch<MapT: Fn(&$ty) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
+                if let Some(p) = f(&self) {
+                    self = p;
+                    Ok(self)
+                } else {
+                    Err(anyhow!(PitchError::RequiredPitchAbsent("Pitch.filter_map_pitch()".to_string())))
+                }
             }
 
             fn transpose_pitch(mut self, n: $ty) -> Self {
@@ -306,6 +329,10 @@ macro_rules! impl_traits_for_pitch_containers {
                 self.map(|p| f(&p))
             }
 
+            fn filter_map_pitch<MapT: Fn(&$ty) -> Option<$ty>>(self, f: MapT) -> Result<Self> {
+                Ok(self.map(|p| f(&p)).flatten())
+            }
+
             fn augment_pitch<AT: AugDim<$ty> + Copy>(self, n: AT) -> Self {
                 self.map(|p| p.augment_pitch(n))
             }
@@ -333,6 +360,11 @@ macro_rules! impl_traits_for_pitch_containers {
             fn map_pitch<MapT: Fn(&$ty) -> $ty>(mut self, f: MapT) -> Self {
                 self.iter_mut().for_each(|p| *p = f(p));
                 self
+            }
+
+            fn filter_map_pitch<MapT: Fn(&$ty) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
+                self = self.into_iter().filter_map(|p| f(&p)).collect();
+                Ok(self)
             }
 
             fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
@@ -366,6 +398,11 @@ macro_rules! impl_traits_for_pitch_containers {
             fn map_pitch<MapT: Fn(&$ty) -> $ty>(mut self, f: MapT) -> Self {
                 self.values.iter_mut().for_each(|p| *p = f(p));
                 self
+            }
+
+            fn filter_map_pitch<MapT: Fn(&$ty) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
+                self.values = self.values.into_iter().filter_map(|p| f(&p)).collect();
+                Ok(self)
             }
 
             fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
@@ -402,6 +439,14 @@ macro_rules! impl_traits_for_pitch_containers {
                 });
                 self
             }
+
+            fn filter_map_pitch<MapT: Fn(&$ty) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
+                for p in self.contents.iter_mut() {
+                    *p = p.filter_map_pitch(&f)?;
+                }
+                Ok(self)
+            }
+
             fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
                 self.contents.iter_mut().for_each(|p| {
                     *p = p.augment_pitch(n);
@@ -443,6 +488,11 @@ macro_rules! impl_traits_for_pitch_containers {
                     *p = p.map(|v| f(&v));
                 });
                 self
+            }
+
+            fn filter_map_pitch<MapT: Fn(&$ty) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
+                self.contents.iter_mut().for_each(|p| *p = p.map(|v| f(&v)).flatten());
+                Ok(self)
             }
 
             fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
@@ -489,6 +539,12 @@ macro_rules! impl_traits_for_pitch_containers {
                 });
                 self
             }
+
+            fn filter_map_pitch<MapT: Fn(&$ty) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
+                self.contents.iter_mut().for_each(|p| *p = p.into_iter().filter_map(|p| f(&p)).collect());
+                Ok(self)
+            }
+
             fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
                 self.contents.iter_mut().for_each(|p| {
                     p.iter_mut().for_each(|v| {
@@ -540,6 +596,15 @@ macro_rules! impl_traits_for_pitch_containers {
                     });
                 });
                 self
+            }
+
+            fn filter_map_pitch<MapT: Fn(&$ty) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
+                self.contents.iter_mut().for_each(|p| {
+                    let v = &mut p.values;
+
+                    *v = v.into_iter().filter_map(|p| f(&p)).collect();
+                });
+                Ok(self)
             }
 
             fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
@@ -629,6 +694,62 @@ mod tests {
             melody![[3.0], [], [4.0, 5.0]],
             |v| v / 2.0,
             melody![[1.5], [], [2.0, 2.5]]
+        );
+    }
+
+    #[test]
+    fn filter_map_pitch() {
+        macro_rules! filter_map_pitch_test {
+            ($init:expr, $fn:expr, $ret:expr) => {
+                assert_eq!($init.filter_map_pitch($fn).unwrap(), $ret);
+            };
+        }
+
+        assert!(6.filter_map_pitch(|_| None).is_err());
+        filter_map_pitch_test!(6, |v| if v % 2 == 0 { Some(v / 2) } else { None }, 3);
+        filter_map_pitch_test!(None, |v| if v % 2 == 0 { Some(v / 2) } else { None }, None);
+        filter_map_pitch_test!(
+            Some(5),
+            |v| if v % 2 == 0 { Some(v / 2) } else { None },
+            None
+        );
+        filter_map_pitch_test!(
+            Some(6),
+            |v| if v % 2 == 0 { Some(v / 2) } else { None },
+            Some(3)
+        );
+        filter_map_pitch_test!(
+            vec![5, 6, 7],
+            |v| if v % 2 == 0 { Some(v / 2) } else { None },
+            vec![3]
+        );
+        filter_map_pitch_test!(
+            MelodyMember::from(vec![5, 6, 7]),
+            |v| if v % 2 == 0 { Some(v / 2) } else { None },
+            MelodyMember::from(vec![3])
+        );
+        assert!(numseq![5, 6, 7]
+            .filter_map_pitch(|v| if v % 2 == 0 { Some(v / 2) } else { None })
+            .is_err());
+        filter_map_pitch_test!(
+            numseq![4, 6, 8],
+            |v| if v % 2 == 0 { Some(v / 2) } else { None },
+            numseq![2, 3, 4]
+        );
+        filter_map_pitch_test!(
+            noteseq![5, None, 6, 7],
+            |v| if v % 2 == 0 { Some(v / 2) } else { None },
+            noteseq![None, None, 3, None]
+        );
+        filter_map_pitch_test!(
+            chordseq![[4.4, 5.6], [], [5.3], [9.7, 11.1]],
+            |v| if *v < 6.5 { Some(*v + 5.5) } else { None },
+            chordseq![[9.9, 11.1], [], [10.8], []]
+        );
+        filter_map_pitch_test!(
+            chordseq![[4.4, 5.6], [], [5.3], [9.7, 11.1]],
+            |v| if *v < 6.5 { Some(*v + 5.5) } else { None },
+            chordseq![[9.9, 11.1], [], [10.8], []]
         );
     }
 
