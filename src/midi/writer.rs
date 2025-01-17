@@ -7,8 +7,23 @@ use anyhow::{anyhow, Result};
 use std::fs::File;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::Write;
+use thiserror::Error;
 
 use super::constants::*;
+
+#[derive(Clone, Error, Debug)]
+pub enum MidiError {
+    #[error("Invalid number of bytes requested: {0}")]
+    InvalidRequestedBytes(usize),
+    #[error("Number {0} does not fit in requested number of bytes {1}")]
+    NumberExceedsRequestedBytes(u32, usize),
+    #[error("Number {0} exceeds maximum permitted {1}")]
+    NumberExceedsMaximumPermitted(u32, u32),
+    #[error("Pitch {0} out of permitted range (0x00-0x7f)")]
+    PitchOutOfRange(String),
+    #[error("Unsupported metadata {0}")]
+    UnsupportedMetadata(MetadataData),
+}
 
 pub trait ToMidiBytes {
     fn try_to_midi_bytes(&self) -> Result<Vec<u8>>;
@@ -28,8 +43,8 @@ pub trait ToVecTimedMidiBytes {
 }
 
 fn try_number_to_fixed_bytes(num: u32, size: usize) -> Result<Vec<u8>> {
-    if size == 0 {
-        return Err(anyhow!("can't convert a number to zero bytes"));
+    if size == 0 || size > 4 {
+        return Err(anyhow!(MidiError::InvalidRequestedBytes(size)));
     }
 
     let mut bytes = Vec::<u8>::with_capacity(size);
@@ -42,7 +57,7 @@ fn try_number_to_fixed_bytes(num: u32, size: usize) -> Result<Vec<u8>> {
     }
 
     if n > 0xff {
-        return Err(anyhow!("number {} cannot fit into {} bytes", n, size));
+        return Err(anyhow!(MidiError::NumberExceedsRequestedBytes(n, size)));
     }
 
     bytes.reverse();
@@ -51,7 +66,9 @@ fn try_number_to_fixed_bytes(num: u32, size: usize) -> Result<Vec<u8>> {
 
 fn try_number_to_variable_bytes(num: u32) -> Result<Vec<u8>> {
     if num > 0xfffffff {
-        return Err(anyhow!("number {:?} >= 2^28", num));
+        return Err(anyhow!(MidiError::NumberExceedsMaximumPermitted(
+            num, 0xfffffff
+        )));
     }
 
     let mut bytes = Vec::<u8>::with_capacity(4);
@@ -124,7 +141,7 @@ impl ToMidiBytes for MetadataData {
             MetadataData::Balance(i16),
             MetadataData::PitchBend(i16),
             */
-            _ => Err(anyhow!("invalid metadata")),
+            _ => Err(anyhow!(MidiError::UnsupportedMetadata(self.clone()))),
         }
     }
 }
@@ -160,7 +177,8 @@ macro_rules! impl_int_melody_member_to_vec_timed_midi_bytes {
 
                 for p in self.values.iter() {
                     if *p <= 0 || *p > 127 {
-                        return Err(anyhow!("pitch {} out of range", *p));
+                        // There may be a cleaner way to do this
+                        return Err(anyhow!(MidiError::PitchOutOfRange(format!("{:?}", p))));
                     }
 
                     ret.append(&mut vec![
@@ -190,7 +208,8 @@ macro_rules! impl_float_melody_member_to_vec_timed_midi_bytes {
 
                 for p in self.values.iter() {
                     if *p <= 0.0 || *p > 127.0 {
-                        return Err(anyhow!("pitch {} out of range", *p));
+                        // There may be a cleaner way to do this
+                        return Err(anyhow!(MidiError::PitchOutOfRange(format!("{:?}", p))));
                     }
 
                     let mut f = (p.fract() * 4096.0).round() as i32;
@@ -301,13 +320,9 @@ macro_rules! impl_score_to_midi_bytes {
             fn try_to_write_midi_bytes(&self, file: &str) -> Result<()> {
                 let mut f = File::create(file)?;
 
-                let bytes = self.try_to_midi_bytes();
+                let bytes = self.try_to_midi_bytes()?;
 
-                if bytes.is_err() {
-                    return Err(anyhow!("Error getting MIDI bytes"));
-                }
-
-                f.write_all(&bytes.unwrap())?;
+                f.write_all(&bytes)?;
 
                 Ok(())
             }
@@ -329,6 +344,7 @@ mod tests {
         assert!(try_number_to_fixed_bytes(0x0100, 1).is_err());
         assert!(try_number_to_fixed_bytes(0x010000, 2).is_err());
         assert!(try_number_to_fixed_bytes(0x01000000, 3).is_err());
+        assert!(try_number_to_fixed_bytes(0x00, 5).is_err());
         assert_eq!(try_number_to_fixed_bytes(0x00, 1).unwrap(), vec![0x00]);
         assert_eq!(try_number_to_fixed_bytes(0xff, 1).unwrap(), vec![0xff]);
         assert_eq!(
