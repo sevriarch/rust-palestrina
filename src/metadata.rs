@@ -1,6 +1,6 @@
 use crate::entities::timing::{EventTiming, Timing};
 use anyhow::{anyhow, Result};
-use std::fmt::Debug;
+use std::{fmt, fmt::Debug};
 use thiserror::Error;
 
 /// A piece of metadata associated with a note or track.
@@ -23,6 +23,31 @@ pub enum MetadataData {
     Pan(i16),
     Balance(i16),
     PitchBend(i16),
+}
+
+impl fmt::Display for MetadataData {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let msg = match self {
+            MetadataData::EndTrack => "EndTrack".to_string(),
+            MetadataData::Sustain(v) => format!("Sustain({})", v),
+            MetadataData::Tempo(v) => format!("Tempo({})", v),
+            MetadataData::KeySignature(v) => format!("KeySignature({})", v),
+            MetadataData::TimeSignature(v) => format!("TimeSignature({})", v),
+            MetadataData::Instrument(v) => format!("Instrument({})", v),
+            MetadataData::Text(v) => format!("Text({})", v),
+            MetadataData::Lyric(v) => format!("Lyric({})", v),
+            MetadataData::Marker(v) => format!("Marker({})", v),
+            MetadataData::CuePoint(v) => format!("CuePoint({})", v),
+            MetadataData::Copyright(v) => format!("Copyright({})", v),
+            MetadataData::TrackName(v) => format!("TrackName({})", v),
+            MetadataData::Volume(v) => format!("Volume({})", v),
+            MetadataData::Pan(v) => format!("Pan({})", v),
+            MetadataData::Balance(v) => format!("Balance({})", v),
+            MetadataData::PitchBend(v) => format!("PitchBend({})", v),
+        };
+
+        write!(f, "MetadataData({})", msg)
+    }
 }
 
 #[derive(Clone, Error, Debug)]
