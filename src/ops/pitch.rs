@@ -132,7 +132,8 @@ where
     fn is_silent(&self) -> bool;
 }
 
-macro_rules! impl_traits_for_raw_values {
+/// Macro to generate implementations of traits for pitches
+macro_rules! impl_traits_for_pitches {
     (for $($ty:ident)*) => ($(
         impl Pitch<$ty> for $ty {
             fn map_pitch<MapT: Fn(&$ty) -> $ty>(mut self, f: MapT) -> Self {
@@ -295,7 +296,8 @@ macro_rules! impl_fns_for_melody {
     )*)
 }
 
-macro_rules! impl_traits_for_derived_entities {
+/// Macro to implement traits for entities containing pitches
+macro_rules! impl_traits_for_pitch_containers {
     (for $($ty:ident)*) => ($(
         impl Pitch<$ty> for Option<$ty> {
             impl_fns_for_option!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
@@ -583,8 +585,8 @@ macro_rules! impl_traits_for_derived_entities {
     )*)
 }
 
-impl_traits_for_raw_values!(for i8 i16 i32 i64 isize u8 u16 u32 u64 usize f32 f64);
-impl_traits_for_derived_entities!(for i8 i16 i32 i64 isize u8 u16 u32 u64 usize f32 f64);
+impl_traits_for_pitches!(for i8 i16 i32 i64 isize u8 u16 u32 u64 usize f32 f64);
+impl_traits_for_pitch_containers!(for i8 i16 i32 i64 isize u8 u16 u32 u64 usize f32 f64);
 
 #[cfg(test)]
 mod tests {
