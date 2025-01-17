@@ -70,6 +70,9 @@ pub trait Pitch<T>
 where
     T: Copy,
 {
+    /// A map operation on pitches.
+    fn map_pitch<MapT: Fn(&T) -> T>(self, f: MapT) -> Self;
+
     /// Transpose pitches up or down.
     fn transpose_pitch(self, n: T) -> Self;
 
@@ -132,6 +135,11 @@ where
 macro_rules! impl_traits_for_raw_values {
     (for $($ty:ident)*) => ($(
         impl Pitch<$ty> for $ty {
+            fn map_pitch<MapT: Fn(&$ty) -> $ty>(mut self, f: MapT) -> Self {
+                self = f(&self);
+                self
+            }
+
             fn transpose_pitch(mut self, n: $ty) -> Self {
                 self += n;
                 self
@@ -269,42 +277,6 @@ macro_rules! impl_fns_for_seq {
     )*)
 }
 
-macro_rules! impl_other_fns_for_seq {
-    ($ty:ident) => {
-        fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                *p = p.augment_pitch(n);
-            });
-            self
-        }
-
-        fn diminish_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                *p = p.diminish_pitch(n);
-            });
-            self
-        }
-
-        fn trim(mut self, first: $ty, second: $ty) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                *p = p.trim(first, second);
-            });
-            self
-        }
-
-        fn bounce(mut self, first: $ty, second: $ty) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                *p = p.bounce(first, second);
-            });
-            self
-        }
-
-        fn is_silent(&self) -> bool {
-            self.contents.iter().all(|m| m.is_silent())
-        }
-    };
-}
-
 macro_rules! impl_fns_for_chordseq {
     ($ty:ident, for $($fn:ident)*) => ($(
         fn $fn(mut self, n: $ty) -> Self {
@@ -312,50 +284,6 @@ macro_rules! impl_fns_for_chordseq {
             self
         }
     )*)
-}
-
-macro_rules! impl_other_fns_for_chordseq {
-    ($ty:ident) => {
-        fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                p.iter_mut().for_each(|v| {
-                    *v = v.augment_pitch(n);
-                });
-            });
-            self
-        }
-
-        fn diminish_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                p.iter_mut().for_each(|v| {
-                    *v = v.diminish_pitch(n);
-                });
-            });
-            self
-        }
-
-        fn trim(mut self, first: $ty, second: $ty) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                p.iter_mut().for_each(|v| {
-                    *v = v.trim(first, second);
-                });
-            });
-            self
-        }
-
-        fn bounce(mut self, first: $ty, second: $ty) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                p.iter_mut().for_each(|v| {
-                    *v = v.bounce(first, second);
-                });
-            });
-            self
-        }
-
-        fn is_silent(&self) -> bool {
-            self.contents.iter().all(|m| m.is_silent())
-        }
-    };
 }
 
 macro_rules! impl_fns_for_melody {
@@ -367,54 +295,14 @@ macro_rules! impl_fns_for_melody {
     )*)
 }
 
-macro_rules! impl_other_fns_for_melody {
-    ($ty:ident) => {
-        fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                p.values.iter_mut().for_each(|v| {
-                    *v = v.augment_pitch(n);
-                });
-            });
-            self
-        }
-
-        fn diminish_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                p.values.iter_mut().for_each(|v| {
-                    *v = v.diminish_pitch(n);
-                });
-            });
-            self
-        }
-
-        fn trim(mut self, first: $ty, second: $ty) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                p.values.iter_mut().for_each(|v| {
-                    *v = v.trim(first, second);
-                });
-            });
-            self
-        }
-
-        fn bounce(mut self, first: $ty, second: $ty) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                p.values.iter_mut().for_each(|v| {
-                    *v = v.bounce(first, second);
-                });
-            });
-            self
-        }
-
-        fn is_silent(&self) -> bool {
-            self.contents.iter().all(|m| m.is_silent())
-        }
-    };
-}
-
 macro_rules! impl_traits_for_derived_entities {
     (for $($ty:ident)*) => ($(
         impl Pitch<$ty> for Option<$ty> {
             impl_fns_for_option!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
+
+            fn map_pitch<MapT: Fn(&$ty) -> $ty>(self, f: MapT) -> Self {
+                self.map(|p| f(&p))
+            }
 
             fn augment_pitch<AT: AugDim<$ty> + Copy>(self, n: AT) -> Self {
                 self.map(|p| p.augment_pitch(n))
@@ -439,6 +327,11 @@ macro_rules! impl_traits_for_derived_entities {
 
         impl Pitch<$ty> for Vec<$ty> {
             impl_fns_for_vec!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
+
+            fn map_pitch<MapT: Fn(&$ty) -> $ty>(mut self, f: MapT) -> Self {
+                self.iter_mut().for_each(|p| *p = f(p));
+                self
+            }
 
             fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
                 self.iter_mut().for_each(|p| { *p = p.augment_pitch(n); });
@@ -468,6 +361,11 @@ macro_rules! impl_traits_for_derived_entities {
         impl Pitch<$ty> for MelodyMember<$ty> {
             impl_fns_for_melody_member!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
 
+            fn map_pitch<MapT: Fn(&$ty) -> $ty>(mut self, f: MapT) -> Self {
+                self.values.iter_mut().for_each(|p| *p = f(p));
+                self
+            }
+
             fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
                 self.values.iter_mut().for_each(|p| { *p = p.augment_pitch(n); });
                 self
@@ -495,22 +393,192 @@ macro_rules! impl_traits_for_derived_entities {
 
         impl Pitch<$ty> for NumericSeq<$ty> {
             impl_fns_for_seq!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
-            impl_other_fns_for_seq!($ty);
+
+            fn map_pitch<MapT: Fn(&$ty) -> $ty>(mut self, f: MapT) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    *p = f(p);
+                });
+                self
+            }
+            fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    *p = p.augment_pitch(n);
+                });
+                self
+            }
+
+            fn diminish_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    *p = p.diminish_pitch(n);
+                });
+                self
+            }
+
+            fn trim(mut self, first: $ty, second: $ty) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    *p = p.trim(first, second);
+                });
+                self
+            }
+
+            fn bounce(mut self, first: $ty, second: $ty) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    *p = p.bounce(first, second);
+                });
+                self
+            }
+
+            fn is_silent(&self) -> bool {
+                self.contents.iter().all(|m| m.is_silent())
+            }
         }
 
         impl Pitch<$ty> for NoteSeq<$ty> {
             impl_fns_for_seq!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
-            impl_other_fns_for_seq!($ty);
+
+            fn map_pitch<MapT: Fn(&$ty) -> $ty>(mut self, f: MapT) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    *p = p.map(|v| f(&v));
+                });
+                self
+            }
+
+            fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    *p = p.augment_pitch(n);
+                });
+                self
+            }
+
+            fn diminish_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    *p = p.diminish_pitch(n);
+                });
+                self
+            }
+
+            fn trim(mut self, first: $ty, second: $ty) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    *p = p.trim(first, second);
+                });
+                self
+            }
+
+            fn bounce(mut self, first: $ty, second: $ty) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    *p = p.bounce(first, second);
+                });
+                self
+            }
+
+            fn is_silent(&self) -> bool {
+                self.contents.iter().all(|m| m.is_silent())
+            }
         }
 
         impl Pitch<$ty> for ChordSeq<$ty> {
             impl_fns_for_chordseq!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
-            impl_other_fns_for_chordseq!($ty);
+
+            fn map_pitch<MapT: Fn(&$ty) -> $ty>(mut self, f: MapT) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.iter_mut().for_each(|v| {
+                        *v = f(&v);
+                    });
+                });
+                self
+            }
+            fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.iter_mut().for_each(|v| {
+                        *v = v.augment_pitch(n);
+                    });
+                });
+                self
+            }
+
+            fn diminish_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.iter_mut().for_each(|v| {
+                        *v = v.diminish_pitch(n);
+                    });
+                });
+                self
+            }
+
+            fn trim(mut self, first: $ty, second: $ty) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.iter_mut().for_each(|v| {
+                        *v = v.trim(first, second);
+                    });
+                });
+                self
+            }
+
+            fn bounce(mut self, first: $ty, second: $ty) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.iter_mut().for_each(|v| {
+                        *v = v.bounce(first, second);
+                    });
+                });
+                self
+            }
+
+            fn is_silent(&self) -> bool {
+                self.contents.iter().all(|m| m.is_silent())
+            }
         }
 
         impl Pitch<$ty> for Melody<$ty> {
             impl_fns_for_melody!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
-            impl_other_fns_for_melody!($ty);
+
+            fn map_pitch<MapT: Fn(&$ty) -> $ty>(mut self, f: MapT) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.values.iter_mut().for_each(|v| {
+                        *v = f(&v);
+                    });
+                });
+                self
+            }
+
+            fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.values.iter_mut().for_each(|v| {
+                        *v = v.augment_pitch(n);
+                    });
+                });
+                self
+            }
+
+            fn diminish_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.values.iter_mut().for_each(|v| {
+                        *v = v.diminish_pitch(n);
+                    });
+                });
+                self
+            }
+
+            fn trim(mut self, first: $ty, second: $ty) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.values.iter_mut().for_each(|v| {
+                        *v = v.trim(first, second);
+                    });
+                });
+                self
+            }
+
+            fn bounce(mut self, first: $ty, second: $ty) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.values.iter_mut().for_each(|v| {
+                        *v = v.bounce(first, second);
+                    });
+                });
+                self
+            }
+
+            fn is_silent(&self) -> bool {
+                self.contents.iter().all(|m| m.is_silent())
+            }
         }
     )*)
 }
@@ -526,6 +594,41 @@ mod tests {
     use crate::metadata::MetadataList;
     use crate::{chordseq, melody, noteseq, numseq};
     use assert_float_eq::expect_f64_near;
+
+    #[test]
+    fn map_pitch() {
+        macro_rules! map_pitch_test {
+            ($init:expr, $fn:expr, $ret:expr) => {
+                assert_eq!($init.map_pitch($fn), $ret);
+            };
+        }
+
+        map_pitch_test!(3, |v| v + 1, 4);
+        map_pitch_test!(None, |v| v + 1, None);
+        map_pitch_test!(Some(3), |v| v + 1, Some(4));
+        map_pitch_test!(vec![3, 4, 5], |v| v + 1, vec![4, 5, 6]);
+        map_pitch_test!(
+            MelodyMember::from(vec![3.0, 4.0, 5.0]),
+            |v| v / 2.0,
+            MelodyMember::from(vec![1.5, 2.0, 2.5])
+        );
+        map_pitch_test!(numseq![3.0, 4.0, 5.0], |v| v / 2.0, numseq![1.5, 2.0, 2.5]);
+        map_pitch_test!(
+            noteseq![3.0, None, 4.0, 5.0],
+            |v| v / 2.0,
+            noteseq![1.5, None, 2.0, 2.5]
+        );
+        map_pitch_test!(
+            chordseq![[3.0], [], [4.0, 5.0]],
+            |v| v / 2.0,
+            chordseq![[1.5], [], [2.0, 2.5]]
+        );
+        map_pitch_test!(
+            melody![[3.0], [], [4.0, 5.0]],
+            |v| v / 2.0,
+            melody![[1.5], [], [2.0, 2.5]]
+        );
+    }
 
     #[test]
     fn transpose_pitch() {

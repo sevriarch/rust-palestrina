@@ -285,7 +285,7 @@ fn melody1(n: usize) {
         s_on.push(i);
     });
 
-    let sieve = |(i, v)| {
+    let sieve1 = |(i, v)| {
         let rotator = match v {
             2 => 5,
             3 => 1,
@@ -298,7 +298,6 @@ fn melody1(n: usize) {
         };
 
         let m = (48 + v) % 12;
-
     });
 
     function sieve1(v, i) {
