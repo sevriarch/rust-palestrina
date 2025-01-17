@@ -81,6 +81,15 @@ where
     /// A map operation on pitches.
     fn map_pitch<MapT: Fn(&T) -> T>(self, f: MapT) -> Self;
 
+    /// A map operation on pitches where the pitch is passed to the mapper function
+    /// in a tuple of (position, pitch). The position passed is an Option<usize>, which
+    /// is always None when the map operation is taking place outside of a Sequence
+    /// context, and will contain the position in the Sequence if the map operation
+    /// takes place in a Sequence context.
+    ///
+    /// Hence, there is no reason to use this mathod outside of a Sequence context.
+    fn map_pitch_enumerated<MapT: Fn((Option<usize>, &T)) -> T>(self, f: MapT) -> Self;
+
     /// A map operation on pitches that removes pitches where the map operation
     /// returns None, but retains those where the map operation returns Some(pitch).
     fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(self, f: MapT) -> Result<Self>
@@ -152,6 +161,11 @@ macro_rules! impl_traits_for_pitches {
         impl Pitch<$ty> for $ty {
             fn map_pitch<MapT: Fn(&$ty) -> $ty>(mut self, f: MapT) -> Self {
                 self = f(&self);
+                self
+            }
+
+            fn map_pitch_enumerated<MapT: Fn((Option<usize>, &$ty)) -> $ty>(mut self, f: MapT) -> Self {
+                self = f((None, &self));
                 self
             }
 
@@ -329,6 +343,10 @@ macro_rules! impl_traits_for_pitch_containers {
                 self.map(|p| f(&p))
             }
 
+            fn map_pitch_enumerated<MapT: Fn((Option<usize>, &$ty)) -> $ty>(self, f: MapT) -> Self {
+                self.map(|p| f((None, &p)))
+            }
+
             fn filter_map_pitch<MapT: Fn(&$ty) -> Option<$ty>>(self, f: MapT) -> Result<Self> {
                 Ok(self.map(|p| f(&p)).flatten())
             }
@@ -359,6 +377,11 @@ macro_rules! impl_traits_for_pitch_containers {
 
             fn map_pitch<MapT: Fn(&$ty) -> $ty>(mut self, f: MapT) -> Self {
                 self.iter_mut().for_each(|p| *p = f(p));
+                self
+            }
+
+            fn map_pitch_enumerated<MapT: Fn((Option<usize>, &$ty)) -> $ty>(mut self, f: MapT) -> Self {
+                self.iter_mut().for_each(|p| *p = f((None, p)));
                 self
             }
 
@@ -400,6 +423,11 @@ macro_rules! impl_traits_for_pitch_containers {
                 self
             }
 
+            fn map_pitch_enumerated<MapT: Fn((Option<usize>, &$ty)) -> $ty>(mut self, f: MapT) -> Self {
+                self.values.iter_mut().for_each(|p| *p = f((None, p)));
+                self
+            }
+
             fn filter_map_pitch<MapT: Fn(&$ty) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
                 self.values = self.values.into_iter().filter_map(|p| f(&p)).collect();
                 Ok(self)
@@ -437,6 +465,11 @@ macro_rules! impl_traits_for_pitch_containers {
                 self.contents.iter_mut().for_each(|p| {
                     *p = f(p);
                 });
+                self
+            }
+
+            fn map_pitch_enumerated<MapT: Fn((Option<usize>, &$ty)) -> $ty>(mut self, f: MapT) -> Self {
+                self.contents.iter_mut().enumerate().for_each(|(i, p)| *p = f((Some(i), p)));
                 self
             }
 
@@ -490,6 +523,13 @@ macro_rules! impl_traits_for_pitch_containers {
                 self
             }
 
+            fn map_pitch_enumerated<MapT: Fn((Option<usize>, &$ty)) -> $ty>(mut self, f: MapT) -> Self {
+                self.contents.iter_mut().enumerate().for_each(|(i, p)| {
+                    *p = p.map(|v| f((Some(i), &v)));
+                });
+                self
+            }
+
             fn filter_map_pitch<MapT: Fn(&$ty) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
                 self.contents.iter_mut().for_each(|p| *p = p.map(|v| f(&v)).flatten());
                 Ok(self)
@@ -535,6 +575,15 @@ macro_rules! impl_traits_for_pitch_containers {
                 self.contents.iter_mut().for_each(|p| {
                     p.iter_mut().for_each(|v| {
                         *v = f(&v);
+                    });
+                });
+                self
+            }
+
+            fn map_pitch_enumerated<MapT: Fn((Option<usize>, &$ty)) -> $ty>(mut self, f: MapT) -> Self {
+                self.contents.iter_mut().enumerate().for_each(|(i, p)| {
+                    p.iter_mut().for_each(|v| {
+                        *v = f((Some(i), &v));
                     });
                 });
                 self
@@ -593,6 +642,15 @@ macro_rules! impl_traits_for_pitch_containers {
                 self.contents.iter_mut().for_each(|p| {
                     p.values.iter_mut().for_each(|v| {
                         *v = f(&v);
+                    });
+                });
+                self
+            }
+
+            fn map_pitch_enumerated<MapT: Fn((Option<usize>, &$ty)) -> $ty>(mut self, f: MapT) -> Self {
+                self.contents.iter_mut().enumerate().for_each(|(i, p)| {
+                    p.values.iter_mut().for_each(|v| {
+                        *v = f((Some(i), &v));
                     });
                 });
                 self
@@ -694,6 +752,45 @@ mod tests {
             melody![[3.0], [], [4.0, 5.0]],
             |v| v / 2.0,
             melody![[1.5], [], [2.0, 2.5]]
+        );
+    }
+
+    #[test]
+    fn map_pitch_enumerated() {
+        macro_rules! map_pitch_enumerated_test {
+            ($init:expr, $fn:expr, $ret:expr) => {
+                assert_eq!($init.map_pitch_enumerated($fn), $ret);
+            };
+        }
+
+        map_pitch_enumerated_test!(3, |(_, v)| v + 1, 4);
+        map_pitch_enumerated_test!(None, |(_, v)| v + 1, None);
+        map_pitch_enumerated_test!(Some(3), |(_, v)| v + 1, Some(4));
+        map_pitch_enumerated_test!(vec![3, 4, 5], |(_, v)| v + 1, vec![4, 5, 6]);
+        map_pitch_enumerated_test!(
+            MelodyMember::from(vec![3.0, 4.0, 5.0]),
+            |(_, v)| v / 2.0,
+            MelodyMember::from(vec![1.5, 2.0, 2.5])
+        );
+        map_pitch_enumerated_test!(
+            numseq![3.0, 4.5, 5.5],
+            |(i, v)| v * (1.0 + i.unwrap() as f32),
+            numseq![3.0, 9.0, 16.5]
+        );
+        map_pitch_enumerated_test!(
+            noteseq![3.0, None, 4.5, 5.5],
+            |(i, v)| v * (1.0 + i.unwrap() as f32),
+            noteseq![3.0, None, 13.5, 22.0]
+        );
+        map_pitch_enumerated_test!(
+            chordseq![[3.0], [], [4.5, 5.5]],
+            |(i, v)| v * (1.0 + i.unwrap() as f32),
+            chordseq![[3.0], [], [13.5, 16.5]]
+        );
+        map_pitch_enumerated_test!(
+            melody![[3.0], [], [4.5, 5.5]],
+            |(i, v)| v * (1.0 + i.unwrap() as f32),
+            melody![[3.0], [], [13.5, 16.5]]
         );
     }
 
