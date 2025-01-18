@@ -99,115 +99,137 @@ impl DurationalEventTiming {
     }
 }
 
+#[macro_export]
+/// Macro for generating timing data for a single event.
+/// No arguments means no exact tick and no offset.
+/// One argument means an optional exact tick.
+/// Two arguments mean an optional exact tick and an offset.
+macro_rules! timing {
+    () => {
+        EventTiming {
+            tick: None,
+            offset: 0,
+        }
+    };
+
+    ($tick:expr) => {
+        EventTiming {
+            tick: Option::from($tick),
+            offset: 0,
+        }
+    };
+
+    ($tick:expr, $offset:expr) => {
+        EventTiming {
+            tick: Option::from($tick),
+            offset: $offset,
+        }
+    };
+}
+
+#[macro_export]
+/// Macro for generating timing data for an event that has a duration.
+/// One argument means a duration, but no exact tick and no offset.
+/// Two argument means a duration and an optional exact tick.
+/// Three arguments mean a duration, an optional exact tick and an offset.
+macro_rules! duration_with_timing {
+    ($dur:expr) => {
+        DurationalEventTiming {
+            duration: $dur,
+            tick: None,
+            offset: 0,
+        }
+    };
+
+    ($dur:expr, $tick:expr) => {
+        DurationalEventTiming {
+            duration: $dur,
+            tick: Option::from($tick),
+            offset: 0,
+        }
+    };
+
+    ($dur:expr, $tick:expr, $offset:expr) => {
+        DurationalEventTiming {
+            duration: $dur,
+            tick: Option::from($tick),
+            offset: $offset,
+        }
+    };
+}
+
 #[cfg(test)]
 mod test_event_timing {
     use crate::entities::timing::{DurationalEventTiming, EventTiming, Timing};
 
-    macro_rules! trait_method_tests {
-        ($type:ty) => {
-            let t = <$type>::default();
-            assert_eq!(t.tick, None);
-            assert_eq!(t.offset, 0);
-
-            let t = <$type>::default().with_exact_tick(50);
-            assert_eq!(t.tick, Some(50));
-
-            let t = <$type>::default().with_offset(50);
-            assert_eq!(t.offset, 50);
-
-            let t = <$type>::default().mutate_exact_tick(|v| *v *= 2);
-            assert_eq!(t.tick, None);
-
-            let t = <$type>::default()
-                .with_exact_tick(100)
-                .mutate_exact_tick(|v| *v *= 2);
-            assert_eq!(t.tick, Some(200));
-
-            let t = <$type>::default()
-                .with_offset(-100)
-                .mutate_offset(|v| *v = -*v);
-            assert_eq!(t.offset, 100);
-
-            let t = <$type>::default().with_offset(100);
-            assert_eq!(t.start_tick(200).unwrap(), 300);
-
-            let t = <$type>::default().with_offset(-100);
-            assert!(t.start_tick(0).is_err());
-            assert_eq!(t.start_tick(200).unwrap(), 100);
-
-            let t = <$type>::default().with_exact_tick(300).with_offset(-100);
-            assert_eq!(t.start_tick(0).unwrap(), 200);
-            assert_eq!(t.start_tick(300).unwrap(), 200);
-        };
-    }
-
     #[test]
     fn trait_method_tests_event_timing() {
-        trait_method_tests!(EventTiming);
-    }
+        let t = timing!();
+        assert_eq!(t.tick, None);
+        assert_eq!(t.offset, 0);
 
-    #[test]
-    fn trait_method_tests_durational() {
-        trait_method_tests!(DurationalEventTiming);
+        let t = timing!(50);
+        assert_eq!(t.tick, Some(50));
+        assert_eq!(t.offset, 0);
+
+        let t = timing!(None, 50);
+        assert_eq!(t.tick, None);
+        assert_eq!(t.offset, 50);
+
+        let t = timing!().mutate_exact_tick(|v| *v *= 2);
+        assert_eq!(t.tick, None);
+
+        let t = timing!(100).mutate_exact_tick(|v| *v *= 2);
+        assert_eq!(t.tick, Some(200));
+
+        let t = timing!(None, -100).mutate_offset(|v| *v = -*v);
+        assert_eq!(t.offset, 100);
+
+        let t = timing!(None, 100).with_offset(100);
+        assert_eq!(t.start_tick(200).unwrap(), 300);
+
+        let t = timing!(None, -100);
+        assert!(t.start_tick(0).is_err());
+        assert_eq!(t.start_tick(200).unwrap(), 100);
+
+        let t = timing!(100, 100);
+        assert_eq!(t.start_tick(0).unwrap(), 200);
+        assert_eq!(t.start_tick(300).unwrap(), 200);
     }
 
     #[test]
     fn mutate_duration() {
-        let t = DurationalEventTiming::default()
-            .with_duration(150)
-            .mutate_duration(|v| *v -= 100);
+        let t = duration_with_timing!(150).mutate_duration(|v| *v -= 100);
 
         assert_eq!(t.duration, 50);
     }
 
     #[test]
     fn end_tick() {
-        let t = DurationalEventTiming::default()
-            .with_offset(-100)
-            .with_duration(50);
-
+        let t = duration_with_timing!(50, None, -100);
         assert!(t.end_tick(0).is_err());
         assert_eq!(t.end_tick(200).unwrap(), 150);
 
-        let t = DurationalEventTiming::default()
-            .with_exact_tick(200)
-            .with_offset(-100)
-            .with_duration(50);
-
+        let t = duration_with_timing!(50, 200, -100);
         assert_eq!(t.end_tick(0).unwrap(), 150);
         assert_eq!(t.end_tick(200).unwrap(), 150);
 
-        let t = DurationalEventTiming::default()
-            .with_exact_tick(200)
-            .with_offset(-300)
-            .with_duration(50);
-
+        let t = duration_with_timing!(50, 200, -300);
         assert!(t.end_tick(0).is_err());
         assert!(t.end_tick(2000).is_err());
     }
 
     #[test]
     fn next_tick() {
-        let t = DurationalEventTiming::default()
-            .with_offset(-100)
-            .with_duration(50);
-
+        let t = duration_with_timing!(50, None, -100);
         assert_eq!(t.next_tick(0).unwrap(), 50);
         assert_eq!(t.next_tick(200).unwrap(), 250);
 
-        let t = DurationalEventTiming::default()
-            .with_exact_tick(200)
-            .with_offset(-100)
-            .with_duration(50);
-
+        let t = duration_with_timing!(50, 200, -100);
         assert_eq!(t.next_tick(0).unwrap(), 250);
         assert_eq!(t.next_tick(200).unwrap(), 250);
 
-        let t = DurationalEventTiming::default()
-            .with_exact_tick(200)
-            .with_offset(-300)
-            .with_duration(50);
-
+        let t = duration_with_timing!(50, 200, -300);
         assert_eq!(t.next_tick(0).unwrap(), 250);
         assert_eq!(t.next_tick(200).unwrap(), 250);
     }
