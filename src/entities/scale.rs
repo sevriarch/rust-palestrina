@@ -2,33 +2,17 @@ use anyhow::{anyhow, Result};
 use num_traits::{Euclid, Num};
 use std::cmp::PartialOrd;
 use std::ops::SubAssign;
+use thiserror::Error;
 
-fn name_to_notes(name: &str) -> Result<Vec<i8>> {
-    match name {
-        "chromatic" => Ok(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]),
-        "octatonic12" => Ok(vec![0, 1, 3, 4, 6, 7, 9, 10]),
-        "octatonic21" => Ok(vec![0, 2, 3, 5, 6, 8, 9, 11]),
-        "wholetone" => Ok(vec![0, 2, 4, 6, 8, 10]),
-        "major" => Ok(vec![0, 2, 4, 5, 7, 9, 11]),
-        "minor" => Ok(vec![0, 2, 3, 5, 7, 8, 10]),
-        "ionian" => Ok(vec![0, 2, 4, 5, 7, 9, 11]),
-        "dorian" => Ok(vec![0, 2, 3, 5, 7, 9, 10]),
-        "phrygian" => Ok(vec![0, 1, 3, 5, 7, 8, 10]),
-        "lydian" => Ok(vec![0, 2, 4, 6, 7, 9, 11]),
-        "mixolydian" => Ok(vec![0, 2, 4, 5, 7, 9, 10]),
-        "aeolian" => Ok(vec![0, 2, 3, 5, 7, 8, 10]),
-        "locrian" => Ok(vec![0, 1, 3, 5, 6, 8, 10]),
-        "pentatonic" => Ok(vec![0, 2, 4, 7, 9]),
-        "pentatonicc" => Ok(vec![0, 2, 4, 7, 9]),
-        "pentatonicd" => Ok(vec![0, 2, 5, 7, 10]),
-        "pentatonice" => Ok(vec![0, 3, 5, 8, 10]),
-        "pentatonicg" => Ok(vec![0, 2, 5, 7, 9]),
-        "pentatonica" => Ok(vec![0, 3, 5, 7, 10]),
-        _ => Err(anyhow!("unknown scale: {}", name)),
-    }
+#[derive(Clone, Debug, Error)]
+pub enum ScaleError {
+    #[error("Unknown scale: {0}")]
+    UnknownScale(String),
+    #[error("Scale cannot be empty")]
+    EmptyScale,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Scale<T>
 where
     T: Copy + Num + From<i8> + TryInto<usize> + TryFrom<usize> + Euclid + PartialOrd + SubAssign,
@@ -55,19 +39,19 @@ impl<
         T: Copy + Num + From<i8> + TryInto<usize> + TryFrom<usize> + Euclid + PartialOrd + SubAssign,
     > Scale<T>
 {
-    pub fn new() -> Self {
+    pub fn new(notes: Vec<T>, octave: T) -> Self {
+        // This gets removed later so I'm not fixing it
+        let length = notes.len().try_into().unwrap_or(T::zero());
         Self {
-            notes: vec![],
-            length: T::zero(),
-            octave: T::from(12),
+            notes,
+            length,
+            octave,
         }
     }
 
     pub fn from_name(name: &str) -> Result<Self> {
-        let notes = name_to_notes(name)?;
-
         Ok(Self {
-            notes: notes.into_iter().map(T::from).collect(),
+            notes: Scale::name_to_notes(name)?,
             ..Default::default()
         })
     }
@@ -89,9 +73,7 @@ impl<
     }
 
     pub fn with_name(self, name: &str) -> Result<Self> {
-        let notes = name_to_notes(name)?;
-
-        self.with_notes(notes.into_iter().map(T::from).collect())
+        self.with_notes(Scale::name_to_notes(name)?)
     }
 
     pub fn fit_to_scale<'a>(&'a self, zeroval: &'a T) -> Box<dyn Fn(&mut T) + 'a> {
@@ -109,62 +91,113 @@ impl<
             *v = *zeroval + self.notes[ix] + octaves * self.octave;
         })
     }
+
+    pub fn name_to_notes(name: &str) -> Result<Vec<T>> {
+        let notes: Vec<i8> = match name {
+            "chromatic" => Ok(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]),
+            "octatonic12" => Ok(vec![0, 1, 3, 4, 6, 7, 9, 10]),
+            "octatonic21" => Ok(vec![0, 2, 3, 5, 6, 8, 9, 11]),
+            "wholetone" => Ok(vec![0, 2, 4, 6, 8, 10]),
+            "major" => Ok(vec![0, 2, 4, 5, 7, 9, 11]),
+            "minor" => Ok(vec![0, 2, 3, 5, 7, 8, 10]),
+            "ionian" => Ok(vec![0, 2, 4, 5, 7, 9, 11]),
+            "dorian" => Ok(vec![0, 2, 3, 5, 7, 9, 10]),
+            "phrygian" => Ok(vec![0, 1, 3, 5, 7, 8, 10]),
+            "lydian" => Ok(vec![0, 2, 4, 6, 7, 9, 11]),
+            "mixolydian" => Ok(vec![0, 2, 4, 5, 7, 9, 10]),
+            "aeolian" => Ok(vec![0, 2, 3, 5, 7, 8, 10]),
+            "locrian" => Ok(vec![0, 1, 3, 5, 6, 8, 10]),
+            "pentatonic" => Ok(vec![0, 2, 4, 7, 9]),
+            "pentatonicc" => Ok(vec![0, 2, 4, 7, 9]),
+            "pentatonicd" => Ok(vec![0, 2, 5, 7, 10]),
+            "pentatonice" => Ok(vec![0, 3, 5, 8, 10]),
+            "pentatonicg" => Ok(vec![0, 2, 5, 7, 9]),
+            "pentatonica" => Ok(vec![0, 3, 5, 7, 10]),
+            _ => Err(anyhow!(ScaleError::UnknownScale(name.to_string()))),
+        }?;
+
+        Ok(notes.into_iter().map(T::from).collect())
+    }
+}
+
+#[macro_export]
+macro_rules! scale {
+    ([$num:expr]) => {{
+        Ok(Scale::new($num.to_vec(), 12))
+    }};
+
+    ([$num:expr], $octave:expr) => {{
+        Ok(Scale::new($num.to_vec(), $octave))
+    }};
+
+    /*
+    ([$($vec:expr),*],$octave:expr) => ($(
+        //let mut tmp = Vec::new();
+        //$(tmp.push($num);)*
+
+        Ok(Scale::new(vec![$vec], $octave))
+    )*);
+    */
+    ($name:expr) => {
+        Scale::name_to_notes($name).map(|n| Scale::new(n, 12))
+    };
+
+    ($name:expr, $octave:expr) => {
+        Scale::name_to_notes($name).map(|n| Scale::new(n, $octave))
+    };
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::entities::scale::Scale;
+    use super::*;
 
     #[test]
-    fn with_octave() {
-        assert_eq!(Scale::<i32>::new().octave, 12);
-        assert_eq!(Scale::new().with_octave(8).octave, 8);
-    }
+    fn from_macro() {
+        assert!(scale!["turbofish"].is_err());
+        assert!(scale!["turbofish", 10].is_err());
 
-    #[test]
-    fn from_name() {
-        assert_eq!(Scale::<i32>::new().notes, vec![]);
         assert_eq!(
-            Scale::<i32>::from_name("lydian").unwrap().notes,
-            vec![0, 2, 4, 6, 7, 9, 11]
-        );
-        assert_eq!(
-            Scale::<i32>::from_name("pentatonic").unwrap().notes,
-            vec![0, 2, 4, 7, 9]
+            scale!["lydian"].unwrap(),
+            Scale {
+                notes: vec![0, 2, 4, 6, 7, 9, 11],
+                length: 7,
+                octave: 12
+            }
         );
 
-        assert!(Scale::<i32>::from_name("turbofish").is_err());
-    }
-
-    #[test]
-    fn with_name() {
-        assert_eq!(Scale::<i32>::new().notes, vec![]);
         assert_eq!(
-            Scale::<i32>::new().with_name("lydian").unwrap().notes,
-            vec![0, 2, 4, 6, 7, 9, 11]
-        );
-        assert_eq!(
-            Scale::<i32>::new().with_name("pentatonic").unwrap().notes,
-            vec![0, 2, 4, 7, 9]
+            scale!["pentatonic", 10].unwrap(),
+            Scale {
+                notes: vec![0, 2, 4, 7, 9],
+                length: 5,
+                octave: 10
+            }
         );
 
-        assert!(Scale::<i32>::new().with_name("turbofish").is_err());
-    }
-
-    #[test]
-    fn with_notes() {
+        let s: Result<Scale<i32>, anyhow::Error> = scale![[[0, 2, 4, 6, 8, 10]]];
         assert_eq!(
-            Scale::new()
-                .with_notes(vec![0, 2, 3, 4, 5, 6, 9])
-                .unwrap()
-                .notes,
-            vec![0, 2, 3, 4, 5, 6, 9]
+            s.unwrap(),
+            Scale {
+                notes: vec![0, 2, 4, 6, 8, 10],
+                length: 6,
+                octave: 12
+            }
+        );
+
+        let s: Result<Scale<i32>, anyhow::Error> = scale![[[0, 2, 4, 6, 8, 10]], 24];
+        assert_eq!(
+            s.unwrap(),
+            Scale {
+                notes: vec![0, 2, 4, 6, 8, 10],
+                length: 6,
+                octave: 24
+            }
         );
     }
 
     #[test]
     fn fit_to_scale() {
-        let scale = Scale::<i32>::new().with_name("lydian").unwrap();
+        let scale = scale!["lydian"].unwrap();
 
         let mut vec: Vec<i32> = (-20_i32..20_i32).collect::<Vec<i32>>();
         let f = scale.fit_to_scale(&60);

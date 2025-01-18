@@ -303,7 +303,7 @@ mod tests {
     use crate::sequences::chord::ChordSeq;
     use crate::sequences::note::NoteSeq;
     use crate::sequences::numeric::NumericSeq;
-    use crate::{chordseq, noteseq, numseq};
+    use crate::{chordseq, noteseq, numseq, scale};
 
     #[test]
     fn min_value() {
@@ -418,8 +418,8 @@ mod tests {
 
     #[test]
     fn scale() {
-        let chromatic = Scale::new().with_name("chromatic").unwrap();
-        let lydian = Scale::new().with_name("lydian").unwrap();
+        let chromatic = scale!["chromatic"].unwrap();
+        let lydian = scale!["lydian"].unwrap();
 
         let v64: Vec<i64> = (-20..20).collect();
 
