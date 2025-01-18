@@ -4,6 +4,17 @@ use anyhow::{anyhow, Result};
 use std::collections::hash_map::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
+use thiserror::Error;
+
+#[derive(Clone, Debug, Error)]
+pub enum CollectionError {
+    #[error("Index {0} out of bounds")]
+    IndexOutOfBounds(i32),
+    #[error("Indices out of order ({0} before {1})")]
+    IndicesOutOfOrder(i32, i32),
+    #[error("Step size must be non-zero")]
+    ZeroStepSize,
+}
 
 #[macro_export]
 macro_rules! default_collection_methods {
@@ -80,7 +91,7 @@ fn collection_index(i: i32, len: i32) -> Result<usize> {
     };
 
     match ix < 0 || ix >= len {
-        true => Err(anyhow!("index out of bounds")),
+        true => Err(anyhow!(CollectionError::IndexOutOfBounds(ix))),
         false => Ok(ix as usize),
     }
 }
@@ -115,7 +126,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         };
 
         match ix < 0 || ix >= len {
-            true => Err(anyhow!("index out of bounds")),
+            true => Err(anyhow!(CollectionError::IndexOutOfBounds(ix))),
             false => Ok(ix as usize),
         }
     }
@@ -129,7 +140,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         };
 
         match ix < 0 || ix > len {
-            true => Err(anyhow!("index out of bounds")),
+            true => Err(anyhow!(CollectionError::IndexOutOfBounds(ix))),
             false => Ok(ix as usize),
         }
     }
@@ -192,7 +203,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         let last = self.index_inclusive(end)?;
 
         if last < first {
-            return Err(anyhow!("last index was before first one"));
+            return Err(anyhow!(CollectionError::IndicesOutOfOrder(start, end)));
         }
 
         Ok(self.mutate_contents(|c| {
@@ -227,7 +238,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
 
     fn keep_nth(self, n: usize) -> Result<Self> {
         if n == 0 {
-            Err(anyhow!("cannot keep every 0th member"))
+            Err(anyhow!(CollectionError::ZeroStepSize))
         } else {
             // Replace rather than filter as unless n = 1 this is a much smaller vector
             Ok(self.replace_contents(|c| c.iter().step_by(n).cloned().collect()))
@@ -236,7 +247,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
 
     fn keep_nth_from(self, n: usize, offset: usize) -> Result<Self> {
         if n == 0 {
-            Err(anyhow!("cannot keep every 0th member"))
+            Err(anyhow!(CollectionError::ZeroStepSize))
         } else {
             // Replace rather than filter as unless n = 1 this is a much smaller vector
             Ok(self.replace_contents(|c| c.iter().skip(offset).step_by(n).cloned().collect()))
@@ -248,7 +259,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         let last = self.index_inclusive(end)?;
 
         if last < first {
-            return Err(anyhow!("last index was before first one"));
+            return Err(anyhow!(CollectionError::IndicesOutOfOrder(start, end)));
         }
 
         Ok(self.mutate_contents(|c| {
@@ -288,7 +299,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
 
     fn drop_nth(self, n: usize) -> Result<Self> {
         if n == 0 {
-            return Err(anyhow!("cannot keep every 0th member"));
+            return Err(anyhow!(CollectionError::ZeroStepSize));
         }
 
         Ok(self.mutate_contents(|c| {
@@ -302,7 +313,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
 
     fn drop_nth_from(self, n: usize, offset: usize) -> Result<Self> {
         if n == 0 {
-            return Err(anyhow!("cannot keep every 0th member"));
+            return Err(anyhow!(CollectionError::ZeroStepSize));
         }
 
         let n = n as i32;
@@ -320,7 +331,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         let last = self.index_inclusive(end)?;
 
         if last < first {
-            return Err(anyhow!("last index was before first one"));
+            return Err(anyhow!(CollectionError::IndicesOutOfOrder(start, end)));
         }
 
         Ok(self.mutate_contents(|c| {
@@ -340,7 +351,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         let last = self.index_inclusive(end)?;
 
         if last < first {
-            return Err(anyhow!("last index was before first one"));
+            return Err(anyhow!(CollectionError::IndicesOutOfOrder(start, end)));
         }
 
         Ok(self.mutate_contents(|c| {
@@ -355,7 +366,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         let last = self.index_inclusive(end)?;
 
         if last < first {
-            return Err(anyhow!("last index was before first one"));
+            return Err(anyhow!(CollectionError::IndicesOutOfOrder(start, end)));
         }
 
         Ok(self.mutate_contents(|c| {
@@ -368,7 +379,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         let last = self.index_inclusive(end)?;
 
         if last < first {
-            return Err(anyhow!("last index was before first one"));
+            return Err(anyhow!(CollectionError::IndicesOutOfOrder(start, end)));
         }
 
         Ok(self.mutate_contents(|c| {
