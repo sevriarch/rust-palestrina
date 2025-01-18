@@ -1,4 +1,11 @@
 use anyhow::{anyhow, Result};
+use thiserror::Error;
+
+#[derive(Clone, Debug, Error)]
+pub enum TimingError {
+    #[error("Impermissible negative tick {0} occurred")]
+    NegativeTick(i32),
+}
 
 pub trait Timing {
     fn with_exact_tick(&mut self, tick: u32) -> Self;
@@ -9,18 +16,9 @@ pub trait Timing {
 }
 
 #[inline(always)]
-fn exact_or_curr(exact: Option<u32>, curr: u32) -> u32 {
-    if let Some(tick) = exact {
-        tick
-    } else {
-        curr
-    }
-}
-
-#[inline(always)]
 fn pos_or_err(tick: i32) -> Result<u32> {
     if tick < 0 {
-        Err(anyhow!("negative tick {:?} is not permitted", tick))
+        Err(anyhow!(TimingError::NegativeTick(tick)))
     } else {
         Ok(tick as u32)
     }
@@ -52,7 +50,7 @@ macro_rules! timing_traits {
             }
 
             fn start_tick(&self, curr: u32) -> Result<u32> {
-                pos_or_err(self.offset + exact_or_curr(self.tick, curr) as i32)
+                pos_or_err(self.offset + self.tick.unwrap_or(curr) as i32)
             }
         }
     };
@@ -87,11 +85,11 @@ impl DurationalEventTiming {
     }
 
     pub fn end_tick(&self, curr: u32) -> Result<u32> {
-        pos_or_err((exact_or_curr(self.tick, curr) + self.duration) as i32 + self.offset)
+        pos_or_err((self.tick.unwrap_or(curr) + self.duration) as i32 + self.offset)
     }
 
     pub fn next_tick(&self, curr: u32) -> Result<u32> {
-        Ok(exact_or_curr(self.tick, curr) + self.duration)
+        Ok(self.tick.unwrap_or(curr) + self.duration)
     }
 
     pub fn augment_rhythm(mut self, v: u32) -> Result<Self> {
