@@ -14,6 +14,10 @@ pub enum CollectionError {
     IndicesOutOfOrder(i32, i32),
     #[error("Step size must be non-zero")]
     ZeroStepSize,
+    #[error("Collection length but be non-zero")]
+    ZeroLength,
+    #[error("Collection lengths ({0} and {1}) were different")]
+    DifferentLengths(usize, usize),
 }
 
 #[macro_export]

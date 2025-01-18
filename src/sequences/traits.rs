@@ -1,5 +1,5 @@
 use crate::algorithms;
-use crate::collections::traits::Collection;
+use crate::collections::traits::{Collection, CollectionError};
 use crate::entities::scale::Scale;
 use anyhow::{anyhow, Result};
 use num_traits::{Num, PrimInt};
@@ -203,7 +203,7 @@ pub trait Sequence<
         let len = self.length();
 
         if len == 0 {
-            return Err(anyhow!("cannot loop a zero-length sequence"));
+            return Err(anyhow!(CollectionError::ZeroLength));
         }
 
         Ok(self.repeated(num / len + 1).mutate_contents(|c| {
@@ -217,7 +217,7 @@ pub trait Sequence<
         let len = self.length();
 
         if len == 0 {
-            return Err(anyhow!("cannot loop a zero-length sequence"));
+            return Err(anyhow!(CollectionError::ZeroLength));
         }
 
         Ok(self.repeated(last / len + 1).mutate_contents(|c| {
@@ -244,11 +244,10 @@ pub trait Sequence<
 
     fn combine(self, f: impl Fn((&T, &T)) -> T, seq: Self) -> Result<Self> {
         if self.length() != seq.length() {
-            return Err(anyhow!(
-                "sequence lengths ({} vs {}) were different",
+            return Err(anyhow!(CollectionError::DifferentLengths(
                 self.length(),
                 seq.length()
-            ));
+            )));
         }
 
         let ret = zip(self.cts_ref(), seq.cts_ref()).map(f).collect();
@@ -259,8 +258,10 @@ pub trait Sequence<
     fn map_with(self, f: impl Fn(Vec<&T>) -> T, seq: Vec<Self>) -> Result<Self> {
         let len = self.length();
 
-        if seq.iter().any(|s| self.length() != s.length()) {
-            return Err(anyhow!("sequence lengths were different"));
+        for s in seq.iter() {
+            if len != s.length() {
+                return Err(anyhow!(CollectionError::DifferentLengths(len, s.length())));
+            }
         }
 
         let mut iters: Vec<Iter<'_, T>> = seq.iter().map(|v| v.cts_ref().iter()).collect();
@@ -280,8 +281,10 @@ pub trait Sequence<
     ) -> Result<Self> {
         let len = self.length();
 
-        if seq.iter().any(|s| self.length() != s.length()) {
-            return Err(anyhow!("sequence lengths were different"));
+        for s in seq.iter() {
+            if len != s.length() {
+                return Err(anyhow!(CollectionError::DifferentLengths(len, s.length())));
+            }
         }
 
         let mut iters: Vec<Iter<'_, T>> = seq.iter().map(|v| v.cts_ref().iter()).collect();
