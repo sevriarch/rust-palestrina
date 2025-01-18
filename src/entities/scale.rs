@@ -109,23 +109,6 @@ impl<
             *v = *zeroval + self.notes[ix] + octaves * self.octave;
         })
     }
-    // impl Fn(T) -> T + use<'_, 'a, T> {
-    /*
-    pub fn fit_to_scale<'a>(&self, zeroval: &'a T) -> Box<dyn Fn(&T) -> T + 'a> {
-        |v: T| {
-            let ix = v.rem_euclid(&self.length);
-            let mut octaves = v / self.length;
-            if !ix.is_zero() && v < T::zero() {
-                octaves -= T::one();
-            }
-
-            // This should never happen, so defaulting to 0 should be safe
-            let ix = ix.try_into().unwrap_or(0);
-
-            *zeroval + self.notes[ix] + octaves * self.octave
-        }
-    }
-    */
 }
 
 #[cfg(test)]
