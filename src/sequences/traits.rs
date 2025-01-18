@@ -239,7 +239,7 @@ pub trait Sequence<
             + SubAssign
             + num_traits::Euclid,
     {
-        Ok(self.mutate_pitches(scale.fit_to_scale(&zeroval)))
+        Ok(self.mutate_pitches(scale.fit_to_scale(&zeroval)?))
     }
 
     fn combine(self, f: impl Fn((&T, &T)) -> T, seq: Self) -> Result<Self> {

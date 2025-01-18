@@ -76,10 +76,17 @@ impl<
         self.with_notes(Scale::name_to_notes(name)?)
     }
 
-    pub fn fit_to_scale<'a>(&'a self, zeroval: &'a T) -> Box<dyn Fn(&mut T) + 'a> {
-        Box::new(|v| {
-            let ix = v.rem_euclid(&self.length);
-            let mut octaves = *v / self.length;
+    // TODO: planned refactor will eliminate the need for this
+    #[allow(clippy::type_complexity)]
+    pub fn fit_to_scale<'a>(&'a self, zeroval: &'a T) -> Result<Box<dyn Fn(&mut T) + 'a>> {
+        let len: T = match self.notes.len().try_into() {
+            Ok(v) => Ok(v),
+            Err(_) => Err(anyhow!(ScaleError::EmptyScale)),
+        }?;
+
+        Ok(Box::new(move |v| {
+            let ix = v.rem_euclid(&len);
+            let mut octaves = *v / len;
 
             if !ix.is_zero() && *v < T::zero() {
                 octaves -= T::one();
@@ -89,7 +96,7 @@ impl<
             let ix = ix.try_into().unwrap_or(0);
 
             *v = *zeroval + self.notes[ix] + octaves * self.octave;
-        })
+        }))
     }
 
     pub fn name_to_notes(name: &str) -> Result<Vec<T>> {
@@ -200,7 +207,7 @@ mod tests {
         let scale = scale!["lydian"].unwrap();
 
         let mut vec: Vec<i32> = (-20_i32..20_i32).collect::<Vec<i32>>();
-        let f = scale.fit_to_scale(&60);
+        let f = scale.fit_to_scale(&60).unwrap();
 
         for v in vec.iter_mut() {
             f(v);
@@ -215,7 +222,7 @@ mod tests {
         );
 
         let mut vec: Vec<i32> = vec![0, 2, 4];
-        let f = scale.fit_to_scale(&0);
+        let f = scale.fit_to_scale(&0).unwrap();
 
         for v in vec.iter_mut() {
             f(v);
