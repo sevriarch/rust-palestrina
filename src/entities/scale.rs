@@ -18,41 +18,21 @@ where
     T: Copy + Num + From<i8> + TryInto<usize> + TryFrom<usize> + Euclid + PartialOrd + SubAssign,
 {
     notes: Vec<T>,
-    length: T,
     octave: T,
 }
 
-impl<
-        T: Copy + Num + From<i8> + TryInto<usize> + TryFrom<usize> + Euclid + PartialOrd + SubAssign,
-    > Default for Scale<T>
-{
-    fn default() -> Self {
-        Self {
-            notes: vec![],
-            length: T::zero(),
-            octave: T::from(12),
-        }
-    }
-}
-
-impl<
-        T: Copy + Num + From<i8> + TryInto<usize> + TryFrom<usize> + Euclid + PartialOrd + SubAssign,
-    > Scale<T>
+impl<T> Scale<T>
+where
+    T: Copy + Num + From<i8> + TryInto<usize> + TryFrom<usize> + Euclid + PartialOrd + SubAssign,
 {
     pub fn new(notes: Vec<T>, octave: T) -> Self {
-        // This gets removed later so I'm not fixing it
-        let length = notes.len().try_into().unwrap_or(T::zero());
-        Self {
-            notes,
-            length,
-            octave,
-        }
+        Self { notes, octave }
     }
 
     pub fn from_name(name: &str) -> Result<Self> {
         Ok(Self {
             notes: Scale::name_to_notes(name)?,
-            ..Default::default()
+            octave: T::from(12),
         })
     }
 
@@ -63,12 +43,6 @@ impl<
 
     pub fn with_notes(mut self, notes: Vec<T>) -> Result<Self> {
         self.notes = notes;
-        self.length = self
-            .notes
-            .len()
-            .try_into()
-            .map_err(|_| anyhow!("scale length too long"))?;
-
         Ok(self)
     }
 
@@ -137,14 +111,6 @@ macro_rules! scale {
         Ok(Scale::new($num.to_vec(), $octave))
     }};
 
-    /*
-    ([$($vec:expr),*],$octave:expr) => ($(
-        //let mut tmp = Vec::new();
-        //$(tmp.push($num);)*
-
-        Ok(Scale::new(vec![$vec], $octave))
-    )*);
-    */
     ($name:expr) => {
         Scale::name_to_notes($name).map(|n| Scale::new(n, 12))
     };
@@ -167,7 +133,6 @@ mod tests {
             scale!["lydian"].unwrap(),
             Scale {
                 notes: vec![0, 2, 4, 6, 7, 9, 11],
-                length: 7,
                 octave: 12
             }
         );
@@ -176,7 +141,6 @@ mod tests {
             scale!["pentatonic", 10].unwrap(),
             Scale {
                 notes: vec![0, 2, 4, 7, 9],
-                length: 5,
                 octave: 10
             }
         );
@@ -186,7 +150,6 @@ mod tests {
             s.unwrap(),
             Scale {
                 notes: vec![0, 2, 4, 6, 8, 10],
-                length: 6,
                 octave: 12
             }
         );
@@ -196,7 +159,6 @@ mod tests {
             s.unwrap(),
             Scale {
                 notes: vec![0, 2, 4, 6, 8, 10],
-                length: 6,
                 octave: 24
             }
         );
