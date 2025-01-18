@@ -56,6 +56,11 @@ macro_rules! timing_traits {
     };
 }
 
+/// A structure with timing information for a single non-durational even.
+/// tick is an optional exact tick that the event is anchored to; offset is a
+/// timing offset
+///
+/// Both of these are measured in MIDI ticks.
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct EventTiming {
     pub tick: Option<u32>,
@@ -64,6 +69,11 @@ pub struct EventTiming {
 
 timing_traits!(EventTiming);
 
+/// A structure with timing information for a single non-durational even.
+/// tick is an optional exact tick that the event is anchored to; offset is a
+/// timing offset and duration is the length of the event.
+///
+/// All of these are measured in MIDI ticks.
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct DurationalEventTiming {
     pub tick: Option<u32>,
@@ -159,7 +169,7 @@ macro_rules! duration_with_timing {
 }
 
 #[cfg(test)]
-mod test_event_timing {
+mod tests {
     use crate::entities::timing::{DurationalEventTiming, EventTiming, Timing};
 
     #[test]
