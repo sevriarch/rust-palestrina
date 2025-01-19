@@ -69,6 +69,12 @@ pub struct EventTiming {
 
 timing_traits!(EventTiming);
 
+impl EventTiming {
+    pub fn new(tick: Option<u32>, offset: i32) -> Self {
+        Self { tick, offset }
+    }
+}
+
 /// A structure with timing information for a single non-durational even.
 /// tick is an optional exact tick that the event is anchored to; offset is a
 /// timing offset and duration is the length of the event.
@@ -84,6 +90,22 @@ pub struct DurationalEventTiming {
 timing_traits!(DurationalEventTiming);
 
 impl DurationalEventTiming {
+    pub fn new(duration: u32, tick: Option<u32>, offset: i32) -> Self {
+        Self {
+            duration,
+            tick,
+            offset,
+        }
+    }
+
+    pub fn from_duration(duration: u32) -> Self {
+        Self {
+            duration,
+            tick: None,
+            offset: 0,
+        }
+    }
+
     pub fn with_duration(&mut self, dur: u32) -> Self {
         self.duration = dur;
         *self
@@ -116,24 +138,15 @@ impl DurationalEventTiming {
 /// Two arguments mean an optional exact tick and an offset.
 macro_rules! timing {
     () => {
-        EventTiming {
-            tick: None,
-            offset: 0,
-        }
+        EventTiming::new(None, 0)
     };
 
     ($tick:expr) => {
-        EventTiming {
-            tick: Option::from($tick),
-            offset: 0,
-        }
+        EventTiming::new(Option::from($tick), 0)
     };
 
     ($tick:expr, $offset:expr) => {
-        EventTiming {
-            tick: Option::from($tick),
-            offset: $offset,
-        }
+        EventTiming::new(Option::from($tick), i32::from($offset))
     };
 }
 
@@ -144,27 +157,15 @@ macro_rules! timing {
 /// Three arguments mean a duration, an optional exact tick and an offset.
 macro_rules! duration_with_timing {
     ($dur:expr) => {
-        DurationalEventTiming {
-            duration: $dur,
-            tick: None,
-            offset: 0,
-        }
+        DurationalEventTiming::new($dur, None, 0)
     };
 
     ($dur:expr, $tick:expr) => {
-        DurationalEventTiming {
-            duration: $dur,
-            tick: Option::from($tick),
-            offset: 0,
-        }
+        DurationalEventTiming::new($dur, Option::from($tick), 0)
     };
 
     ($dur:expr, $tick:expr, $offset:expr) => {
-        DurationalEventTiming {
-            duration: $dur,
-            tick: Option::from($tick),
-            offset: $offset,
-        }
+        DurationalEventTiming::new($dur, Option::from($tick), i32::from($offset))
     };
 }
 
@@ -205,6 +206,37 @@ mod tests {
         let t = timing!(100, 100);
         assert_eq!(t.start_tick(0).unwrap(), 200);
         assert_eq!(t.start_tick(300).unwrap(), 200);
+    }
+
+    #[test]
+    fn new() {
+        assert_eq!(
+            EventTiming::new(Some(60), 40),
+            EventTiming {
+                tick: Some(60),
+                offset: 40
+            }
+        );
+        assert_eq!(
+            DurationalEventTiming::new(100, Some(60), 40),
+            DurationalEventTiming {
+                tick: Some(60),
+                offset: 40,
+                duration: 100
+            }
+        );
+    }
+
+    #[test]
+    fn from_duration() {
+        assert_eq!(
+            DurationalEventTiming::from_duration(100),
+            DurationalEventTiming {
+                tick: None,
+                offset: 0,
+                duration: 100,
+            },
+        );
     }
 
     #[test]
