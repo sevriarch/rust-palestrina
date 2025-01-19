@@ -6,7 +6,7 @@ use crate::sequences::chord::ChordSeq;
 use crate::sequences::note::NoteSeq;
 use crate::sequences::numeric::NumericSeq;
 use crate::sequences::traits::Sequence;
-use crate::{default_collection_methods, default_sequence_methods, duration_with_timing};
+use crate::{default_collection_methods, default_sequence_methods};
 
 use anyhow::{anyhow, Result};
 use num_traits::{Bounded, Num};
@@ -628,10 +628,7 @@ mod tests {
     #[test]
     fn mel_member_last_tick() {
         assert_eq!(
-            MelodyMember::from(vec![12, 16])
-                .with_duration(64)
-                .last_tick(96)
-                .unwrap(),
+            melody_member!([[12, 16]], 32, 64).last_tick(96).unwrap(),
             160,
             "duration only"
         );
@@ -667,7 +664,7 @@ mod tests {
         );
 
         assert_eq!(
-            MelodyMember::from(vec![12, 16])
+            melody_member!([[12, 16]], 32, 64)
                 .with_duration(64)
                 .with_event(
                     Metadata::try_from(("tempo", 120))
@@ -681,8 +678,7 @@ mod tests {
         );
 
         assert_eq!(
-            MelodyMember::from(vec![12, 16])
-                .with_duration(64)
+            melody_member!([[12, 16]], 32, 64)
                 .with_event(
                     Metadata::try_from(("tempo", 120))
                         .unwrap()
@@ -695,8 +691,7 @@ mod tests {
         );
 
         assert_eq!(
-            MelodyMember::from(vec![12, 16])
-                .with_duration(64)
+            melody_member!([[12, 16]], 32, 64)
                 .with_event(Metadata::try_from(("tempo", 120)).unwrap().with_offset(80))
                 .with_event(
                     Metadata::try_from(("tempo", 120))
@@ -710,7 +705,7 @@ mod tests {
         );
 
         assert_eq!(
-            MelodyMember::from(vec![12, 16])
+            melody_member!([[12, 16]], 32, 128)
                 .with_duration(128)
                 .with_event(Metadata::try_from(("tempo", 120)).unwrap().with_offset(80))
                 .with_event(
@@ -960,7 +955,7 @@ mod tests {
         ($tick:expr, $offset:expr, $duration:expr) => {
             MelodyMember {
                 values: vec![20],
-                timing: duration_with_timing!($duration, $tick, $offset),
+                timing: DurationalEventTiming::new($duration, $tick, $offset),
                 volume: 32,
                 before: MetadataList::new(vec![]),
             }
@@ -1398,33 +1393,22 @@ mod tests {
         );
     }
 
-    macro_rules! mmvdv {
-        ($p:expr, $d:expr, $v:expr) => {
-            MelodyMember {
-                values: vec![$p],
-                timing: DurationalEventTiming::default().with_duration($d),
-                volume: $v,
-                before: MetadataList::new(vec![]),
-            }
-        };
-    }
-
     #[test]
     fn join_if() {
         assert_eq!(
             Melody::new(vec![
-                mmvdv!(12, 32, 20),
-                mmvdv!(12, 64, 30),
-                mmvdv!(16, 32, 40),
-                mmvdv!(12, 32, 50),
-                mmvdv!(12, 64, 60),
-                mmvdv!(12, 128, 70)
+                melody_member!(12, 20, 32),
+                melody_member!(12, 30, 64),
+                melody_member!(16, 40, 32),
+                melody_member!(12, 50, 32),
+                melody_member!(12, 60, 64),
+                melody_member!(12, 70, 128)
             ])
             .join_if(|a, b| a.values == b.values),
             Melody::new(vec![
-                mmvdv!(12, 96, 20),
-                mmvdv!(16, 32, 40),
-                mmvdv!(12, 224, 50)
+                melody_member!(12, 20, 96),
+                melody_member!(16, 40, 32),
+                melody_member!(12, 50, 224)
             ])
         );
     }
@@ -1433,18 +1417,18 @@ mod tests {
     fn join_repeats() {
         assert_eq!(
             Melody::new(vec![
-                mmvdv!(12, 32, 20),
-                mmvdv!(12, 64, 30),
-                mmvdv!(16, 32, 40),
-                mmvdv!(12, 32, 50),
-                mmvdv!(12, 64, 60),
-                mmvdv!(12, 128, 70)
+                melody_member!(12, 20, 32),
+                melody_member!(12, 30, 64),
+                melody_member!(16, 40, 32),
+                melody_member!(12, 50, 32),
+                melody_member!(12, 60, 64),
+                melody_member!(12, 70, 128)
             ])
             .join_repeats(),
             Melody::new(vec![
-                mmvdv!(12, 96, 20),
-                mmvdv!(16, 32, 40),
-                mmvdv!(12, 224, 50)
+                melody_member!(12, 20, 96),
+                melody_member!(16, 40, 32),
+                melody_member!(12, 50, 224)
             ])
         );
     }
