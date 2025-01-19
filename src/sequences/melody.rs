@@ -6,7 +6,7 @@ use crate::sequences::chord::ChordSeq;
 use crate::sequences::note::NoteSeq;
 use crate::sequences::numeric::NumericSeq;
 use crate::sequences::traits::Sequence;
-use crate::{default_collection_methods, default_sequence_methods};
+use crate::{default_collection_methods, default_sequence_methods, duration_with_timing};
 
 use anyhow::{anyhow, Result};
 use num_traits::{Bounded, Num};
@@ -22,6 +22,63 @@ pub struct MelodyMember<T> {
     pub timing: DurationalEventTiming,
     pub volume: u8,
     pub before: MetadataList,
+}
+
+#[macro_export]
+/// A macro for the most common cases of creating a member of a Melody.
+///
+/// Zero arguments: No notes, default volume and duration.
+/// One numeric argument: One note, default volume and duration.
+/// One vec argument: The notes in this vec, default volume and duration.
+/// Multiple notes encased in [[]], eg: [[1,2,3]]: These notes, default volume and duration.
+/// Two arguments: As for one argument, but the second argument supplies volume.
+/// Three arguments: As for two arguments, but the third argument supplies duration.
+macro_rules! melody_member {
+    () => {
+        MelodyMember::default()
+    };
+
+    ([$v:expr]) => {
+        MelodyMember::from($v.to_vec())
+    };
+
+    ($v:expr) => {
+        MelodyMember::from($v)
+    };
+
+    ([$v:expr], $vol:expr) => {
+        MelodyMember {
+            values: $v.to_vec(),
+            volume: $vol,
+            ..Default::default()
+        }
+    };
+
+    ($v:expr, $vol:expr) => {
+        MelodyMember {
+            values: vec![$v],
+            volume: $vol,
+            ..Default::default()
+        }
+    };
+
+    ([$v:expr], $vol:expr, $dur:expr) => {
+        MelodyMember {
+            values: $v.to_vec(),
+            volume: $vol,
+            timing: DurationalEventTiming::from_duration($dur),
+            ..Default::default()
+        }
+    };
+
+    ($v:expr, $vol:expr, $dur:expr) => {
+        MelodyMember {
+            values: vec![$v],
+            volume: $vol,
+            timing: DurationalEventTiming::from_duration($dur),
+            ..Default::default()
+        }
+    };
 }
 
 impl<T> Default for MelodyMember<T> {
@@ -75,6 +132,13 @@ impl<T> MelodyMember<T>
 where
     T: Copy + Clone + Num,
 {
+    pub fn new(values: Vec<T>) -> Self {
+        Self {
+            values,
+            ..Default::default()
+        }
+    }
+
     pub fn with_event(&mut self, e: &Metadata) -> &mut Self {
         self.before.append(e.clone());
 
@@ -109,9 +173,9 @@ where
     }
 
     pub fn mutate_exact_tick(&mut self, f: impl Fn(&mut u32)) -> &mut Self {
-        for m in self.before.contents.iter_mut() {
+        self.before.contents.iter_mut().for_each(|m| {
             m.mutate_exact_tick(&f);
-        }
+        });
 
         self.timing.mutate_exact_tick(f);
         self
@@ -123,9 +187,9 @@ where
     }
 
     pub fn mutate_offset(&mut self, f: impl Fn(&mut i32)) -> &mut Self {
-        for m in self.before.contents.iter_mut() {
+        self.before.contents.iter_mut().for_each(|m| {
             m.mutate_offset(&f);
-        }
+        });
 
         self.timing.mutate_offset(&f);
         self
@@ -456,10 +520,88 @@ mod tests {
     use crate::entities::timing::{DurationalEventTiming, Timing};
     use crate::metadata::{Metadata, MetadataData, MetadataList};
     use crate::sequences::chord::ChordSeq;
-    use crate::sequences::melody::{Melody, MelodyMember, DEFAULT_VOLUME};
     use crate::sequences::note::NoteSeq;
     use crate::sequences::numeric::NumericSeq;
     use crate::sequences::traits::Sequence;
+
+    use super::*;
+
+    #[test]
+    fn mel_member_macros() {
+        assert_eq!(melody_member!(), MelodyMember::<i32>::default());
+        assert_eq!(melody_member!(None), MelodyMember::<i32>::default());
+        assert_eq!(melody_member!(vec![]), MelodyMember::<i32>::default());
+        assert_eq!(
+            melody_member!(5),
+            MelodyMember {
+                values: vec![5],
+                ..Default::default()
+            }
+        );
+        assert_eq!(
+            melody_member!(Some(5)),
+            MelodyMember {
+                values: vec![5],
+                ..Default::default()
+            }
+        );
+        assert_eq!(
+            melody_member!(vec!(5, 6, 7)),
+            MelodyMember {
+                values: vec![5, 6, 7],
+                ..Default::default()
+            }
+        );
+        assert_eq!(
+            melody_member!([[5, 6, 7]]),
+            MelodyMember {
+                values: vec![5, 6, 7],
+                ..Default::default()
+            }
+        );
+        assert_eq!(
+            melody_member!(5, 96),
+            MelodyMember {
+                values: vec![5],
+                volume: 96,
+                ..Default::default()
+            }
+        );
+        assert_eq!(
+            melody_member!([[5, 6, 7]], 96),
+            MelodyMember {
+                values: vec![5, 6, 7],
+                volume: 96,
+                ..Default::default()
+            }
+        );
+        assert_eq!(
+            melody_member!(5, 96, 256),
+            MelodyMember {
+                values: vec![5],
+                volume: 96,
+                timing: DurationalEventTiming {
+                    duration: 256,
+                    tick: None,
+                    offset: 0
+                },
+                ..Default::default()
+            }
+        );
+        assert_eq!(
+            melody_member!([[5, 6, 7]], 96, 256),
+            MelodyMember {
+                values: vec![5, 6, 7],
+                volume: 96,
+                timing: DurationalEventTiming {
+                    duration: 256,
+                    tick: None,
+                    offset: 0
+                },
+                ..Default::default()
+            }
+        );
+    }
 
     #[test]
     fn mel_member_from() {
@@ -818,11 +960,7 @@ mod tests {
         ($tick:expr, $offset:expr, $duration:expr) => {
             MelodyMember {
                 values: vec![20],
-                timing: DurationalEventTiming {
-                    tick: $tick,
-                    offset: $offset,
-                    duration: $duration,
-                },
+                timing: duration_with_timing!($duration, $tick, $offset),
                 volume: 32,
                 before: MetadataList::new(vec![]),
             }
