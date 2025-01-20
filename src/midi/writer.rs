@@ -1,6 +1,6 @@
 use crate::collections::traits::Collection;
-use crate::entities::{key_signature, time_signature, timing::Timing};
-use crate::metadata::{Metadata, MetadataData, MetadataList};
+use crate::entities::{time_signature, timing::Timing};
+use crate::metadata::{Metadata, MetadataData, MetadataError, MetadataList};
 use crate::score::Score;
 use crate::sequences::melody::{Melody, MelodyMember};
 use anyhow::{anyhow, Result};
@@ -96,6 +96,51 @@ fn try_string_to_variable_bytes(str: &str) -> Result<Vec<u8>> {
     Ok(ret)
 }
 
+fn key_signature_to_midi_bytes(key: &str) -> Result<Vec<u8>> {
+    let byte1 = match key {
+        "C" => Ok(0),
+        "a" => Ok(0),
+        "G" => Ok(1),
+        "e" => Ok(1),
+        "D" => Ok(2),
+        "b" => Ok(2),
+        "A" => Ok(3),
+        "f#" => Ok(3),
+        "E" => Ok(4),
+        "c#" => Ok(4),
+        "B" => Ok(5),
+        "g#" => Ok(5),
+        "F#" => Ok(6),
+        "d#" => Ok(6),
+        "C#" => Ok(7),
+        "a#" => Ok(7),
+        "Cb" => Ok(249),
+        "ab" => Ok(249),
+        "Gb" => Ok(250),
+        "eb" => Ok(250),
+        "Db" => Ok(251),
+        "bb" => Ok(251),
+        "Ab" => Ok(252),
+        "f" => Ok(252),
+        "Eb" => Ok(253),
+        "c" => Ok(253),
+        "Bb" => Ok(254),
+        "g" => Ok(254),
+        "F" => Ok(255),
+        "d" => Ok(255),
+        _ => Err(MetadataError::InvalidKeySignature(key.to_string())),
+    }?;
+
+    let mut byte2 = 0x00;
+    if let Some(first) = key.chars().next() {
+        if first.is_lowercase() {
+            byte2 = 0x01;
+        }
+    }
+
+    Ok(vec![0xff, 0x59, 0x02, byte1, byte2])
+}
+
 macro_rules! build_text_event {
     ($type:expr, $txt:expr) => {
         Ok($type
@@ -132,7 +177,7 @@ impl ToMidiBytes for MetadataData {
                     EVENT_OFF_VALUE
                 },
             ]),
-            MetadataData::KeySignature(val) => Ok(key_signature::to_midi_bytes(val)?.to_vec()),
+            MetadataData::KeySignature(val) => Ok(key_signature_to_midi_bytes(val)?),
             MetadataData::TimeSignature(val) => {
                 Ok(time_signature::to_midi_bytes(&format!("{}/{}", val.0, val.1))?.to_vec())
             }
@@ -474,6 +519,10 @@ mod tests {
         test_text!(Lyric, 0x05);
         test_text!(Marker, 0x06);
         test_text!(CuePoint, 0x07);
+
+        assert!(MetadataData::KeySignature("H".to_string())
+            .try_to_midi_bytes()
+            .is_err());
 
         macro_rules! test_key_sig {
             ($k:expr, $bytes: expr) => {
