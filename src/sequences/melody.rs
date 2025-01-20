@@ -517,7 +517,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::collections::traits::Collection;
-    use crate::entities::timing::{DurationalEventTiming, Timing};
+    use crate::entities::timing::DurationalEventTiming;
     use crate::metadata::{Metadata, MetadataData, MetadataList};
     use crate::sequences::chord::ChordSeq;
     use crate::sequences::note::NoteSeq;
@@ -580,11 +580,7 @@ mod tests {
             MelodyMember {
                 values: vec![5],
                 volume: 96,
-                timing: DurationalEventTiming {
-                    duration: 256,
-                    tick: None,
-                    offset: 0
-                },
+                timing: DurationalEventTiming::new(256, None, 0),
                 ..Default::default()
             }
         );
@@ -593,11 +589,7 @@ mod tests {
             MelodyMember {
                 values: vec![5, 6, 7],
                 volume: 96,
-                timing: DurationalEventTiming {
-                    duration: 256,
-                    tick: None,
-                    offset: 0
-                },
+                timing: DurationalEventTiming::new(256, None, 0),
                 ..Default::default()
             }
         );
@@ -935,13 +927,13 @@ mod tests {
             Melody::new(vec![
                 MelodyMember {
                     values: vec![12],
-                    timing: DurationalEventTiming::default().with_duration(16),
+                    timing: DurationalEventTiming::new(16, None, 0),
                     volume: 25,
                     before: MetadataList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
-                    timing: DurationalEventTiming::default().with_duration(32),
+                    timing: DurationalEventTiming::new(32, None, 0),
                     volume: 35,
                     before: MetadataList::new(vec![]),
                 },
@@ -1186,7 +1178,7 @@ mod tests {
                 },
                 MelodyMember {
                     values: vec![16],
-                    timing: DurationalEventTiming::default().with_duration(25),
+                    timing: DurationalEventTiming::new(25, None, 0),
                     volume: DEFAULT_VOLUME,
                     before: MetadataList::new(vec![]),
                 },
@@ -1204,13 +1196,13 @@ mod tests {
             Melody::new(vec![
                 MelodyMember {
                     values: vec![12],
-                    timing: DurationalEventTiming::default().with_duration(25),
+                    timing: DurationalEventTiming::new(25, None, 0),
                     volume: DEFAULT_VOLUME,
                     before: MetadataList::new(vec![]),
                 },
                 MelodyMember {
                     values: vec![16],
-                    timing: DurationalEventTiming::default().with_duration(35),
+                    timing: DurationalEventTiming::new(35, None, 0),
                     volume: DEFAULT_VOLUME,
                     before: MetadataList::new(vec![]),
                 },
@@ -1234,7 +1226,7 @@ mod tests {
                 },
                 MelodyMember {
                     values: vec![16],
-                    timing: DurationalEventTiming::default().with_duration(25),
+                    timing: DurationalEventTiming::new(25, None, 0),
                     volume: DEFAULT_VOLUME,
                     before: MetadataList::new(vec![]),
                 },
@@ -1274,9 +1266,7 @@ mod tests {
             Melody::new(vec![
                 MelodyMember {
                     values: vec![12],
-                    timing: DurationalEventTiming::default()
-                        .with_duration(32)
-                        .with_offset(100),
+                    timing: DurationalEventTiming::new(32, None, 100),
                     volume: DEFAULT_VOLUME,
                     before: MetadataList::new(vec![Metadata::new(
                         MetadataData::Sustain(true),
@@ -1286,9 +1276,7 @@ mod tests {
                 },
                 MelodyMember {
                     values: vec![16],
-                    timing: DurationalEventTiming::default()
-                        .with_duration(25)
-                        .with_offset(75),
+                    timing: DurationalEventTiming::new(25, None, 75),
                     volume: DEFAULT_VOLUME,
                     before: MetadataList::new(vec![Metadata::new(
                         MetadataData::Sustain(false),
@@ -1302,9 +1290,7 @@ mod tests {
             Melody::new(vec![
                 MelodyMember {
                     values: vec![12],
-                    timing: DurationalEventTiming::default()
-                        .with_duration(96)
-                        .with_offset(300),
+                    timing: DurationalEventTiming::new(96, None, 300),
                     volume: DEFAULT_VOLUME,
                     before: MetadataList::new(vec![Metadata::new(
                         MetadataData::Sustain(true),
@@ -1314,9 +1300,7 @@ mod tests {
                 },
                 MelodyMember {
                     values: vec![16],
-                    timing: DurationalEventTiming::default()
-                        .with_duration(75)
-                        .with_offset(225),
+                    timing: DurationalEventTiming::new(75, None, 225),
                     volume: DEFAULT_VOLUME,
                     before: MetadataList::new(vec![Metadata::new(
                         MetadataData::Sustain(false),
@@ -1339,9 +1323,7 @@ mod tests {
             Melody::new(vec![
                 MelodyMember {
                     values: vec![12],
-                    timing: DurationalEventTiming::default()
-                        .with_duration(96)
-                        .with_offset(300),
+                    timing: DurationalEventTiming::new(96, None, 300),
                     volume: DEFAULT_VOLUME,
                     before: MetadataList::new(vec![Metadata::new(
                         MetadataData::Sustain(true),
@@ -1351,9 +1333,7 @@ mod tests {
                 },
                 MelodyMember {
                     values: vec![16],
-                    timing: DurationalEventTiming::default()
-                        .with_duration(75)
-                        .with_offset(225),
+                    timing: DurationalEventTiming::new(75, None, 225),
                     volume: DEFAULT_VOLUME,
                     before: MetadataList::new(vec![Metadata::new(
                         MetadataData::Sustain(false),
@@ -1367,9 +1347,7 @@ mod tests {
             Melody::new(vec![
                 MelodyMember {
                     values: vec![12],
-                    timing: DurationalEventTiming::default()
-                        .with_duration(32)
-                        .with_offset(100),
+                    timing: DurationalEventTiming::new(32, None, 100),
                     volume: DEFAULT_VOLUME,
                     before: MetadataList::new(vec![Metadata::new(
                         MetadataData::Sustain(true),
@@ -1379,9 +1357,7 @@ mod tests {
                 },
                 MelodyMember {
                     values: vec![16],
-                    timing: DurationalEventTiming::default()
-                        .with_duration(25)
-                        .with_offset(75),
+                    timing: DurationalEventTiming::new(25, None, 75),
                     volume: DEFAULT_VOLUME,
                     before: MetadataList::new(vec![Metadata::new(
                         MetadataData::Sustain(false),
