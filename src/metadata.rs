@@ -42,26 +42,41 @@ fn validate_time_signature(str: &str) -> Result<(u8, u16)> {
     let p: Vec<&str> = str.split("/").collect();
 
     if p.len() != 2 {
-        return Err(anyhow!(MetadataError::UnsupportedTimeSignature(
+        return Err(anyhow!(MetadataError::InvalidTimeSignature(
             str.to_string()
         )));
     }
 
     let num = p[0]
         .parse::<u8>()
-        .map_err(|_| anyhow!(MetadataError::UnsupportedTimeSignature(str.to_string())))?;
+        .map_err(|_| anyhow!(MetadataError::InvalidTimeSignature(str.to_string())))?;
 
     let denom = p[1]
         .parse::<u16>()
-        .map_err(|_| anyhow!(MetadataError::UnsupportedTimeSignature(str.to_string())))?;
+        .map_err(|_| anyhow!(MetadataError::InvalidTimeSignature(str.to_string())))?;
 
     if num == 0 || denom & (denom - 1) != 0 {
-        Err(anyhow!(MetadataError::UnsupportedTimeSignature(
+        Err(anyhow!(MetadataError::InvalidTimeSignature(
             str.to_string()
         )))
     } else {
         Ok((num, denom))
     }
+}
+
+fn validate_tempo<T>(t: T) -> Result<f32>
+where
+    T: TryInto<f32> + Copy + Debug,
+{
+    t.try_into()
+        .map_err(|_| anyhow!(MetadataError::InvalidTempo(format!("{:?}", t))))
+        .and_then(|v| {
+            if v > 0.0 {
+                Ok(v)
+            } else {
+                Err(anyhow!(MetadataError::InvalidTempo(format!("{:?}", t))))
+            }
+        })
 }
 
 /// A piece of metadata associated with a note or track.
@@ -123,10 +138,12 @@ pub enum MetadataError {
     UnexpectedFloatValue(String, f32),
     #[error("Found unexpected boolean value {1} for metadata type {0}")]
     UnexpectedBooleanValue(String, bool),
-    #[error("Unsupported time signature {0}")]
-    UnsupportedTimeSignature(String),
-    #[error("Unsupported key signature {0}")]
-    UnsupportedKeySignature(String),
+    #[error("Invalid time signature {0}")]
+    InvalidTimeSignature(String),
+    #[error("Invalid key signature {0}")]
+    InvalidKeySignature(String),
+    #[error("Invalid tempo {0}")]
+    InvalidTempo(String),
 }
 
 fn metadata_type_exists(event: &str) -> bool {
@@ -156,7 +173,7 @@ fn get_meta_event_string_data(event: &str, value: String) -> Result<MetadataData
             if validate_key_signature(&value) {
                 Ok(MetadataData::KeySignature(value))
             } else {
-                Err(anyhow!(MetadataError::UnsupportedKeySignature(value)))
+                Err(anyhow!(MetadataError::InvalidKeySignature(value)))
             }
         }
         "time-signature" => Ok(MetadataData::TimeSignature(validate_time_signature(
@@ -190,7 +207,7 @@ fn get_meta_event_int_data(event: &str, value: i16) -> Result<MetadataData> {
         "pan" => Ok(MetadataData::Pan(value)),
         "balance" => Ok(MetadataData::Balance(value)),
         "pitch-bend" => Ok(MetadataData::PitchBend(value)),
-        "tempo" => Ok(MetadataData::Tempo(value as f32)),
+        "tempo" => Ok(MetadataData::Tempo(validate_tempo(value)?)),
         _ => {
             if metadata_type_exists(event) {
                 Err(anyhow!(MetadataError::UnexpectedIntValue(
@@ -226,7 +243,7 @@ fn get_meta_event_bool_data(event: &str, value: bool) -> Result<MetadataData> {
 
 fn get_meta_event_float_data(event: &str, value: f32) -> Result<MetadataData> {
     match event {
-        "tempo" => Ok(MetadataData::Tempo(value)),
+        "tempo" => Ok(MetadataData::Tempo(validate_tempo(value)?)),
         _ => {
             if metadata_type_exists(event) {
                 Err(anyhow!(MetadataError::UnexpectedFloatValue(
@@ -687,6 +704,16 @@ mod tests {
             metadata!(MetadataData::TimeSignature((3, 8)), None, 0)
         );
 
+        assert!(Metadata::try_from(("tempo", 0)).is_err());
+        assert_eq!(
+            Metadata::try_from(("tempo", 132)).unwrap(),
+            metadata!(MetadataData::Tempo(132.0), None, 0)
+        );
+        assert_eq!(
+            Metadata::try_from(("tempo", 132.0, Some(50), 100)).unwrap(),
+            metadata!(MetadataData::Tempo(132.0), Some(50), 100)
+        );
+
         assert_eq!(
             Metadata::try_from(("text", "this text")).unwrap(),
             metadata!(MetadataData::Text("this text".to_string()), None, 0)
@@ -705,16 +732,6 @@ mod tests {
         assert_eq!(
             Metadata::try_from(("pitch-bend", 4096, Some(50), 100)).unwrap(),
             metadata!(MetadataData::PitchBend(4096), Some(50), 100)
-        );
-
-        assert_eq!(
-            Metadata::try_from(("tempo", 132)).unwrap(),
-            metadata!(MetadataData::Tempo(132.0), None, 0)
-        );
-
-        assert_eq!(
-            Metadata::try_from(("tempo", 132.0, Some(50), 100)).unwrap(),
-            metadata!(MetadataData::Tempo(132.0), Some(50), 100)
         );
 
         assert_eq!(
