@@ -126,6 +126,38 @@ impl fmt::Display for MetadataData {
     }
 }
 
+impl MetadataData {
+    pub fn self_validate(&self) -> Result<()> {
+        match self {
+            MetadataData::KeySignature(key) => {
+                if validate_key_signature(key) {
+                    Ok(())
+                } else {
+                    Err(anyhow!(MetadataError::InvalidKeySignature(key.clone())))
+                }
+            }
+            MetadataData::TimeSignature((n, d)) => {
+                if *n < 1 || *d & (*d - 1) != 0 {
+                    Err(anyhow!(MetadataError::InvalidTimeSignature(format!(
+                        "{}/{}",
+                        n, d
+                    ))))
+                } else {
+                    Ok(())
+                }
+            }
+            MetadataData::Tempo(t) => {
+                if *t > 0.0 {
+                    Ok(())
+                } else {
+                    Err(anyhow!(MetadataError::InvalidTempo(t.to_string())))
+                }
+            }
+            _ => Ok(()),
+        }
+    }
+}
+
 #[derive(Clone, Error, Debug)]
 pub enum MetadataError {
     #[error("Invalid metadata type found: {0}")]
@@ -170,11 +202,9 @@ fn metadata_type_exists(event: &str) -> bool {
 fn get_meta_event_string_data(event: &str, value: String) -> Result<MetadataData> {
     match event {
         "key-signature" => {
-            if validate_key_signature(&value) {
-                Ok(MetadataData::KeySignature(value))
-            } else {
-                Err(anyhow!(MetadataError::InvalidKeySignature(value)))
-            }
+            let k = MetadataData::KeySignature(value);
+
+            k.self_validate().map(|_| k)
         }
         "time-signature" => Ok(MetadataData::TimeSignature(validate_time_signature(
             &value,

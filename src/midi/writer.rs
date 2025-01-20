@@ -1,5 +1,5 @@
 use crate::collections::traits::Collection;
-use crate::entities::{time_signature, timing::Timing};
+use crate::entities::timing::Timing;
 use crate::metadata::{Metadata, MetadataData, MetadataError, MetadataList};
 use crate::score::Score;
 use crate::sequences::melody::{Melody, MelodyMember};
@@ -141,6 +141,18 @@ fn key_signature_to_midi_bytes(key: &str) -> Result<Vec<u8>> {
     Ok(vec![0xff, 0x59, 0x02, byte1, byte2])
 }
 
+fn time_signature_to_midi_bytes(v: &(u8, u16)) -> Vec<u8> {
+    vec![
+        0xff,
+        0x58,
+        0x04,
+        v.0,
+        15 - v.1.leading_zeros() as u8,
+        0x18,
+        0x08,
+    ]
+}
+
 fn sustain_to_midi_bytes(v: &bool) -> Vec<u8> {
     vec![
         CONTROLLER_BYTE,
@@ -161,6 +173,9 @@ macro_rules! build_text_event {
 
 impl ToMidiBytes for MetadataData {
     fn try_to_midi_bytes(&self) -> Result<Vec<u8>> {
+        // Ensure that the metadata is actually valid before attempting to convert
+        self.self_validate()?;
+
         match self {
             MetadataData::EndTrack => Ok(END_TRACK_EVENT.to_vec()),
             MetadataData::Tempo(t) => {
@@ -178,9 +193,7 @@ impl ToMidiBytes for MetadataData {
             MetadataData::CuePoint(txt) => build_text_event!(CUE_POINT_EVENT, txt),
             MetadataData::Sustain(val) => Ok(sustain_to_midi_bytes(val)),
             MetadataData::KeySignature(val) => Ok(key_signature_to_midi_bytes(val)?),
-            MetadataData::TimeSignature(val) => {
-                Ok(time_signature::to_midi_bytes(&format!("{}/{}", val.0, val.1))?.to_vec())
-            }
+            MetadataData::TimeSignature(val) => Ok(time_signature_to_midi_bytes(val)),
             /*
             MetadataData::Instrument(String),
             MetadataData::Volume(i16),
