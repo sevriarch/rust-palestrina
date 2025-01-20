@@ -242,6 +242,7 @@ macro_rules! metadata_vec {
     );
 }
 
+#[macro_export]
 macro_rules! metadata {
     ($data:expr) => {
         Metadata {
@@ -274,10 +275,10 @@ impl TryFrom<(&str, &str)> for Metadata {
     type Error = anyhow::Error;
 
     fn try_from((event, value): (&str, &str)) -> Result<Self> {
-        Ok(metadata!(get_meta_event_string_data(
-            event,
-            value.to_string()
-        )?))
+        Ok(Metadata {
+            data: get_meta_event_string_data(event, value.to_string())?,
+            timing: EventTiming::default(),
+        })
     }
 }
 
@@ -285,7 +286,10 @@ impl TryFrom<(&str, i16)> for Metadata {
     type Error = anyhow::Error;
 
     fn try_from((event, value): (&str, i16)) -> Result<Self> {
-        Ok(metadata!(get_meta_event_int_data(event, value)?))
+        Ok(Metadata {
+            data: get_meta_event_int_data(event, value)?,
+            timing: EventTiming::default(),
+        })
     }
 }
 
@@ -293,7 +297,10 @@ impl TryFrom<(&str, bool)> for Metadata {
     type Error = anyhow::Error;
 
     fn try_from((event, value): (&str, bool)) -> Result<Self> {
-        Ok(metadata!(get_meta_event_bool_data(event, value)?))
+        Ok(Metadata {
+            data: get_meta_event_bool_data(event, value)?,
+            timing: EventTiming::default(),
+        })
     }
 }
 
@@ -301,7 +308,10 @@ impl TryFrom<(&str, f32)> for Metadata {
     type Error = anyhow::Error;
 
     fn try_from((event, value): (&str, f32)) -> Result<Self> {
-        Ok(metadata!(get_meta_event_float_data(event, value)?))
+        Ok(Metadata {
+            data: get_meta_event_float_data(event, value)?,
+            timing: EventTiming::default(),
+        })
     }
 }
 
@@ -309,11 +319,10 @@ impl TryFrom<(&str, &str, Option<u32>, i32)> for Metadata {
     type Error = anyhow::Error;
 
     fn try_from((event, value, tick, offset): (&str, &str, Option<u32>, i32)) -> Result<Self> {
-        Ok(metadata!(
-            get_meta_event_string_data(event, value.to_string())?,
-            tick,
-            offset
-        ))
+        Ok(Metadata {
+            data: get_meta_event_string_data(event, value.to_string())?,
+            timing: EventTiming::new(tick, offset),
+        })
     }
 }
 
@@ -321,11 +330,10 @@ impl TryFrom<(&str, i16, Option<u32>, i32)> for Metadata {
     type Error = anyhow::Error;
 
     fn try_from((event, value, tick, offset): (&str, i16, Option<u32>, i32)) -> Result<Self> {
-        Ok(metadata!(
-            get_meta_event_int_data(event, value)?,
-            tick,
-            offset
-        ))
+        Ok(Metadata {
+            data: get_meta_event_int_data(event, value)?,
+            timing: EventTiming::new(tick, offset),
+        })
     }
 }
 
@@ -333,11 +341,10 @@ impl TryFrom<(&str, bool, Option<u32>, i32)> for Metadata {
     type Error = anyhow::Error;
 
     fn try_from((event, value, tick, offset): (&str, bool, Option<u32>, i32)) -> Result<Self> {
-        Ok(metadata!(
-            get_meta_event_bool_data(event, value)?,
-            tick,
-            offset
-        ))
+        Ok(Metadata {
+            data: get_meta_event_bool_data(event, value)?,
+            timing: EventTiming::new(tick, offset),
+        })
     }
 }
 
@@ -345,11 +352,10 @@ impl TryFrom<(&str, f32, Option<u32>, i32)> for Metadata {
     type Error = anyhow::Error;
 
     fn try_from((event, value, tick, offset): (&str, f32, Option<u32>, i32)) -> Result<Self> {
-        Ok(metadata!(
-            get_meta_event_float_data(event, value)?,
-            tick,
-            offset
-        ))
+        Ok(Metadata {
+            data: get_meta_event_float_data(event, value)?,
+            timing: EventTiming::new(tick, offset),
+        })
     }
 }
 
@@ -481,10 +487,7 @@ impl PushMetadata<$type> for MetadataList {
     where
         Self: Sized,
     {
-        let data = Metadata::try_from((kind, data))?;
-
-        self.contents.push(data);
-
+        self.contents.push(Metadata::try_from((kind, data))?);
         Ok(self)
     }
 
@@ -498,18 +501,7 @@ impl PushMetadata<$type> for MetadataList {
     where
         Self: Sized,
     {
-        let mut data = Metadata::try_from((kind, data))?;
-
-        if let Some(tick) = tick {
-            data.with_exact_tick(tick);
-        }
-
-        if offset != 0 {
-            data.with_offset(offset);
-        }
-
-        self.contents.push(data);
-
+        self.contents.push(Metadata::try_from((kind, data, tick, offset))?);
         Ok(self)
     }
 }
