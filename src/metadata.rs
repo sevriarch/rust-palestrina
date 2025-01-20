@@ -467,15 +467,13 @@ impl MetadataList {
 
 /// Create a new timed metadata object and add it onto the end of a list.
 pub trait PushMetadata<T> {
-    /// Push a metadata object with default timing (no exact tick, zero offset)
-    /// onto the end of the list.
-    fn push(self, kind: &str, data: T) -> Result<Self>
+    /// Add a metadata object with default timing (no exact tick, zero offset).
+    fn with_metadata(self, tuple: (&str, T)) -> Result<Self>
     where
         Self: Sized;
 
-    /// Push a metadata object with the supplied timing (exact tick, offset)
-    /// onto the end of the list.
-    fn push_with_timing(self, kind: &str, data: T, tick: Option<u32>, offset: i32) -> Result<Self>
+    /// Add a metadata object with the supplied timing (exact tick, offset).
+    fn with_timed_metadata(self, tuple: (&str, T, Option<u32>, i32)) -> Result<Self>
     where
         Self: Sized;
 }
@@ -483,25 +481,19 @@ pub trait PushMetadata<T> {
 macro_rules! push_impl {
     ($($type:ty)*) => ($(
 impl PushMetadata<$type> for MetadataList {
-    fn push(mut self, kind: &str, data: $type) -> Result<Self>
+    fn with_metadata(mut self, tuple: (&str, $type)) -> Result<Self>
     where
-        Self: Sized,
+    Self: Sized,
     {
-        self.contents.push(Metadata::try_from((kind, data))?);
+        self.contents.push(Metadata::try_from(tuple)?);
         Ok(self)
     }
 
-    fn push_with_timing(
-        mut self,
-        kind: &str,
-        data: $type,
-        tick: Option<u32>,
-        offset: i32
-    ) -> Result<Self>
+    fn with_timed_metadata(mut self, tuple: (&str, $type, Option<u32>, i32)) -> Result<Self>
     where
-        Self: Sized,
+    Self: Sized,
     {
-        self.contents.push(Metadata::try_from((kind, data, tick, offset))?);
+        self.contents.push(Metadata::try_from(tuple)?);
         Ok(self)
     }
 }
@@ -691,26 +683,33 @@ mod tests {
     }
 
     #[test]
-    fn push() {
-        assert!(MetadataList::default().push("foo", "bar").is_err());
+    fn with_metadata() {
+        assert!(MetadataList::default()
+            .with_metadata(("foo", "bar"))
+            .is_err());
 
         assert_eq!(
-            MetadataList::default().push("text", "test text").unwrap(),
+            MetadataList::default()
+                .with_metadata(("text", "test text"))
+                .unwrap(),
             MetadataList {
-                contents: vec![Metadata::try_from(("text", "test text")).unwrap()]
+                contents: vec![Metadata {
+                    data: MetadataData::Text("test text".to_string()),
+                    timing: EventTiming::default()
+                }]
             }
         );
     }
 
     #[test]
-    fn push_with_timing() {
+    fn with_timed_metadata() {
         assert!(MetadataList::default()
-            .push_with_timing("foo", "bar", Some(50), 50)
+            .with_timed_metadata(("foo", "bar", Some(50), 50))
             .is_err());
 
         assert_eq!(
             MetadataList::default()
-                .push_with_timing("text", "test text", Some(50), 50)
+                .with_timed_metadata(("text", "test text", Some(50), 50))
                 .unwrap(),
             MetadataList {
                 contents: vec![Metadata {
@@ -782,7 +781,7 @@ mod tests {
     fn list_mutate_exact_tick() {
         assert_eq!(
             MetadataList::default()
-                .push_with_timing("text", "test text", None, 50)
+                .with_timed_metadata(("text", "test text", None, 50))
                 .unwrap()
                 .mutate_exact_tick(|v| *v *= 2),
             &MetadataList {
@@ -798,7 +797,7 @@ mod tests {
 
         assert_eq!(
             MetadataList::default()
-                .push_with_timing("text", "test text", Some(20), 50)
+                .with_timed_metadata(("text", "test text", Some(20), 50))
                 .unwrap()
                 .mutate_exact_tick(|v| *v *= 2),
             &MetadataList {
@@ -817,7 +816,7 @@ mod tests {
     fn list_mutate_offset() {
         assert_eq!(
             MetadataList::default()
-                .push_with_timing("text", "test text", Some(20), 50)
+                .with_timed_metadata(("text", "test text", Some(20), 50))
                 .unwrap()
                 .mutate_offset(|v| *v *= 2),
             &MetadataList {

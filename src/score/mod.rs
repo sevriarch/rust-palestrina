@@ -118,12 +118,12 @@ where
     }
 
     pub fn with_tempo<TTempo: Into<f32>>(mut self, tempo: TTempo) -> Result<Self> {
-        self.metadata = self.metadata.push("tempo", tempo.into())?;
+        self.metadata = self.metadata.with_metadata(("tempo", tempo.into()))?;
         Ok(self)
     }
 
     pub fn with_time_signature(mut self, ts: &str) -> Result<Self> {
-        self.metadata = self.metadata.push("time-signature", ts)?;
+        self.metadata = self.metadata.with_metadata(("time-signature", ts))?;
         Ok(self)
     }
 
