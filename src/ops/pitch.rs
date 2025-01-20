@@ -365,7 +365,7 @@ macro_rules! impl_traits_for_pitch_containers {
             }
 
             fn filter_pitch<FilterT: Fn(&$ty) -> bool>(self, f: FilterT) -> Result<Self> {
-                Ok(self.map(|p| if f(&p) { Some(p) } else { None }).flatten())
+                Ok(self.filter(|p| f(&p)))
             }
 
             fn filter_map_pitch<MapT: Fn(&$ty) -> Option<$ty>>(self, f: MapT) -> Result<Self> {
