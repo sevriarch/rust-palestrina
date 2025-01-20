@@ -141,6 +141,14 @@ fn key_signature_to_midi_bytes(key: &str) -> Result<Vec<u8>> {
     Ok(vec![0xff, 0x59, 0x02, byte1, byte2])
 }
 
+fn sustain_to_midi_bytes(v: &bool) -> Vec<u8> {
+    vec![
+        CONTROLLER_BYTE,
+        SUSTAIN_CONTROLLER,
+        if *v { EVENT_ON_VALUE } else { EVENT_OFF_VALUE },
+    ]
+}
+
 macro_rules! build_text_event {
     ($type:expr, $txt:expr) => {
         Ok($type
@@ -168,15 +176,7 @@ impl ToMidiBytes for MetadataData {
             MetadataData::Lyric(txt) => build_text_event!(LYRIC_EVENT, txt),
             MetadataData::Marker(txt) => build_text_event!(MARKER_EVENT, txt),
             MetadataData::CuePoint(txt) => build_text_event!(CUE_POINT_EVENT, txt),
-            MetadataData::Sustain(val) => Ok(vec![
-                CONTROLLER_BYTE,
-                SUSTAIN_CONTROLLER,
-                if *val {
-                    EVENT_ON_VALUE
-                } else {
-                    EVENT_OFF_VALUE
-                },
-            ]),
+            MetadataData::Sustain(val) => Ok(sustain_to_midi_bytes(val)),
             MetadataData::KeySignature(val) => Ok(key_signature_to_midi_bytes(val)?),
             MetadataData::TimeSignature(val) => {
                 Ok(time_signature::to_midi_bytes(&format!("{}/{}", val.0, val.1))?.to_vec())
