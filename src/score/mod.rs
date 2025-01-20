@@ -249,7 +249,7 @@ mod tests {
             sc.metadata,
             MetadataList {
                 contents: vec![Metadata {
-                    data: MetadataData::TimeSignature("4/4".to_string()),
+                    data: MetadataData::TimeSignature((4, 4)),
                     timing: EventTiming::default()
                 }]
             }

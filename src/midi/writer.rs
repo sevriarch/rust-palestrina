@@ -133,7 +133,9 @@ impl ToMidiBytes for MetadataData {
                 },
             ]),
             MetadataData::KeySignature(val) => Ok(key_signature::to_midi_bytes(val)?.to_vec()),
-            MetadataData::TimeSignature(val) => Ok(time_signature::to_midi_bytes(val)?.to_vec()),
+            MetadataData::TimeSignature(val) => {
+                Ok(time_signature::to_midi_bytes(&format!("{}/{}", val.0, val.1))?.to_vec())
+            }
             /*
             MetadataData::Instrument(String),
             MetadataData::Volume(i16),
@@ -515,23 +517,23 @@ mod tests {
         test_key_sig!("bb", [0xff, 0x59, 0x02, 0xfb, 0x01]);
         test_key_sig!("f", [0xff, 0x59, 0x02, 0xfc, 0x01]);
 
-        assert!(MetadataData::TimeSignature("0/8".to_string())
+        assert!(MetadataData::TimeSignature((0, 8))
             .try_to_midi_bytes()
             .is_err());
 
-        assert!(MetadataData::TimeSignature("4/6".to_string())
+        assert!(MetadataData::TimeSignature((4, 6))
             .try_to_midi_bytes()
             .is_err());
 
         assert_eq!(
-            MetadataData::TimeSignature("2/4".to_string())
+            MetadataData::TimeSignature((2, 4))
                 .try_to_midi_bytes()
                 .unwrap(),
             vec![0xff, 0x58, 0x04, 0x02, 0x02, 0x18, 0x08]
         );
 
         assert_eq!(
-            MetadataData::TimeSignature("9/16".to_string())
+            MetadataData::TimeSignature((9, 16))
                 .try_to_midi_bytes()
                 .unwrap(),
             vec![0xff, 0x58, 0x04, 0x09, 0x04, 0x18, 0x08]

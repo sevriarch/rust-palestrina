@@ -3,6 +3,67 @@ use anyhow::{anyhow, Result};
 use std::{fmt, fmt::Debug};
 use thiserror::Error;
 
+fn validate_key_signature(key: &str) -> bool {
+    matches!(
+        key,
+        "Cb" | "Gb"
+            | "Db"
+            | "Ab"
+            | "Eb"
+            | "Bb"
+            | "F"
+            | "C"
+            | "G"
+            | "D"
+            | "A"
+            | "E"
+            | "B"
+            | "F#"
+            | "C#"
+            | "ab"
+            | "eb"
+            | "bb"
+            | "f"
+            | "c"
+            | "g"
+            | "d"
+            | "a"
+            | "e"
+            | "b"
+            | "f#"
+            | "c#"
+            | "g#"
+            | "d#"
+            | "a#"
+    )
+}
+
+fn validate_time_signature(str: &str) -> Result<(u8, u16)> {
+    let p: Vec<&str> = str.split("/").collect();
+
+    if p.len() != 2 {
+        return Err(anyhow!(MetadataError::UnsupportedTimeSignature(
+            str.to_string()
+        )));
+    }
+
+    let num = p[0]
+        .parse::<u8>()
+        .map_err(|_| anyhow!(MetadataError::UnsupportedTimeSignature(str.to_string())))?;
+
+    let denom = p[1]
+        .parse::<u16>()
+        .map_err(|_| anyhow!(MetadataError::UnsupportedTimeSignature(str.to_string())))?;
+
+    if num == 0 || denom & (denom - 1) != 0 {
+        Err(anyhow!(MetadataError::UnsupportedTimeSignature(
+            str.to_string()
+        )))
+    } else {
+        Ok((num, denom))
+    }
+}
+
 /// A piece of metadata associated with a note or track.
 /// Corresponds roughly to a MIDI meta-event or channel event.
 #[derive(Clone, Debug, PartialEq)]
@@ -11,7 +72,7 @@ pub enum MetadataData {
     Sustain(bool),
     Tempo(f32),
     KeySignature(String),
-    TimeSignature(String),
+    TimeSignature((u8, u16)),
     Instrument(String),
     Text(String),
     Lyric(String),
@@ -32,7 +93,7 @@ impl fmt::Display for MetadataData {
             MetadataData::Sustain(v) => format!("Sustain({})", v),
             MetadataData::Tempo(v) => format!("Tempo({})", v),
             MetadataData::KeySignature(v) => format!("KeySignature({})", v),
-            MetadataData::TimeSignature(v) => format!("TimeSignature({})", v),
+            MetadataData::TimeSignature(v) => format!("TimeSignature({}/{})", v.0, v.1),
             MetadataData::Instrument(v) => format!("Instrument({})", v),
             MetadataData::Text(v) => format!("Text({})", v),
             MetadataData::Lyric(v) => format!("Lyric({})", v),
@@ -62,6 +123,10 @@ pub enum MetadataError {
     UnexpectedFloatValue(String, f32),
     #[error("Found unexpected boolean value {1} for metadata type {0}")]
     UnexpectedBooleanValue(String, bool),
+    #[error("Unsupported time signature {0}")]
+    UnsupportedTimeSignature(String),
+    #[error("Unsupported key signature {0}")]
+    UnsupportedKeySignature(String),
 }
 
 fn metadata_type_exists(event: &str) -> bool {
@@ -87,8 +152,16 @@ fn metadata_type_exists(event: &str) -> bool {
 
 fn get_meta_event_string_data(event: &str, value: String) -> Result<MetadataData> {
     match event {
-        "key-signature" => Ok(MetadataData::KeySignature(value)),
-        "time-signature" => Ok(MetadataData::TimeSignature(value)),
+        "key-signature" => {
+            if validate_key_signature(&value) {
+                Ok(MetadataData::KeySignature(value))
+            } else {
+                Err(anyhow!(MetadataError::UnsupportedKeySignature(value)))
+            }
+        }
+        "time-signature" => Ok(MetadataData::TimeSignature(validate_time_signature(
+            &value,
+        )?)),
         "instrument" => Ok(MetadataData::Instrument(value)),
         "text" => Ok(MetadataData::Text(value)),
         "lyric" => Ok(MetadataData::Lyric(value)),
@@ -599,6 +672,20 @@ mod tests {
     fn try_from() {
         assert!(Metadata::try_from(("doesn't exist", "really")).is_err());
         assert!(Metadata::try_from(("doesn't exist", "really", Some(50), 100)).is_err());
+
+        assert!(Metadata::try_from(("key-signature", "Vb")).is_err());
+        assert_eq!(
+            Metadata::try_from(("key-signature", "Eb")).unwrap(),
+            metadata!(MetadataData::KeySignature("Eb".to_string()), None, 0)
+        );
+
+        assert!(Metadata::try_from(("time-signature", "6:4")).is_err());
+        assert!(Metadata::try_from(("time-signature", "-1/4")).is_err());
+        assert!(Metadata::try_from(("time-signature", "4/6")).is_err());
+        assert_eq!(
+            Metadata::try_from(("time-signature", "3/8")).unwrap(),
+            metadata!(MetadataData::TimeSignature((3, 8)), None, 0)
+        );
 
         assert_eq!(
             Metadata::try_from(("text", "this text")).unwrap(),
