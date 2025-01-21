@@ -98,7 +98,7 @@ pub enum MetadataData {
     Volume(i16),
     Pan(i16),
     Balance(i16),
-    PitchBend(i16),
+    PitchBend(f32),
 }
 
 impl fmt::Display for MetadataData {
@@ -153,6 +153,13 @@ impl MetadataData {
                     Err(anyhow!(MetadataError::InvalidTempo(t.to_string())))
                 }
             }
+            MetadataData::PitchBend(t) => {
+                if *t > -2.0 && *t < 2.0 {
+                    Ok(())
+                } else {
+                    Err(anyhow!(MetadataError::InvalidPitchBend(*t)))
+                }
+            }
             _ => Ok(()),
         }
     }
@@ -176,6 +183,8 @@ pub enum MetadataError {
     InvalidKeySignature(String),
     #[error("Invalid tempo {0}")]
     InvalidTempo(String),
+    #[error("Invalid pitch bend {0}; absolute value must be less than 2")]
+    InvalidPitchBend(f32),
 }
 
 fn metadata_type_exists(event: &str) -> bool {
@@ -236,7 +245,6 @@ fn get_meta_event_int_data(event: &str, value: i16) -> Result<MetadataData> {
         "volume" => Ok(MetadataData::Volume(value)),
         "pan" => Ok(MetadataData::Pan(value)),
         "balance" => Ok(MetadataData::Balance(value)),
-        "pitch-bend" => Ok(MetadataData::PitchBend(value)),
         "tempo" => Ok(MetadataData::Tempo(validate_tempo(value)?)),
         _ => {
             if metadata_type_exists(event) {
@@ -274,6 +282,11 @@ fn get_meta_event_bool_data(event: &str, value: bool) -> Result<MetadataData> {
 fn get_meta_event_float_data(event: &str, value: f32) -> Result<MetadataData> {
     match event {
         "tempo" => Ok(MetadataData::Tempo(validate_tempo(value)?)),
+        "pitch-bend" => {
+            let k = MetadataData::PitchBend(value);
+            k.self_validate()?;
+            Ok(k)
+        }
         _ => {
             if metadata_type_exists(event) {
                 Err(anyhow!(MetadataError::UnexpectedFloatValue(
@@ -754,14 +767,16 @@ mod tests {
             metadata!(MetadataData::Text("this text".to_string()), Some(50), 100)
         );
 
+        assert!(Metadata::try_from(("pitch-bend", 2.0)).is_err());
         assert_eq!(
-            Metadata::try_from(("pitch-bend", 4096)).unwrap(),
-            metadata!(MetadataData::PitchBend(4096), None, 0)
+            Metadata::try_from(("pitch-bend", 1.999)).unwrap(),
+            metadata!(MetadataData::PitchBend(1.999), None, 0)
         );
 
+        assert!(Metadata::try_from(("pitch-bend", -2.0)).is_err());
         assert_eq!(
-            Metadata::try_from(("pitch-bend", 4096, Some(50), 100)).unwrap(),
-            metadata!(MetadataData::PitchBend(4096), Some(50), 100)
+            Metadata::try_from(("pitch-bend", -1.999, Some(50), 100)).unwrap(),
+            metadata!(MetadataData::PitchBend(-1.999), Some(50), 100)
         );
 
         assert_eq!(
