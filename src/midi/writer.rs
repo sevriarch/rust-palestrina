@@ -161,6 +161,17 @@ fn sustain_to_midi_bytes(v: &bool) -> Vec<u8> {
     ]
 }
 
+fn pitch_bend_to_midi_bytes(f: &f32) -> Result<Vec<u8>> {
+    let v = (4096.0 * *f).round() as i32 - 8192;
+
+    if (-16384..0).contains(&v) {
+        Ok(vec![0xe0, (v & 0x7f) as u8, (v >> 7 & 0x7f) as u8])
+    } else {
+        println!("v is {}, f is {}", v, f);
+        Err(anyhow!(MetadataError::InvalidPitchBend(*f)))
+    }
+}
+
 macro_rules! build_text_event {
     ($type:expr, $txt:expr) => {
         Ok($type
@@ -194,12 +205,12 @@ impl ToMidiBytes for MetadataData {
             MetadataData::Sustain(val) => Ok(sustain_to_midi_bytes(val)),
             MetadataData::KeySignature(val) => Ok(key_signature_to_midi_bytes(val)?),
             MetadataData::TimeSignature(val) => Ok(time_signature_to_midi_bytes(val)),
+            MetadataData::PitchBend(val) => Ok(pitch_bend_to_midi_bytes(val)?),
             /*
             MetadataData::Instrument(String),
             MetadataData::Volume(i16),
             MetadataData::Pan(i16),
             MetadataData::Balance(i16),
-            MetadataData::PitchBend(i16),
             */
             _ => Err(anyhow!(MidiError::UnsupportedMetadata(self.clone()))),
         }
@@ -601,6 +612,26 @@ mod tests {
                 .try_to_midi_bytes()
                 .unwrap(),
             vec![0xff, 0x58, 0x04, 0x09, 0x04, 0x18, 0x08]
+        );
+
+        assert!(MetadataData::PitchBend(2.0).try_to_midi_bytes().is_err());
+        assert!(MetadataData::PitchBend(-2.0002)
+            .try_to_midi_bytes()
+            .is_err());
+
+        assert_eq!(
+            MetadataData::PitchBend(0.0).try_to_midi_bytes().unwrap(),
+            vec![0xe0, 0x00, 0x40]
+        );
+
+        assert_eq!(
+            MetadataData::PitchBend(1.9997).try_to_midi_bytes().unwrap(),
+            vec![0xe0, 0x7f, 0x7f]
+        );
+
+        assert_eq!(
+            MetadataData::PitchBend(-2.0).try_to_midi_bytes().unwrap(),
+            vec![0xe0, 0x00, 0x00]
         );
         //[ { event: 'time-signature', value: '9/16' }, undefined, [ 0xff, 0x58, 0x04, 0x09, 0x04, 0x18, 0x08 ] ],
     }

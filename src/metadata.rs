@@ -154,7 +154,8 @@ impl MetadataData {
                 }
             }
             MetadataData::PitchBend(t) => {
-                if *t > -2.0 && *t < 2.0 {
+                let v = (*t * 4096.0).round() as i16;
+                if (-8192..8192).contains(&v) {
                     Ok(())
                 } else {
                     Err(anyhow!(MetadataError::InvalidPitchBend(*t)))
@@ -773,10 +774,10 @@ mod tests {
             metadata!(MetadataData::PitchBend(1.999), None, 0)
         );
 
-        assert!(Metadata::try_from(("pitch-bend", -2.0)).is_err());
+        assert!(Metadata::try_from(("pitch-bend", -2.00013)).is_err());
         assert_eq!(
-            Metadata::try_from(("pitch-bend", -1.999, Some(50), 100)).unwrap(),
-            metadata!(MetadataData::PitchBend(-1.999), Some(50), 100)
+            Metadata::try_from(("pitch-bend", -2.0, Some(50), 100)).unwrap(),
+            metadata!(MetadataData::PitchBend(-2.0), Some(50), 100)
         );
 
         assert_eq!(
