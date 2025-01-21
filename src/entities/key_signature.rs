@@ -9,61 +9,6 @@ const MINOR_KEYS: [&str; 15] = [
     "ab", "eb", "bb", "f", "c", "g", "d", "a", "e", "b", "f#", "c#", "g#", "d#", "a#",
 ];
 
-fn to_midi_byte1(key: &str) -> Option<u8> {
-    match key {
-        "C" => Some(0),
-        "a" => Some(0),
-        "G" => Some(1),
-        "e" => Some(1),
-        "D" => Some(2),
-        "b" => Some(2),
-        "A" => Some(3),
-        "f#" => Some(3),
-        "E" => Some(4),
-        "c#" => Some(4),
-        "B" => Some(5),
-        "g#" => Some(5),
-        "F#" => Some(6),
-        "d#" => Some(6),
-        "C#" => Some(7),
-        "a#" => Some(7),
-        "Cb" => Some(249),
-        "ab" => Some(249),
-        "Gb" => Some(250),
-        "eb" => Some(250),
-        "Db" => Some(251),
-        "bb" => Some(251),
-        "Ab" => Some(252),
-        "f" => Some(252),
-        "Eb" => Some(253),
-        "c" => Some(253),
-        "Bb" => Some(254),
-        "g" => Some(254),
-        "F" => Some(255),
-        "d" => Some(255),
-        _ => None,
-    }
-}
-
-fn to_midi_byte2(key: &str) -> u8 {
-    if let Some(first) = key.chars().next() {
-        if first.is_lowercase() {
-            return 0x01;
-        }
-    }
-    0x00
-}
-
-pub fn to_midi_bytes(key: &str) -> Result<[u8; 5]> {
-    if let Some(byte1) = to_midi_byte1(key) {
-        let byte2 = to_midi_byte2(key);
-
-        return Ok([0xff, 0x59, 0x02, byte1, byte2]);
-    }
-
-    Err(anyhow!("Invalid key: {:?}", key))
-}
-
 pub fn from_midi_bytes((byte, minor): (u8, u8)) -> Result<String> {
     if byte > 0x07 && byte < 0xf9 {
         return Err(anyhow!("invalid byte 1: {}", byte));
@@ -78,35 +23,18 @@ pub fn from_midi_bytes((byte, minor): (u8, u8)) -> Result<String> {
     }
 }
 
-pub fn is_valid(key: &str) -> bool {
-    to_midi_byte1(key).is_some()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_is_valid() {
-        assert!(!is_valid(""));
-        assert!(is_valid("C"));
-        assert!(!is_valid("H"));
-        assert!(is_valid("f#"));
-    }
-
     macro_rules! midi_conv_test {
         ($key:expr, $byte1:expr, $byte2:expr) => {
-            assert_eq!(
-                to_midi_bytes($key).unwrap(),
-                [0xff, 0x59, 0x02, $byte1, $byte2]
-            );
             assert_eq!(from_midi_bytes(($byte1, $byte2)).unwrap(), $key.to_string());
         };
     }
 
     #[test]
     fn midi_bytes_conversions() {
-        assert!(to_midi_bytes("Dc").is_err());
         assert!(from_midi_bytes((0x08, 0x00)).is_err());
         assert!(from_midi_bytes((0xf8, 0x00)).is_err());
         assert!(from_midi_bytes((0x01, 0x02)).is_err());

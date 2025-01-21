@@ -494,6 +494,8 @@ mod tests {
             vec![0xff, 0x2f, 0x00],
         );
 
+        assert!(MetadataData::Tempo(0.0).try_to_midi_bytes().is_err());
+
         assert_eq!(
             MetadataData::Tempo(144.0).try_to_midi_bytes().unwrap(),
             vec![0xff, 0x51, 0x03, 0x06, 0x5b, 0x9b],
