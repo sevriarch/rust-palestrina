@@ -95,9 +95,9 @@ pub enum MetadataData {
     CuePoint(String),
     Copyright(String),
     TrackName(String),
-    Volume(i16),
-    Pan(i16),
-    Balance(i16),
+    Volume(u8),
+    Pan(u8),
+    Balance(u8),
     PitchBend(f32),
 }
 
@@ -186,6 +186,8 @@ pub enum MetadataError {
     InvalidTempo(String),
     #[error("Invalid pitch bend {0}; absolute value must be less than 2")]
     InvalidPitchBend(f32),
+    #[error("Value {0} could not be coerced into a 7-bit integer")]
+    Invalid7BitInt(i16),
 }
 
 fn metadata_type_exists(event: &str) -> bool {
@@ -241,11 +243,19 @@ fn get_meta_event_string_data(event: &str, value: String) -> Result<MetadataData
     }
 }
 
+fn try_into_7bit_int(val: &i16) -> Result<u8> {
+    if (0..128).contains(val) {
+        Ok((*val % 128) as u8)
+    } else {
+        Err(anyhow!(MetadataError::Invalid7BitInt(*val)))
+    }
+}
+
 fn get_meta_event_int_data(event: &str, value: i16) -> Result<MetadataData> {
     match event {
-        "volume" => Ok(MetadataData::Volume(value)),
-        "pan" => Ok(MetadataData::Pan(value)),
-        "balance" => Ok(MetadataData::Balance(value)),
+        "volume" => Ok(MetadataData::Volume(try_into_7bit_int(&value)?)),
+        "pan" => Ok(MetadataData::Pan(try_into_7bit_int(&value)?)),
+        "balance" => Ok(MetadataData::Balance(try_into_7bit_int(&value)?)),
         "tempo" => Ok(MetadataData::Tempo(validate_tempo(value)?)),
         _ => {
             if metadata_type_exists(event) {
@@ -746,6 +756,39 @@ mod tests {
         assert_eq!(
             Metadata::try_from(("time-signature", "3/8")).unwrap(),
             metadata!(MetadataData::TimeSignature((3, 8)), None, 0)
+        );
+
+        assert!(Metadata::try_from(("volume", -1)).is_err());
+        assert!(Metadata::try_from(("volume", 128)).is_err());
+        assert_eq!(
+            Metadata::try_from(("volume", 0)).unwrap(),
+            metadata!(MetadataData::Volume(0), None, 0)
+        );
+        assert_eq!(
+            Metadata::try_from(("volume", 127)).unwrap(),
+            metadata!(MetadataData::Volume(127), None, 0)
+        );
+
+        assert!(Metadata::try_from(("pan", -1)).is_err());
+        assert!(Metadata::try_from(("pan", 128)).is_err());
+        assert_eq!(
+            Metadata::try_from(("pan", 0)).unwrap(),
+            metadata!(MetadataData::Pan(0), None, 0)
+        );
+        assert_eq!(
+            Metadata::try_from(("pan", 127)).unwrap(),
+            metadata!(MetadataData::Pan(127), None, 0)
+        );
+
+        assert!(Metadata::try_from(("balance", -1)).is_err());
+        assert!(Metadata::try_from(("balance", 128)).is_err());
+        assert_eq!(
+            Metadata::try_from(("balance", 0)).unwrap(),
+            metadata!(MetadataData::Balance(0), None, 0)
+        );
+        assert_eq!(
+            Metadata::try_from(("balance", 127)).unwrap(),
+            metadata!(MetadataData::Balance(127), None, 0)
         );
 
         assert!(Metadata::try_from(("tempo", 0)).is_err());
