@@ -153,12 +153,15 @@ fn time_signature_to_midi_bytes(v: &(u8, u16)) -> Vec<u8> {
     ]
 }
 
+fn controller_event(v: u8, b: u8) -> Vec<u8> {
+    vec![CONTROLLER_BYTE, v, b]
+}
+
 fn sustain_to_midi_bytes(v: &bool) -> Vec<u8> {
-    vec![
-        CONTROLLER_BYTE,
+    controller_event(
         SUSTAIN_CONTROLLER,
         if *v { EVENT_ON_VALUE } else { EVENT_OFF_VALUE },
-    ]
+    )
 }
 
 fn pitch_bend_to_midi_bytes(f: &f32) -> Result<Vec<u8>> {
@@ -206,13 +209,9 @@ impl ToMidiBytes for MetadataData {
             MetadataData::KeySignature(val) => Ok(key_signature_to_midi_bytes(val)?),
             MetadataData::TimeSignature(val) => Ok(time_signature_to_midi_bytes(val)),
             MetadataData::PitchBend(val) => Ok(pitch_bend_to_midi_bytes(val)?),
-            /*
-            MetadataData::Instrument(String),
-            MetadataData::Volume(i16),
-            MetadataData::Pan(i16),
-            MetadataData::Balance(i16),
-            */
-            _ => Err(anyhow!(MidiError::UnsupportedMetadata(self.clone()))),
+            MetadataData::Volume(val) => Ok(controller_event(VOLUME_CONTROLLER, *val)),
+            MetadataData::Pan(val) => Ok(controller_event(PAN_CONTROLLER, *val)),
+            MetadataData::Balance(val) => Ok(controller_event(BALANCE_CONTROLLER, *val)),
         }
     }
 }
@@ -633,7 +632,21 @@ mod tests {
             MetadataData::PitchBend(-2.0).try_to_midi_bytes().unwrap(),
             vec![0xe0, 0x00, 0x00]
         );
-        //[ { event: 'time-signature', value: '9/16' }, undefined, [ 0xff, 0x58, 0x04, 0x09, 0x04, 0x18, 0x08 ] ],
+
+        assert_eq!(
+            MetadataData::Pan(64).try_to_midi_bytes().unwrap(),
+            vec![0xb0, 0x0a, 0x40]
+        );
+
+        assert_eq!(
+            MetadataData::Balance(64).try_to_midi_bytes().unwrap(),
+            vec![0xb0, 0x08, 0x40]
+        );
+
+        assert_eq!(
+            MetadataData::Volume(64).try_to_midi_bytes().unwrap(),
+            vec![0xb0, 0x07, 0x40]
+        );
     }
 
     #[test]
