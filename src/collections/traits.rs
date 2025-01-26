@@ -88,18 +88,6 @@ macro_rules! default_collection_methods {
     };
 }
 
-fn collection_index(i: i32, len: i32) -> Result<usize> {
-    let ix = match i < 0 {
-        false => i,
-        true => len + i,
-    };
-
-    match ix < 0 || ix >= len {
-        true => Err(anyhow!(CollectionError::IndexOutOfBounds(ix))),
-        false => Ok(ix as usize),
-    }
-}
-
 pub trait Collection<T: Clone + Debug>: Sized {
     fn new(contents: Vec<T>) -> Self;
 
@@ -123,11 +111,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
 
     fn index(&self, i: i32) -> Result<usize> {
         let len = self.length() as i32;
-
-        let ix = match i < 0 {
-            false => i,
-            true => len + i,
-        };
+        let ix = if i < 0 { len + i } else { i };
 
         match ix < 0 || ix >= len {
             true => Err(anyhow!(CollectionError::IndexOutOfBounds(ix))),
@@ -137,11 +121,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
 
     fn index_inclusive(&self, i: i32) -> Result<usize> {
         let len = self.length() as i32;
-
-        let ix = match i < 0 {
-            false => i,
-            true => len + i,
-        };
+        let ix = if i < 0 { len + i } else { i };
 
         match ix < 0 || ix > len {
             true => Err(anyhow!(CollectionError::IndexOutOfBounds(ix))),
@@ -171,7 +151,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
     fn val_at(&self, index: i32) -> Result<T> {
         let ix = self.index(index)?;
 
-        Ok(self.clone_contents()[ix].clone())
+        Ok(self.cts_ref()[ix].clone())
     }
 
     fn find_first_index(&self, f: fn(mem: &T) -> bool) -> Option<usize> {
@@ -588,37 +568,12 @@ pub trait Collection<T: Clone + Debug>: Sized {
         }))
     }
 
-    fn swap_many(self, tup: &[(i32, i32)]) -> Result<Self> {
-        let len = self.length() as i32;
-
-        self.mutate_contents_with_result(|c| {
-            for (i1, i2) in tup.iter() {
-                let ix1 = collection_index(*i1, len)?;
-                let ix2 = collection_index(*i2, len)?;
-
-                c.swap(ix1, ix2);
-            }
-
-            Ok(())
-        })
-    }
-
-    // TODO: is this needed?
-    fn split_contents_at(&self, indices: Vec<i32>) -> Result<Vec<Vec<T>>> {
-        let ix = self.indices_inclusive(indices)?;
-
-        let cts = self.clone_contents();
-        let mut last: usize = 0;
-        let mut ret: Vec<Vec<T>> = vec![];
-
-        for i in ix {
-            ret.push(cts[last..i].to_vec());
-            last = i;
+    fn swap_many(mut self, tup: &[(i32, i32)]) -> Result<Self> {
+        for t in tup.iter() {
+            self = self.swap(*t)?;
         }
 
-        ret.push(cts[last..].to_vec());
-
-        Ok(ret)
+        Ok(self)
     }
 
     fn split_at(&self, indices: Vec<i32>) -> Result<Vec<Self>> {
