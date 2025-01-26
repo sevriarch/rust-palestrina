@@ -62,9 +62,9 @@ impl<T> TryFrom<Vec<T>> for ChordSeq<T>
 where
     T: Clone + Copy + Num + Debug + PartialOrd + Bounded,
 {
-    type Error = ChordSeqError;
+    type Error = anyhow::Error;
 
-    fn try_from(what: Vec<T>) -> Result<Self, Self::Error> {
+    fn try_from(what: Vec<T>) -> Result<Self> {
         Ok(Self::new(what.iter().map(|v| vec![*v]).collect()))
     }
 }
@@ -73,9 +73,9 @@ impl<T> TryFrom<Vec<Option<T>>> for ChordSeq<T>
 where
     T: Clone + Copy + Num + Debug + PartialOrd + Bounded,
 {
-    type Error = ChordSeqError;
+    type Error = anyhow::Error;
 
-    fn try_from(what: Vec<Option<T>>) -> Result<Self, Self::Error> {
+    fn try_from(what: Vec<Option<T>>) -> Result<Self> {
         Ok(Self::new(
             what.iter()
                 .map(|v| v.map_or_else(Vec::new, |v| vec![v]))
@@ -88,9 +88,9 @@ impl<T> TryFrom<Vec<Vec<T>>> for ChordSeq<T>
 where
     T: Clone + Copy + Num + Debug + PartialOrd + Bounded,
 {
-    type Error = ChordSeqError;
+    type Error = anyhow::Error;
 
-    fn try_from(what: Vec<Vec<T>>) -> Result<Self, Self::Error> {
+    fn try_from(what: Vec<Vec<T>>) -> Result<Self> {
         Ok(Self::new(what))
     }
 }
@@ -101,9 +101,9 @@ macro_rules! try_from_seq {
         where
             T: Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
         {
-            type Error = ChordSeqError;
+            type Error = anyhow::Error;
 
-            fn try_from(what: $t) -> Result<Self, Self::Error> {
+            fn try_from(what: $t) -> Result<Self> {
                 Ok(Self{
                     contents: what.to_pitches(),
                     metadata: what.metadata
