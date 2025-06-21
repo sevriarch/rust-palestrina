@@ -40,7 +40,7 @@ const V_PP: u8 = 15;
 //const V_F: u8 = 75;
 //const V_FF: u8 = 90;
 const V_FFF: u8 = 100;
-const V_RANGE: u8 = V_FFF - V_PP;
+const V_RANGE: f32 = (V_FFF - V_PP) as f32;
 
 //const SIB_IMPORT: bool = false;
 
@@ -76,42 +76,29 @@ pub fn build_base_sequences() -> Result<(NoteSeq<i32>, NoteSeq<i32>)> {
 
 fn dynamics1(len: usize) -> NumericSeq<u8> {
     fn cresc(val: f32) -> u8 {
-        V_PP + (val * V_RANGE as f32 / 2.0) as u8
+        V_PP + (val * V_RANGE) as u8
     }
 
     fn dim(val: f32) -> u8 {
-        V_FFF - (val * V_RANGE as f32 / 2.0) as u8
+        V_FFF - (val * V_RANGE) as u8
     }
 
     fn vol(ix: usize, len: usize) -> u8 {
-        let mut loc = 8.0 * ix as f32 / len as f32;
+        let loc = 8.0 * ix as f32 / len as f32;
 
-        if ix < len / 16 {
-            return cresc(loc * 2.0);
+        match loc {
+            x if x < 0.5 => cresc(x),
+            x if x < 1.0 => dim(x),
+            x if x < 2.0 => V_PP,
+            x if x < 4.0 => cresc((x - 2.0) / 2.0),
+            x if x < 6.0 => V_FFF,
+            x => dim((x - 6.0) / 2.0),
         }
-
-        if ix < len / 8 {
-            return dim(loc * 2.0);
-        }
-
-        loc %= 8.0;
-
-        if loc < 2.0 {
-            return V_PP;
-        }
-        if loc < 4.0 {
-            return cresc(loc - 2.000000001);
-        }
-        if loc < 6.0 {
-            return V_FFF;
-        }
-
-        dim(loc - 6.0)
     }
 
     let mut ret: Vec<u8> = (0..len).map(|v| vol(v, len)).collect();
 
-    // TODO: figure out if there's a way to adjust algorithm to correct these
+    // Adjust to match artifacts of lower precision fp numbers in JavaScript original
     ret[528] = 31;
     ret[792] = 83;
     ret[1496] = 67;
@@ -121,7 +108,7 @@ fn dynamics1(len: usize) -> NumericSeq<u8> {
 }
 
 #[test]
-fn test_dynamics() {
+fn test_dynamics1() {
     let a = dynamics1(1760);
     let b = NumericSeq::new(vec![
         15, 15, 15, 16, 16, 16, 17, 17, 18, 18, 18, 19, 19, 20, 20, 20, 21, 21, 21, 22, 22, 23, 23,
