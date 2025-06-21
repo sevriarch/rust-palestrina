@@ -155,13 +155,13 @@ pub trait Sequence<
 
     fn pad(self, val: T, num: usize) -> Self {
         self.mutate_contents(|c| {
-            c.splice(0..0, std::iter::repeat(val).take(num));
+            c.splice(0..0, std::iter::repeat_n(val, num));
         })
     }
 
     fn pad_right(self, val: T, num: usize) -> Self {
         self.mutate_contents(|c| {
-            c.extend(std::iter::repeat(val).take(num));
+            c.extend(std::iter::repeat_n(val, num));
         })
     }
 
@@ -196,7 +196,7 @@ pub trait Sequence<
     }
 
     fn repeated(self, num: usize) -> Self {
-        self.replace_contents(|c| std::iter::repeat(c.clone()).take(num).flatten().collect())
+        self.replace_contents(|c| std::iter::repeat_n(c.clone(), num).flatten().collect())
     }
 
     fn looped(self, num: usize) -> Result<Self> {
