@@ -469,6 +469,10 @@ where
         self.mutate_indices(ix, move |m| m.timing.tick = Some(tick))
     }
 
+    pub fn with_start_tick(self, tick: u32) -> Result<Self> {
+        self.with_exact_tick_at(&[0], tick)
+    }
+
     pub fn with_event_at(self, ix: &[i32], evt: Metadata) -> Result<Self> {
         self.mutate_indices(ix, |m| {
             m.with_event(&evt.clone());
@@ -1255,6 +1259,30 @@ mod tests {
                 MelodyMember {
                     values: vec![16],
                     timing: DurationalEventTiming::new(0, Some(25), 0),
+                    volume: DEFAULT_VOLUME,
+                    before: MetadataList::new(vec![]),
+                },
+            ])
+        );
+    }
+
+    #[test]
+    fn with_start_tick() {
+        assert_eq!(
+            Melody::try_from(vec![12, 16])
+                .unwrap()
+                .with_start_tick(25)
+                .unwrap(),
+            Melody::new(vec![
+                MelodyMember {
+                    values: vec![12],
+                    timing: DurationalEventTiming::new(0, Some(25), 0),
+                    volume: DEFAULT_VOLUME,
+                    before: MetadataList::new(vec![]),
+                },
+                MelodyMember {
+                    values: vec![16],
+                    timing: DurationalEventTiming::default(),
                     volume: DEFAULT_VOLUME,
                     before: MetadataList::new(vec![]),
                 },
