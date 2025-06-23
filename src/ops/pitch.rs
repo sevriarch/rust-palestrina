@@ -105,6 +105,13 @@ where
     where
         Self: std::marker::Sized;
 
+    fn filter_map_pitch_enumerated<MapT: Fn((Option<usize>, &T)) -> Option<T>>(
+        self,
+        f: MapT,
+    ) -> Result<Self>
+    where
+        Self: std::marker::Sized;
+
     /// Transpose pitches up or down.
     fn transpose_pitch(self, n: T) -> Self;
 
@@ -188,6 +195,15 @@ macro_rules! impl_traits_for_pitches {
 
             fn filter_map_pitch<MapT: Fn(&$ty) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
                 if let Some(p) = f(&self) {
+                    self = p;
+                    Ok(self)
+                } else {
+                    Err(anyhow!(PitchError::RequiredPitchAbsent("Pitch.filter_map_pitch()".to_string())))
+                }
+            }
+
+            fn filter_map_pitch_enumerated<MapT: Fn((Option<usize>, &$ty)) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
+                if let Some(p) = f((None, &self)) {
                     self = p;
                     Ok(self)
                 } else {
@@ -372,6 +388,10 @@ macro_rules! impl_traits_for_pitch_containers {
                 Ok(self.map(|p| f(&p)).flatten())
             }
 
+            fn filter_map_pitch_enumerated<MapT: Fn((Option<usize>, &$ty)) -> Option<$ty>>(self, f: MapT) -> Result<Self> {
+                Ok(self.map(|p| f((None, &p))).flatten())
+            }
+
             fn augment_pitch<AT: AugDim<$ty> + Copy>(self, n: AT) -> Self {
                 self.map(|p| p.augment_pitch(n))
             }
@@ -413,6 +433,11 @@ macro_rules! impl_traits_for_pitch_containers {
 
             fn filter_map_pitch<MapT: Fn(&$ty) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
                 self = self.into_iter().filter_map(|p| f(&p)).collect();
+                Ok(self)
+            }
+
+            fn filter_map_pitch_enumerated<MapT: Fn((Option<usize>, &$ty)) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
+                self = self.into_iter().filter_map(|p| f((None, &p))).collect();
                 Ok(self)
             }
 
@@ -464,6 +489,11 @@ macro_rules! impl_traits_for_pitch_containers {
                 Ok(self)
             }
 
+            fn filter_map_pitch_enumerated<MapT: Fn((Option<usize>, &$ty)) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
+                self.values = self.values.into_iter().filter_map(|p| f((None, &p))).collect();
+                Ok(self)
+            }
+
             fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
                 self.values.iter_mut().for_each(|p| { *p = p.augment_pitch(n); });
                 self
@@ -508,13 +538,20 @@ macro_rules! impl_traits_for_pitch_containers {
                 if self.contents.iter().all(f) {
                     Ok(self)
                 } else {
-                    Err(anyhow!(PitchError::RequiredPitchAbsent("Pitch.filter_map_pitch()".to_string())))
+                    Err(anyhow!(PitchError::RequiredPitchAbsent("Pitch.filter_pitch()".to_string())))
                 }
             }
 
             fn filter_map_pitch<MapT: Fn(&$ty) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
                 for p in self.contents.iter_mut() {
                     *p = p.filter_map_pitch(&f)?;
+                }
+                Ok(self)
+            }
+
+            fn filter_map_pitch_enumerated<MapT: Fn((Option<usize>, &$ty)) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
+                for (i, p) in self.contents.iter_mut().enumerate() {
+                    *p = f((Some(i), p)).ok_or(anyhow!(PitchError::RequiredPitchAbsent(format!("at index {}", i))))?;
                 }
                 Ok(self)
             }
@@ -583,6 +620,11 @@ macro_rules! impl_traits_for_pitch_containers {
                 Ok(self)
             }
 
+            fn filter_map_pitch_enumerated<MapT: Fn((Option<usize>, &$ty)) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
+                self.contents.iter_mut().enumerate().for_each(|(i, p)| *p = p.map(|v| f((Some(i), &v))).flatten());
+                Ok(self)
+            }
+
             fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
                 self.contents.iter_mut().for_each(|p| {
                     *p = p.augment_pitch(n);
@@ -644,6 +686,11 @@ macro_rules! impl_traits_for_pitch_containers {
 
             fn filter_map_pitch<MapT: Fn(&$ty) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
                 self.contents.iter_mut().for_each(|p| *p = p.into_iter().filter_map(|p| f(&p)).collect());
+                Ok(self)
+            }
+
+            fn filter_map_pitch_enumerated<MapT: Fn((Option<usize>, &$ty)) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
+                self.contents.iter_mut().enumerate().for_each(|(i, p)| *p = p.into_iter().filter_map(|v| f((Some(i), &v))).collect());
                 Ok(self)
             }
 
@@ -719,6 +766,15 @@ macro_rules! impl_traits_for_pitch_containers {
                     let v = &mut p.values;
 
                     *v = v.into_iter().filter_map(|p| f(&p)).collect();
+                });
+                Ok(self)
+            }
+
+            fn filter_map_pitch_enumerated<MapT: Fn((Option<usize>, &$ty)) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
+                self.contents.iter_mut().enumerate().for_each(|(i, p)| {
+                    let v = &mut p.values;
+
+                    *v = v.into_iter().filter_map(|p| f((Some(i), &p))).collect();
                 });
                 Ok(self)
             }
@@ -940,9 +996,93 @@ mod tests {
             chordseq![[9.9, 11.1], [], [10.8], []]
         );
         filter_map_pitch_test!(
-            chordseq![[4.4, 5.6], [], [5.3], [9.7, 11.1]],
+            melody![[4.4, 5.6], [], [5.3], [9.7, 11.1]],
             |v| if *v < 6.5 { Some(*v + 5.5) } else { None },
-            chordseq![[9.9, 11.1], [], [10.8], []]
+            melody![[9.9, 11.1], [], [10.8], []]
+        );
+    }
+
+    #[test]
+    fn filter_map_pitch_enumerated() {
+        macro_rules! filter_map_pitch_enumerated_test {
+            ($init:expr, $fn:expr, $ret:expr) => {
+                assert_eq!($init.filter_map_pitch_enumerated($fn).unwrap(), $ret);
+            };
+        }
+
+        assert!(6.filter_map_pitch_enumerated(|_| None).is_err());
+        filter_map_pitch_enumerated_test!(
+            6,
+            |(_, v)| if v % 2 == 0 { Some(v / 2) } else { None },
+            3
+        );
+        filter_map_pitch_enumerated_test!(
+            None,
+            |(_, v)| if v % 2 == 0 { Some(v / 2) } else { None },
+            None
+        );
+        filter_map_pitch_enumerated_test!(
+            Some(5),
+            |(_, v)| if v % 2 == 0 { Some(v / 2) } else { None },
+            None
+        );
+        filter_map_pitch_enumerated_test!(
+            Some(6),
+            |(_, v)| if v % 2 == 0 { Some(v / 2) } else { None },
+            Some(3)
+        );
+        filter_map_pitch_enumerated_test!(
+            vec![5, 6, 7],
+            |(_, v)| if v % 2 == 0 { Some(v / 2) } else { None },
+            vec![3]
+        );
+        filter_map_pitch_enumerated_test!(
+            MelodyMember::from(vec![5, 6, 7]),
+            |(_, v)| if v % 2 == 0 { Some(v / 2) } else { None },
+            MelodyMember::from(vec![3])
+        );
+        assert!(numseq![5, 6, 7]
+            .filter_map_pitch_enumerated(|(i, v)| if v % 2 == 0 {
+                Some(i.unwrap_or(0) as i32 + v / 2)
+            } else {
+                None
+            })
+            .is_err());
+        filter_map_pitch_enumerated_test!(
+            numseq![4, 6, 8],
+            |(i, v)| if v % 2 == 0 {
+                Some(i.unwrap_or(0) as i32 + v / 2)
+            } else {
+                None
+            },
+            numseq![2, 4, 6]
+        );
+        filter_map_pitch_enumerated_test!(
+            noteseq![5, None, 6, 7],
+            |(i, v)| if v % 2 == 0 {
+                Some(i.unwrap_or(0) as i32 + v / 2)
+            } else {
+                None
+            },
+            noteseq![None, None, 5, None]
+        );
+        filter_map_pitch_enumerated_test!(
+            chordseq![[4.4, 5.6], [], [5.3], [9.7, 11.1]],
+            |(i, v)| if *v < 6.5 {
+                Some(i.unwrap_or(0) as f64 + *v + 5.5)
+            } else {
+                None
+            },
+            chordseq![[9.9, 11.1], [], [12.8], []]
+        );
+        filter_map_pitch_enumerated_test!(
+            melody![[4.4, 5.6], [], [5.3], [9.7, 11.1]],
+            |(i, v)| if *v < 6.5 {
+                Some(i.unwrap_or(0) as f64 + *v + 5.5)
+            } else {
+                None
+            },
+            melody![[9.9, 11.1], [], [12.8], []]
         );
     }
 
