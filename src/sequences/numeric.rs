@@ -1,5 +1,6 @@
 use crate::collections::traits::Collection;
 use crate::metadata::MetadataList;
+use crate::ops::pitch::{Pitch, PitchError};
 use crate::sequences::chord::ChordSeq;
 use crate::sequences::melody::Melody;
 use crate::sequences::note::NoteSeq;
@@ -99,6 +100,15 @@ macro_rules! try_from_seq {
 
 try_from_seq!(for NoteSeq<T> ChordSeq<T> Melody<T>);
 
+macro_rules! impl_fns_for_seq {
+    ($ty:ident, for $($fn:ident)*) => ($(
+        fn $fn(mut self, n: $ty) -> Self {
+            self.contents.iter_mut().for_each(|p| { *p = p.$fn(n); });
+            self
+        }
+    )*)
+}
+
 impl<T: Clone + Num + Debug + PartialOrd + Bounded> Collection<T> for NumericSeq<T> {
     default_collection_methods!(T);
     default_sequence_methods!(T);
@@ -126,6 +136,96 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Seq
 
     fn to_optional_numeric_values(&self) -> Result<Vec<Option<T>>> {
         Ok(self.contents.clone().into_iter().map(|p| Some(p)).collect())
+    }
+}
+
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
+    NumericSeq<T>
+{
+    impl_fns_for_seq!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
+
+    fn set_pitches(self, p: Vec<T>) -> Self {
+        todo!()
+    }
+
+    fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
+        self.contents.iter_mut().for_each(|p| {
+            *p = f(p);
+        });
+        self
+    }
+
+    fn map_pitch_enumerated<MapT: Fn((usize, &T)) -> T>(mut self, f: MapT) -> Self {
+        self.contents.iter_mut().enumerate().for_each(|(i, p)| {
+            *p = f((i, p));
+        });
+        self
+    }
+
+    fn filter_pitch<FilterT: Fn(&T) -> bool>(mut self, f: FilterT) -> Result<Self> {
+        if self.contents.iter().all(f) {
+            Ok(self)
+        } else {
+            Err(anyhow!(PitchError::RequiredPitchAbsent(
+                "Pitch.filter_pitch()".to_string()
+            )))
+        }
+    }
+
+    fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
+        for p in self.contents.iter_mut() {
+            *p = f(p).ok_or(anyhow!(PitchError::RequiredPitchAbsent(
+                "Pitch.filter_map_pitch()".to_string()
+            )))?;
+        }
+        Ok(self)
+    }
+
+    fn filter_map_pitch_enumerated<MapT: Fn((Option<usize>, &T)) -> Option<T>>(
+        mut self,
+        f: MapT,
+    ) -> Result<Self> {
+        for (i, p) in self.contents.iter_mut().enumerate() {
+            *p = f((Some(i), p)).ok_or(anyhow!(PitchError::RequiredPitchAbsent(format!(
+                "at index {}",
+                i
+            ))))?;
+        }
+        Ok(self)
+    }
+
+    /*
+    fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
+        self.contents.iter_mut().for_each(|p| {
+            *p = p.augment_pitch(n);
+        });
+        self
+    }
+
+    fn diminish_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
+        self.contents.iter_mut().for_each(|p| {
+            *p = p.diminish_pitch(n);
+        });
+        self
+    }
+    */
+
+    fn trim(mut self, first: T, second: T) -> Self {
+        self.contents.iter_mut().for_each(|p| {
+            *p = p.trim(first, second);
+        });
+        self
+    }
+
+    fn bounce(mut self, first: T, second: T) -> Self {
+        self.contents.iter_mut().for_each(|p| {
+            *p = p.bounce(first, second);
+        });
+        self
+    }
+
+    fn is_silent(&self) -> bool {
+        self.contents.iter().all(|m| m.is_silent())
     }
 }
 // equality methods: equals isSubsetOf isSupersetOf isTransformationOf isTranspositionOf isInversionOf isRetrogradeOf
