@@ -194,12 +194,12 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + Fro
         Ok(self)
     }
 
-    pub fn filter_map_pitch_enumerated<MapT: Fn((Option<usize>, &T)) -> Option<T>>(
+    pub fn filter_map_pitch_enumerated<MapT: Fn((usize, &T)) -> Option<T>>(
         mut self,
         f: MapT,
     ) -> Result<Self> {
         for (i, p) in self.contents.iter_mut().enumerate() {
-            *p = f((Some(i), p)).ok_or(anyhow!(PitchError::RequiredPitchAbsent(format!(
+            *p = f((i, p)).ok_or(anyhow!(PitchError::RequiredPitchAbsent(format!(
                 "at index {}",
                 i
             ))))?;
@@ -424,5 +424,37 @@ mod tests {
         assert!(numseq![4, 2, 5, 6, 3]
             .filter_pitch_enumerated(|(i, p)| *p > i as i32)
             .is_err())
+    }
+
+    #[test]
+    fn filter_map_pitch() {
+        assert_eq!(
+            numseq![4, 2, 5, 6, 3]
+                .filter_map_pitch(|p| if *p > 1 { Some(p * 2) } else { None })
+                .unwrap(),
+            numseq![8, 4, 10, 12, 6]
+        );
+
+        assert!(numseq![4, 2, 5, 6, 3]
+            .filter_map_pitch(|p| if *p > 2 { Some(p * 2) } else { None })
+            .is_err());
+    }
+
+    #[test]
+    fn filter_map_pitch_enumerated() {
+        assert_eq!(
+            numseq![4, 2, 5, 6, 3]
+                .filter_map_pitch_enumerated(|(i, p)| if *p > 1 {
+                    Some(p + i as i32)
+                } else {
+                    None
+                })
+                .unwrap(),
+            numseq![8, 4, 10, 12, 6]
+        );
+
+        assert!(numseq![4, 2, 5, 6, 3]
+            .filter_map_pitch_enumerated(|(i, p)| if *p > 2 { Some(p + i as i32) } else { None })
+            .is_err());
     }
 }
