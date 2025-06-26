@@ -387,11 +387,52 @@ mod tests {
     }
 
     #[test]
+    fn transpose_pitch() {
+        assert_eq!(
+            numseq![4, 2, 5, 6, 3].transpose_pitch(10),
+            numseq![14, 12, 15, 16, 13]
+        );
+    }
+
+    #[test]
+    fn invert_pitch() {
+        assert_eq!(
+            numseq![4, 2, 5, 6, 3].invert_pitch(10),
+            numseq![16, 18, 15, 14, 17]
+        );
+    }
+
+    #[test]
+    fn modulus() {
+        assert_eq!(numseq![4, 2, 5, 6, 3].modulus(5), numseq![4, 2, 0, 1, 3]);
+    }
+
+    #[test]
+    fn trim_min() {
+        assert_eq!(numseq![4, 2, 5, 6, 3].trim_min(4), numseq![4, 4, 5, 6, 4]);
+    }
+
+    #[test]
+    fn trim_max() {
+        assert_eq!(numseq![4, 2, 5, 6, 3].trim_max(4), numseq![4, 2, 4, 4, 3]);
+    }
+
+    #[test]
+    fn bounce_min() {
+        assert_eq!(numseq![4, 2, 5, 6, 3].bounce_min(4), numseq![4, 6, 5, 6, 5]);
+    }
+
+    #[test]
+    fn bounce_max() {
+        assert_eq!(numseq![4, 2, 5, 6, 3].bounce_max(4), numseq![4, 2, 3, 2, 3]);
+    }
+
+    #[test]
     fn map_pitch() {
         assert_eq!(
             numseq![4, 2, 5, 6, 3].map_pitch(|p| p * 2),
             numseq![8, 4, 10, 12, 6]
-        )
+        );
     }
 
     #[test]
@@ -399,7 +440,7 @@ mod tests {
         assert_eq!(
             numseq![4, 2, 5, 6, 3].map_pitch_enumerated(|(i, p)| p + i as i32),
             numseq![4, 3, 7, 9, 7]
-        )
+        );
     }
 
     #[test]
