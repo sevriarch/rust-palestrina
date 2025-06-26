@@ -102,7 +102,7 @@ try_from_seq!(for NoteSeq<T> ChordSeq<T> Melody<T>);
 
 macro_rules! impl_fns_for_seq {
     ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(mut self, n: $ty) -> Self {
+        pub fn $fn(mut self, n: $ty) -> Self {
             self.contents.iter_mut().for_each(|p| { *p = p.$fn(n); });
             self
         }
@@ -144,35 +144,48 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + Fro
 {
     impl_fns_for_seq!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
 
-    fn set_pitches(self, p: Vec<T>) -> Self {
+    pub fn set_pitches(self, p: Vec<T>) -> Self {
         todo!()
     }
 
-    fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
+    pub fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
         self.contents.iter_mut().for_each(|p| {
             *p = f(p);
         });
         self
     }
 
-    fn map_pitch_enumerated<MapT: Fn((usize, &T)) -> T>(mut self, f: MapT) -> Self {
+    pub fn map_pitch_enumerated<MapT: Fn((usize, &T)) -> T>(mut self, f: MapT) -> Self {
         self.contents.iter_mut().enumerate().for_each(|(i, p)| {
             *p = f((i, p));
         });
         self
     }
 
-    fn filter_pitch<FilterT: Fn(&T) -> bool>(mut self, f: FilterT) -> Result<Self> {
+    pub fn filter_pitch<FilterT: Fn(&T) -> bool>(self, f: FilterT) -> Result<Self> {
         if self.contents.iter().all(f) {
             Ok(self)
         } else {
             Err(anyhow!(PitchError::RequiredPitchAbsent(
-                "Pitch.filter_pitch()".to_string()
+                "filter_pitch()".to_string()
             )))
         }
     }
 
-    fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
+    pub fn filter_pitch_enumerated<FilterT: Fn((usize, &T)) -> bool>(
+        self,
+        f: FilterT,
+    ) -> Result<Self> {
+        if self.contents.iter().enumerate().all(f) {
+            Ok(self)
+        } else {
+            Err(anyhow!(PitchError::RequiredPitchAbsent(
+                "filter_pitch_enumerated()".to_string()
+            )))
+        }
+    }
+
+    pub fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
         for p in self.contents.iter_mut() {
             *p = f(p).ok_or(anyhow!(PitchError::RequiredPitchAbsent(
                 "Pitch.filter_map_pitch()".to_string()
@@ -181,7 +194,7 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + Fro
         Ok(self)
     }
 
-    fn filter_map_pitch_enumerated<MapT: Fn((Option<usize>, &T)) -> Option<T>>(
+    pub fn filter_map_pitch_enumerated<MapT: Fn((Option<usize>, &T)) -> Option<T>>(
         mut self,
         f: MapT,
     ) -> Result<Self> {
@@ -210,21 +223,21 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + Fro
     }
     */
 
-    fn trim(mut self, first: T, second: T) -> Self {
+    pub fn trim(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|p| {
             *p = p.trim(first, second);
         });
         self
     }
 
-    fn bounce(mut self, first: T, second: T) -> Self {
+    pub fn bounce(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|p| {
             *p = p.bounce(first, second);
         });
         self
     }
 
-    fn is_silent(&self) -> bool {
+    pub fn is_silent(&self) -> bool {
         self.contents.iter().all(|m| m.is_silent())
     }
 }
@@ -259,7 +272,7 @@ mod tests {
     fn try_from_vec() {
         assert_eq!(
             NumericSeq::try_from(vec![1, 2, 3]).unwrap(),
-            NumericSeq::new(vec![1, 2, 3])
+            numseq![1, 2, 3]
         );
     }
 
@@ -267,7 +280,7 @@ mod tests {
     fn try_from_vec_of_options() {
         assert_eq!(
             NumericSeq::try_from(vec![Some(1), Some(2), Some(3)]).unwrap(),
-            NumericSeq::new(vec![1, 2, 3])
+            numseq![1, 2, 3]
         );
 
         assert!(NumericSeq::try_from(vec![Some(1), None, Some(2), Some(3)]).is_err());
@@ -277,7 +290,7 @@ mod tests {
     fn try_from_vec_of_vecs() {
         assert_eq!(
             NumericSeq::try_from(vec![vec![1], vec![2], vec![3]]).unwrap(),
-            NumericSeq::new(vec![1, 2, 3])
+            numseq![1, 2, 3]
         );
 
         assert!(NumericSeq::try_from(vec![Vec::<i32>::new()]).is_err());
@@ -290,7 +303,7 @@ mod tests {
         assert!(NumericSeq::try_from(Melody::try_from(vec![vec![1, 2, 3]]).unwrap()).is_err());
 
         assert_eq!(
-            NoteSeq::try_from(Melody {
+            NumericSeq::try_from(Melody {
                 contents: vec![
                     MelodyMember::from(vec![1]),
                     MelodyMember::from(vec![2]),
@@ -299,8 +312,8 @@ mod tests {
                 metadata: MetadataList::new(vec![MetadataData::Tempo(144.0).into()])
             })
             .unwrap(),
-            NoteSeq {
-                contents: vec![Some(1), Some(2), Some(3)],
+            NumericSeq {
+                contents: vec![1, 2, 3],
                 metadata: MetadataList::new(vec![MetadataData::Tempo(144.0).into()])
             }
         );
@@ -344,7 +357,7 @@ mod tests {
     #[test]
     fn to_pitches() {
         assert_eq!(
-            NumericSeq::new(vec![4, 2, 5, 6, 3]).to_pitches(),
+            numseq![4, 2, 5, 6, 3].to_pitches(),
             vec![vec![4], vec![2], vec![5], vec![6], vec![3]]
         );
     }
@@ -352,7 +365,7 @@ mod tests {
     #[test]
     fn to_flat_pitches() {
         assert_eq!(
-            NumericSeq::new(vec![4, 2, 5, 6, 3]).to_flat_pitches(),
+            numseq![4, 2, 5, 6, 3].to_flat_pitches(),
             vec![4, 2, 5, 6, 3]
         );
     }
@@ -360,9 +373,7 @@ mod tests {
     #[test]
     fn to_numeric_values() {
         assert_eq!(
-            NumericSeq::new(vec![4, 2, 5, 6, 3])
-                .to_numeric_values()
-                .unwrap(),
+            numseq![4, 2, 5, 6, 3].to_numeric_values().unwrap(),
             vec![4, 2, 5, 6, 3]
         );
     }
@@ -370,10 +381,48 @@ mod tests {
     #[test]
     fn to_optional_numeric_values() {
         assert_eq!(
-            NumericSeq::new(vec![4, 2, 5, 6, 3])
-                .to_optional_numeric_values()
-                .unwrap(),
+            numseq![4, 2, 5, 6, 3].to_optional_numeric_values().unwrap(),
             vec![Some(4), Some(2), Some(5), Some(6), Some(3)]
         );
+    }
+
+    #[test]
+    fn map_pitch() {
+        assert_eq!(
+            numseq![4, 2, 5, 6, 3].map_pitch(|p| p * 2),
+            numseq![8, 4, 10, 12, 6]
+        )
+    }
+
+    #[test]
+    fn map_pitch_enumerated() {
+        assert_eq!(
+            numseq![4, 2, 5, 6, 3].map_pitch_enumerated(|(i, p)| p + i as i32),
+            numseq![4, 3, 7, 9, 7]
+        )
+    }
+
+    #[test]
+    fn filter_pitch() {
+        assert_eq!(
+            numseq![4, 2, 5, 6, 3].filter_pitch(|p| *p > 0).unwrap(),
+            numseq![4, 2, 5, 6, 3]
+        );
+
+        assert!(numseq![4, 2, 5, 6, 3].filter_pitch(|p| *p > 2).is_err())
+    }
+
+    #[test]
+    fn filter_pitch_enumerated() {
+        assert_eq!(
+            numseq![4, 2, 5, 6, 3]
+                .filter_pitch_enumerated(|(i, p)| (p + i as i32) < 10)
+                .unwrap(),
+            numseq![4, 2, 5, 6, 3]
+        );
+
+        assert!(numseq![4, 2, 5, 6, 3]
+            .filter_pitch_enumerated(|(i, p)| *p > i as i32)
+            .is_err())
     }
 }
