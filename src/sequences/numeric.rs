@@ -1,6 +1,6 @@
 use crate::collections::traits::Collection;
 use crate::metadata::MetadataList;
-use crate::ops::pitch::{Pitch, PitchError};
+use crate::ops::pitch::{AugDim, Pitch, PitchError};
 use crate::sequences::chord::ChordSeq;
 use crate::sequences::melody::Melody;
 use crate::sequences::note::NoteSeq;
@@ -207,21 +207,19 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + Fro
         Ok(self)
     }
 
-    /*
-    fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
+    pub fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.contents.iter_mut().for_each(|p| {
             *p = p.augment_pitch(n);
         });
         self
     }
 
-    fn diminish_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
+    pub fn diminish_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.contents.iter_mut().for_each(|p| {
             *p = p.diminish_pitch(n);
         });
         self
     }
-    */
 
     pub fn trim(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|p| {
@@ -497,5 +495,50 @@ mod tests {
         assert!(numseq![4, 2, 5, 6, 3]
             .filter_map_pitch_enumerated(|(i, p)| if *p > 2 { Some(p + i as i32) } else { None })
             .is_err());
+    }
+
+    #[test]
+    fn augment_pitch() {
+        assert_eq!(
+            numseq![4, 2, 5, 6, 3].augment_pitch(2),
+            numseq![8, 4, 10, 12, 6]
+        );
+
+        assert_eq!(
+            numseq![4, 2, 5, 6, 3].augment_pitch(2.5),
+            numseq![10, 5, 12, 15, 7]
+        );
+    }
+
+    #[test]
+    fn diminish_pitch() {
+        assert_eq!(
+            numseq![4, 2, 5, 6, 3].diminish_pitch(0.5),
+            numseq![8, 4, 10, 12, 6]
+        );
+
+        assert_eq!(
+            numseq![4, 2, 5, 6, 3].diminish_pitch(2),
+            numseq![2, 1, 2, 3, 1]
+        );
+    }
+
+    #[test]
+    fn trim() {
+        assert_eq!(numseq![4, 2, 5, 6, 3].trim(3, 5), numseq![4, 3, 5, 5, 3]);
+    }
+
+    #[test]
+    fn bounce() {
+        assert_eq!(
+            numseq![34, 12, 25, 46, 3].bounce(20, 30),
+            numseq![26, 28, 25, 24, 23]
+        );
+    }
+
+    #[test]
+    fn is_silent() {
+        assert!(NumericSeq::<i32>::new(vec![]).is_silent());
+        assert!(!numseq![4, 2, 5, 6, 3].is_silent());
     }
 }
