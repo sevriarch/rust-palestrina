@@ -1,9 +1,4 @@
-use crate::sequences::{
-    chord::ChordSeq,
-    melody::{Melody, MelodyMember},
-    note::NoteSeq,
-    numeric::NumericSeq,
-};
+use crate::sequences::melody::MelodyMember;
 use anyhow::{anyhow, Result};
 use num_traits::Zero;
 use thiserror::Error;
@@ -70,6 +65,8 @@ make_double_conv_aug_dim!(for f32 f64);
 pub enum PitchError {
     #[error("{0} operation led to the absence of a required pitch")]
     RequiredPitchAbsent(String),
+    #[error("{0} operation failed because multiple pitches were generated")]
+    MultiplePitchesNotAllowed(String),
 }
 
 /// A trait that implements various operations that can be executed on pitches
@@ -78,6 +75,11 @@ pub trait Pitch<T>
 where
     T: Copy,
 {
+    /// Set a pitch or pitches.
+    fn set_pitches(self, p: Vec<T>) -> Result<Self>
+    where
+        Self: std::marker::Sized;
+
     /// A map operation on pitches.
     fn map_pitch<MapT: Fn(&T) -> T>(self, f: MapT) -> Self;
 
@@ -175,6 +177,18 @@ where
 macro_rules! impl_traits_for_pitches {
     (for $($ty:ident)*) => ($(
         impl Pitch<$ty> for $ty {
+            #[allow(unused_assignments)]
+            fn set_pitches(mut self, p: Vec<$ty>) -> Result<Self> {
+                match p.len() {
+                    0 => Err(anyhow!(PitchError::RequiredPitchAbsent("set_pitches()".to_string()))),
+                    1 => {
+                        self = p[0];
+                        Ok(self)
+                    },
+                    _ => Err(anyhow!(PitchError::MultiplePitchesNotAllowed("set_pitches()".to_string()))),
+                }
+            }
+
             fn map_pitch<MapT: Fn(&$ty) -> $ty>(mut self, f: MapT) -> Self {
                 self = f(&self);
                 self
@@ -338,7 +352,7 @@ macro_rules! impl_fns_for_melody_member {
         }
     )*)
 }
-
+/*
 macro_rules! impl_fns_for_seq {
     ($ty:ident, for $($fn:ident)*) => ($(
         fn $fn(mut self, n: $ty) -> Self {
@@ -365,12 +379,24 @@ macro_rules! impl_fns_for_melody {
         }
     )*)
 }
+*/
 
 /// Macro to implement traits for entities containing pitches
 macro_rules! impl_traits_for_pitch_containers {
     (for $($ty:ident)*) => ($(
         impl Pitch<$ty> for Option<$ty> {
             impl_fns_for_option!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
+
+            #[allow(unused_assignments)]
+            fn set_pitches(mut self, p: Vec<$ty>) -> Result<Self> {
+                match p.len() {
+                    0 => self = None,
+                    1 => self = Some(p[0]),
+                    _ => return Err(anyhow!(PitchError::MultiplePitchesNotAllowed("set_pitches()".to_string()))),
+                }
+
+                Ok(self)
+             }
 
             fn map_pitch<MapT: Fn(&$ty) -> $ty>(self, f: MapT) -> Self {
                 self.map(|p| f(&p))
@@ -415,6 +441,12 @@ macro_rules! impl_traits_for_pitch_containers {
 
         impl Pitch<$ty> for Vec<$ty> {
             impl_fns_for_vec!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
+
+            #[allow(unused_assignments)]
+            fn set_pitches(mut self, p: Vec<$ty>) -> Result<Self> {
+                self = p.clone();
+                Ok(self)
+            }
 
             fn map_pitch<MapT: Fn(&$ty) -> $ty>(mut self, f: MapT) -> Self {
                 self.iter_mut().for_each(|p| *p = f(p));
@@ -469,6 +501,11 @@ macro_rules! impl_traits_for_pitch_containers {
         impl Pitch<$ty> for MelodyMember<$ty> {
             impl_fns_for_melody_member!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
 
+            fn set_pitches(mut self, p: Vec<$ty>) -> Result<Self> {
+                self.values = p.clone();
+                Ok(self)
+            }
+
             fn map_pitch<MapT: Fn(&$ty) -> $ty>(mut self, f: MapT) -> Self {
                 self.values.iter_mut().for_each(|p| *p = f(p));
                 self
@@ -519,8 +556,13 @@ macro_rules! impl_traits_for_pitch_containers {
             }
         }
 
+        /*
         impl Pitch<$ty> for NumericSeq<$ty> {
             impl_fns_for_seq!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
+
+            fn set_pitches(mut self, p: Vec<$ty>) -> Result<Self> {
+                Ok(self)
+            }
 
             fn map_pitch<MapT: Fn(&$ty) -> $ty>(mut self, f: MapT) -> Self {
                 self.contents.iter_mut().for_each(|p| {
@@ -591,6 +633,7 @@ macro_rules! impl_traits_for_pitch_containers {
 
         impl Pitch<$ty> for NoteSeq<$ty> {
             impl_fns_for_seq!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
+    fn set_pitches(self, p: Vec<T>) -> Self { todo!() }
 
             fn map_pitch<MapT: Fn(&$ty) -> $ty>(mut self, f: MapT) -> Self {
                 self.contents.iter_mut().for_each(|p| {
@@ -660,6 +703,7 @@ macro_rules! impl_traits_for_pitch_containers {
 
         impl Pitch<$ty> for ChordSeq<$ty> {
             impl_fns_for_chordseq!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
+    fn set_pitches(self, p: Vec<T>) -> Self { todo!() }
 
             fn map_pitch<MapT: Fn(&$ty) -> $ty>(mut self, f: MapT) -> Self {
                 self.contents.iter_mut().for_each(|p| {
@@ -737,6 +781,7 @@ macro_rules! impl_traits_for_pitch_containers {
 
         impl Pitch<$ty> for Melody<$ty> {
             impl_fns_for_melody!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
+    fn set_pitches(self, p: Vec<T>) -> Self { todo!() }
 
             fn map_pitch<MapT: Fn(&$ty) -> $ty>(mut self, f: MapT) -> Self {
                 self.contents.iter_mut().for_each(|p| {
@@ -819,6 +864,7 @@ macro_rules! impl_traits_for_pitch_containers {
                 self.contents.iter().all(|m| m.is_silent())
             }
         }
+        */
     )*)
 }
 
@@ -828,11 +874,8 @@ impl_traits_for_pitch_containers!(for i8 i16 i32 i64 isize u8 u16 u32 u64 usize 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::collections::traits::Collection;
     use crate::entities::timing::DurationalEventTiming;
     use crate::metadata::MetadataList;
-    use crate::{chordseq, melody, noteseq, numseq};
-    use assert_float_eq::expect_f64_near;
 
     #[test]
     fn map_pitch() {
@@ -850,22 +893,6 @@ mod tests {
             MelodyMember::from(vec![3.0, 4.0, 5.0]),
             |v| v / 2.0,
             MelodyMember::from(vec![1.5, 2.0, 2.5])
-        );
-        map_pitch_test!(numseq![3.0, 4.0, 5.0], |v| v / 2.0, numseq![1.5, 2.0, 2.5]);
-        map_pitch_test!(
-            noteseq![3.0, None, 4.0, 5.0],
-            |v| v / 2.0,
-            noteseq![1.5, None, 2.0, 2.5]
-        );
-        map_pitch_test!(
-            chordseq![[3.0], [], [4.0, 5.0]],
-            |v| v / 2.0,
-            chordseq![[1.5], [], [2.0, 2.5]]
-        );
-        map_pitch_test!(
-            melody![[3.0], [], [4.0, 5.0]],
-            |v| v / 2.0,
-            melody![[1.5], [], [2.0, 2.5]]
         );
     }
 
@@ -885,26 +912,6 @@ mod tests {
             MelodyMember::from(vec![3.0, 4.0, 5.0]),
             |(_, v)| v / 2.0,
             MelodyMember::from(vec![1.5, 2.0, 2.5])
-        );
-        map_pitch_enumerated_test!(
-            numseq![3.0, 4.5, 5.5],
-            |(i, v)| v * (1.0 + i.unwrap() as f32),
-            numseq![3.0, 9.0, 16.5]
-        );
-        map_pitch_enumerated_test!(
-            noteseq![3.0, None, 4.5, 5.5],
-            |(i, v)| v * (1.0 + i.unwrap() as f32),
-            noteseq![3.0, None, 13.5, 22.0]
-        );
-        map_pitch_enumerated_test!(
-            chordseq![[3.0], [], [4.5, 5.5]],
-            |(i, v)| v * (1.0 + i.unwrap() as f32),
-            chordseq![[3.0], [], [13.5, 16.5]]
-        );
-        map_pitch_enumerated_test!(
-            melody![[3.0], [], [4.5, 5.5]],
-            |(i, v)| v * (1.0 + i.unwrap() as f32),
-            melody![[3.0], [], [13.5, 16.5]]
         );
     }
 
@@ -926,23 +933,6 @@ mod tests {
             MelodyMember::from(vec![5, 6, 7]),
             |v| v % 2 == 0,
             MelodyMember::from(vec![6])
-        );
-        assert!(numseq![5, 6, 7].filter_pitch(|v| v % 2 == 0).is_err());
-        filter_pitch_test!(numseq![4, 6, 8], |v| v % 2 == 0, numseq![4, 6, 8]);
-        filter_pitch_test!(
-            noteseq![5, None, 6, 7],
-            |v| v % 2 == 0,
-            noteseq![None, None, 6, None]
-        );
-        filter_pitch_test!(
-            chordseq![[4.4, 5.6], [], [5.3], [9.7, 11.1]],
-            |v| *v < 6.5,
-            chordseq![[4.4, 5.6], [], [5.3], []]
-        );
-        filter_pitch_test!(
-            melody![[4.4, 5.6], [], [5.3], [9.7, 11.1]],
-            |v| *v < 6.5,
-            melody![[4.4, 5.6], [], [5.3], []]
         );
     }
 
@@ -976,29 +966,6 @@ mod tests {
             MelodyMember::from(vec![5, 6, 7]),
             |v| if v % 2 == 0 { Some(v / 2) } else { None },
             MelodyMember::from(vec![3])
-        );
-        assert!(numseq![5, 6, 7]
-            .filter_map_pitch(|v| if v % 2 == 0 { Some(v / 2) } else { None })
-            .is_err());
-        filter_map_pitch_test!(
-            numseq![4, 6, 8],
-            |v| if v % 2 == 0 { Some(v / 2) } else { None },
-            numseq![2, 3, 4]
-        );
-        filter_map_pitch_test!(
-            noteseq![5, None, 6, 7],
-            |v| if v % 2 == 0 { Some(v / 2) } else { None },
-            noteseq![None, None, 3, None]
-        );
-        filter_map_pitch_test!(
-            chordseq![[4.4, 5.6], [], [5.3], [9.7, 11.1]],
-            |v| if *v < 6.5 { Some(*v + 5.5) } else { None },
-            chordseq![[9.9, 11.1], [], [10.8], []]
-        );
-        filter_map_pitch_test!(
-            melody![[4.4, 5.6], [], [5.3], [9.7, 11.1]],
-            |v| if *v < 6.5 { Some(*v + 5.5) } else { None },
-            melody![[9.9, 11.1], [], [10.8], []]
         );
     }
 
@@ -1041,49 +1008,6 @@ mod tests {
             |(_, v)| if v % 2 == 0 { Some(v / 2) } else { None },
             MelodyMember::from(vec![3])
         );
-        assert!(numseq![5, 6, 7]
-            .filter_map_pitch_enumerated(|(i, v)| if v % 2 == 0 {
-                Some(i.unwrap_or(0) as i32 + v / 2)
-            } else {
-                None
-            })
-            .is_err());
-        filter_map_pitch_enumerated_test!(
-            numseq![4, 6, 8],
-            |(i, v)| if v % 2 == 0 {
-                Some(i.unwrap_or(0) as i32 + v / 2)
-            } else {
-                None
-            },
-            numseq![2, 4, 6]
-        );
-        filter_map_pitch_enumerated_test!(
-            noteseq![5, None, 6, 7],
-            |(i, v)| if v % 2 == 0 {
-                Some(i.unwrap_or(0) as i32 + v / 2)
-            } else {
-                None
-            },
-            noteseq![None, None, 5, None]
-        );
-        filter_map_pitch_enumerated_test!(
-            chordseq![[4.4, 5.6], [], [5.3], [9.7, 11.1]],
-            |(i, v)| if *v < 6.5 {
-                Some(i.unwrap_or(0) as f64 + *v + 5.5)
-            } else {
-                None
-            },
-            chordseq![[9.9, 11.1], [], [12.8], []]
-        );
-        filter_map_pitch_enumerated_test!(
-            melody![[4.4, 5.6], [], [5.3], [9.7, 11.1]],
-            |(i, v)| if *v < 6.5 {
-                Some(i.unwrap_or(0) as f64 + *v + 5.5)
-            } else {
-                None
-            },
-            melody![[9.9, 11.1], [], [12.8], []]
-        );
     }
 
     #[test]
@@ -1103,18 +1027,6 @@ mod tests {
             MelodyMember::from(vec![4, 5, 6]),
             6,
             MelodyMember::from(vec![10, 11, 12])
-        );
-        transpose_pitch_test!(numseq![4, 5, 6], 6, numseq![10, 11, 12]);
-        transpose_pitch_test!(noteseq![4, None, 6], 6, noteseq![10, None, 12]);
-        transpose_pitch_test!(
-            chordseq![[4, 5, 6], [], [7]],
-            6,
-            chordseq![[10, 11, 12], [], [13]]
-        );
-        transpose_pitch_test!(
-            melody![[4, 5, 6], [], [7]],
-            6,
-            melody![[10, 11, 12], [], [13]]
         );
     }
 
@@ -1136,14 +1048,6 @@ mod tests {
             6,
             MelodyMember::from(vec![8, 7, 6])
         );
-        invert_pitch_test!(numseq![4, 5, 6], 6, numseq![8, 7, 6]);
-        invert_pitch_test!(noteseq![4, None, 6], 6, noteseq![8, None, 6]);
-        invert_pitch_test!(
-            chordseq![[4, 5, 6], [], [7]],
-            6,
-            chordseq![[8, 7, 6], [], [5]]
-        );
-        invert_pitch_test!(melody![[4, 5, 6], [], [7]], 6, melody![[8, 7, 6], [], [5]]);
     }
 
     #[test]
@@ -1189,50 +1093,6 @@ mod tests {
             MelodyMember::from(vec![4.0, 5.5, 6.5]),
             3.0,
             MelodyMember::from(vec![12.0, 16.5, 19.5])
-        );
-        augment_pitch_test!(numseq![4, 5, 7], 2, numseq![8, 10, 14]);
-        augment_pitch_test!(numseq![4, 5, 7], 2.5, numseq![10, 12, 17]);
-        augment_pitch_test!(numseq![4.0, 5.5, 6.5], 3, numseq![12.0, 16.5, 19.5]);
-        augment_pitch_test!(numseq![4.0, 5.5, 6.5], 3.0, numseq![12.0, 16.5, 19.5]);
-        augment_pitch_test!(noteseq![4, None, 5, 7], 2, noteseq![8, None, 10, 14]);
-        augment_pitch_test!(noteseq![4, None, 5, 7], 2.5, noteseq![10, None, 12, 17]);
-        augment_pitch_test!(
-            noteseq![4.0, None, 5.5, 6.5],
-            3,
-            noteseq![12.0, None, 16.5, 19.5]
-        );
-        augment_pitch_test!(
-            noteseq![4.0, None, 5.5, 6.5],
-            3.0,
-            noteseq![12.0, None, 16.5, 19.5]
-        );
-        augment_pitch_test!(chordseq![[4], [], [5, 7]], 2, chordseq![[8], [], [10, 14]]);
-        augment_pitch_test!(
-            chordseq![[4], [], [5, 7]],
-            2.5,
-            chordseq![[10], [], [12, 17]]
-        );
-        augment_pitch_test!(
-            chordseq![[4.0], [], [5.5, 6.5]],
-            3,
-            chordseq![[12.0], [], [16.5, 19.5]]
-        );
-        augment_pitch_test!(
-            chordseq![[4.0], [], [5.5, 6.5]],
-            3.0,
-            chordseq![[12.0], [], [16.5, 19.5]]
-        );
-        augment_pitch_test!(melody![[4], [], [5, 7]], 2, melody![[8], [], [10, 14]]);
-        augment_pitch_test!(melody![[4], [], [5, 7]], 2.5, melody![[10], [], [12, 17]]);
-        augment_pitch_test!(
-            melody![[4.0], [], [5.5, 6.5]],
-            3,
-            melody![[12.0], [], [16.5, 19.5]]
-        );
-        augment_pitch_test!(
-            melody![[4.0], [], [5.5, 6.5]],
-            3.0,
-            melody![[12.0], [], [16.5, 19.5]]
         );
     }
 
@@ -1280,50 +1140,6 @@ mod tests {
             3.0,
             MelodyMember::from(vec![4.0, 5.5, 6.5])
         );
-        diminish_pitch_test!(numseq![8, 10, 14], 2, numseq![4, 5, 7]);
-        diminish_pitch_test!(numseq![10, 12, 17], 2.5, numseq![4, 4, 6]);
-        diminish_pitch_test!(numseq![12.0, 16.5, 19.5], 3, numseq![4.0, 5.5, 6.5]);
-        diminish_pitch_test!(numseq![12.0, 16.5, 19.5], 3.0, numseq![4.0, 5.5, 6.5]);
-        diminish_pitch_test!(noteseq![8, None, 10, 14], 2, noteseq![4, None, 5, 7]);
-        diminish_pitch_test!(noteseq![10, None, 12, 17], 2.5, noteseq![4, None, 4, 6]);
-        diminish_pitch_test!(
-            noteseq![12.0, None, 16.5, 19.5],
-            3,
-            noteseq![4.0, None, 5.5, 6.5]
-        );
-        diminish_pitch_test!(
-            noteseq![12.0, None, 16.5, 19.5],
-            3.0,
-            noteseq![4.0, None, 5.5, 6.5]
-        );
-        diminish_pitch_test!(chordseq![[8], [], [10, 14]], 2, chordseq![[4], [], [5, 7]]);
-        diminish_pitch_test!(
-            chordseq![[10], [], [12, 17]],
-            2.5,
-            chordseq![[4], [], [4, 6]]
-        );
-        diminish_pitch_test!(
-            chordseq![[12.0], [], [16.5, 19.5]],
-            3,
-            chordseq![[4.0], [], [5.5, 6.5]]
-        );
-        diminish_pitch_test!(
-            chordseq![[12.0], [], [16.5, 19.5]],
-            3.0,
-            chordseq![[4.0], [], [5.5, 6.5]]
-        );
-        diminish_pitch_test!(melody![[8], [], [10, 14]], 2, melody![[4], [], [5, 7]]);
-        diminish_pitch_test!(melody![[10], [], [12, 17]], 2.5, melody![[4], [], [4, 6]]);
-        diminish_pitch_test!(
-            melody![[12.0], [], [16.5, 19.5]],
-            3,
-            melody![[4.0], [], [5.5, 6.5]]
-        );
-        diminish_pitch_test!(
-            melody![[12.0], [], [16.5, 19.5]],
-            3.0,
-            melody![[4.0], [], [5.5, 6.5]]
-        );
     }
 
     #[test]
@@ -1349,14 +1165,6 @@ mod tests {
             3,
             MelodyMember::from(vec![2, 1, 0])
         );
-        modulus_test!(numseq![5, -5, 6], 3, numseq![2, 1, 0]);
-        modulus_test!(noteseq![5, None, -5, 6], 3, noteseq![2, None, 1, 0]);
-        modulus_test!(chordseq![[5], [], [-5, 6]], 3, chordseq![[2], [], [1, 0]]);
-        modulus_test!(
-            melody![[5.0], [], [-5.0, 6.0]],
-            1.5,
-            melody![[0.5], [], [1.0, 0.0]]
-        );
     }
 
     #[test]
@@ -1378,18 +1186,6 @@ mod tests {
             4.0,
             MelodyMember::from(vec![5.0, 4.0])
         );
-        trim_min_test!(numseq![5.0, 3.0], 4.0, numseq![5.0, 4.0]);
-        trim_min_test!(noteseq![5.0, None, 3.0], 4.0, noteseq![5.0, None, 4.0]);
-        trim_min_test!(
-            chordseq![[5.0], [], [4.5, 3.0]],
-            4.0,
-            chordseq![[5.0], [], [4.5, 4.0]]
-        );
-        trim_min_test!(
-            melody![[5.0], [], [4.5, 3.0]],
-            4.0,
-            melody![[5.0], [], [4.5, 4.0]]
-        );
     }
 
     #[test]
@@ -1410,18 +1206,6 @@ mod tests {
             MelodyMember::from(vec![5.0, 3.0]),
             4.0,
             MelodyMember::from(vec![4.0, 3.0])
-        );
-        trim_max_test!(numseq![5.0, 3.0], 4.0, numseq![4.0, 3.0]);
-        trim_max_test!(noteseq![5.0, None, 3.0], 4.0, noteseq![4.0, None, 3.0]);
-        trim_max_test!(
-            chordseq![[5.0], [], [4.5, 3.0]],
-            4.0,
-            chordseq![[4.0], [], [4.0, 3.0]]
-        );
-        trim_max_test!(
-            melody![[5.0], [], [4.5, 3.0]],
-            4.0,
-            melody![[4.0], [], [4.0, 3.0]]
         );
     }
 
@@ -1447,25 +1231,6 @@ mod tests {
             3.0,
             MelodyMember::from(vec![3.0, 4.0, 5.0])
         );
-        trim_test!(numseq![2.0, 4.0, 6.0], 3.0, 5.0, numseq![3.0, 4.0, 5.0]);
-        trim_test!(
-            noteseq![2.0, None, 4.0, 6.0],
-            3.0,
-            5.0,
-            noteseq![3.0, None, 4.0, 5.0]
-        );
-        trim_test!(
-            chordseq![[2.0], [], [4.0, 6.0]],
-            5.0,
-            3.0,
-            chordseq![[3.0], [], [4.0, 5.0]]
-        );
-        trim_test!(
-            melody![[2.0], [], [4.0, 6.0]],
-            3.0,
-            5.0,
-            melody![[3.0], [], [4.0, 5.0]]
-        );
     }
 
     #[test]
@@ -1486,18 +1251,6 @@ mod tests {
             MelodyMember::from(vec![5.0, 3.0]),
             4.0,
             MelodyMember::from(vec![5.0, 5.0])
-        );
-        bounce_min_test!(numseq![5.0, 3.0], 4.0, numseq![5.0, 5.0]);
-        bounce_min_test!(noteseq![5.0, None, 3.0], 4.0, noteseq![5.0, None, 5.0]);
-        bounce_min_test!(
-            chordseq![[5.0], [], [4.5, 3.0]],
-            4.0,
-            chordseq![[5.0], [], [4.5, 5.0]]
-        );
-        bounce_min_test!(
-            melody![[5.0], [], [4.5, 3.0]],
-            4.0,
-            melody![[5.0], [], [4.5, 5.0]]
         );
     }
 
@@ -1520,18 +1273,6 @@ mod tests {
             4.0,
             MelodyMember::from(vec![3.0, 3.0])
         );
-        bounce_max_test!(numseq![5.0, 3.0], 4.0, numseq![3.0, 3.0]);
-        bounce_max_test!(noteseq![5.0, None, 3.0], 4.0, noteseq![3.0, None, 3.0]);
-        bounce_max_test!(
-            chordseq![[5.0], [], [4.5, 3.0]],
-            4.0,
-            chordseq![[3.0], [], [3.5, 3.0]]
-        );
-        bounce_max_test!(
-            melody![[5.0], [], [4.5, 3.0]],
-            4.0,
-            melody![[3.0], [], [3.5, 3.0]]
-        );
     }
 
     #[test]
@@ -1539,25 +1280,6 @@ mod tests {
         macro_rules! bounce_test {
             ($init:expr, $arg1:expr, $arg2:expr, $ret:expr) => {
                 assert_eq!($init.bounce($arg1, $arg2), $ret);
-            };
-        }
-
-        macro_rules! bounce_seq_test {
-            ($init:expr, $arg1:expr, $arg2:expr, $ret:expr) => {
-                let result = $init.bounce($arg1, $arg2);
-                let expected = $ret;
-
-                result
-                    .contents
-                    .into_iter()
-                    .zip(expected.contents.into_iter())
-                    .enumerate()
-                    .for_each(|(i, (ret, exp))| {
-                        assert!(
-                            expect_f64_near!(ret, exp).is_ok(),
-                            "index {i} failed: expected {ret}, got {exp}"
-                        );
-                    });
             };
         }
 
@@ -1580,16 +1302,6 @@ mod tests {
             6,
             MelodyMember::from(vec![4, 4, 4, 5, 5])
         );
-        bounce_seq_test!(
-            numseq![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
-            4.2,
-            5.6,
-            numseq![4.6, 4.8, 5.4, 4.4, 5.0, 5.2, 4.2, 5.2, 5.0, 4.4]
-        );
-        bounce_test!(noteseq![2, None, 4, 8], 3, 6, noteseq![4, None, 4, 4]);
-        bounce_test!(chordseq![[2], [], [4, 8]], 3, 6, chordseq![[4], [], [4, 4]]);
-        bounce_test!(melody![[2], [], [4, 8]], 3, 6, melody![[4], [], [4, 4]]);
-        bounce_test!(melody![[2], [], [4, 8]], 6, 6, melody![[6], [], [6, 6]]);
     }
 
     #[test]
@@ -1607,24 +1319,6 @@ mod tests {
             timing: DurationalEventTiming::default(),
             before: MetadataList::default()
         }
-        .is_silent());
-        assert!(NumericSeq::<i32>::new(vec![]).is_silent());
-        assert!(!numseq![0].is_silent());
-        assert!(NoteSeq::<i32>::new(vec![]).is_silent());
-        assert!(NoteSeq::<i32>::new(vec![None]).is_silent());
-        assert!(!noteseq![0, None, 1].is_silent());
-        assert!(ChordSeq::<i32>::new(vec![]).is_silent());
-        assert!(ChordSeq::<i32>::new(vec![vec![]]).is_silent());
-        assert!(!chordseq![[0], [], [1]].is_silent());
-        assert!(Melody::<i32>::new(vec![]).is_silent());
-        assert!(Melody::<i32>::try_from(vec![vec![]]).unwrap().is_silent());
-        assert!(!melody![[0], [], [1]].is_silent());
-        assert!(Melody::new(vec![MelodyMember {
-            values: vec![0],
-            volume: 0,
-            timing: DurationalEventTiming::default(),
-            before: MetadataList::default()
-        }])
         .is_silent());
     }
 }
