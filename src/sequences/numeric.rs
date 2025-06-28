@@ -21,7 +21,10 @@ macro_rules! numseq {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct NumericSeq<T> {
+pub struct NumericSeq<T>
+where
+    T: Pitch<T> + Copy,
+{
     pub contents: Vec<T>,
     pub metadata: MetadataList,
 }
@@ -33,7 +36,7 @@ pub enum NumSeqError {
 
 impl<T> TryFrom<Vec<T>> for NumericSeq<T>
 where
-    T: Copy + Clone + Num + Debug + PartialOrd + Bounded,
+    T: Pitch<T> + Copy + Clone + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
 {
     type Error = anyhow::Error;
 
@@ -44,7 +47,7 @@ where
 
 impl<T> TryFrom<Vec<Option<T>>> for NumericSeq<T>
 where
-    T: Copy + Clone + Num + Debug + PartialOrd + Bounded,
+    T: Pitch<T> + Copy + Clone + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
 {
     type Error = anyhow::Error;
 
@@ -61,7 +64,7 @@ where
 
 impl<T> TryFrom<Vec<Vec<T>>> for NumericSeq<T>
 where
-    T: Copy + Clone + Num + Debug + PartialOrd + Bounded,
+    T: Pitch<T> + Copy + Clone + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
 {
     type Error = anyhow::Error;
 
@@ -84,7 +87,7 @@ macro_rules! try_from_seq {
     (for $($type:ty)*) => ($(
         impl<T> TryFrom<$type> for NumericSeq<T>
         where
-            T: Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
+            T: Pitch<T> + Copy + Clone + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
         {
             type Error = anyhow::Error;
 
@@ -98,25 +101,29 @@ macro_rules! try_from_seq {
     )*)
 }
 
-try_from_seq!(for NoteSeq<T> ChordSeq<T> Melody<T>);
+//try_from_seq!(for NoteSeq<T> ChordSeq<T> Melody<T>);
 
 macro_rules! impl_fns_for_seq {
     ($ty:ident, for $($fn:ident)*) => ($(
-        pub fn $fn(mut self, n: $ty) -> Self {
+        fn $fn(mut self, n: $ty) -> Self {
             self.contents.iter_mut().for_each(|p| { *p = p.$fn(n); });
             self
         }
     )*)
 }
 
-impl<T: Clone + Num + Debug + PartialOrd + Bounded> Collection<T> for NumericSeq<T> {
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
+    Collection<T> for NumericSeq<T>
+{
     default_collection_methods!(T);
     default_sequence_methods!(T);
 }
 
-impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Sequence<T, T>
-    for NumericSeq<T>
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
+    Sequence<T, T> for NumericSeq<T>
 {
+    impl_fns_for_seq!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
+
     fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
         self.contents.iter_mut().for_each(f);
         self

@@ -1,6 +1,7 @@
 use crate::algorithms;
 use crate::collections::traits::{Collection, CollectionError};
 use crate::entities::scale::Scale;
+use crate::ops::pitch::Pitch;
 use anyhow::{anyhow, Result};
 use num_traits::{Num, PrimInt};
 use std::fmt::Debug;
@@ -37,6 +38,13 @@ pub trait Sequence<
     fn to_pitches(&self) -> Vec<Vec<PitchType>>;
     fn to_numeric_values(&self) -> Result<Vec<PitchType>>;
     fn to_optional_numeric_values(&self) -> Result<Vec<Option<PitchType>>>;
+    fn transpose_pitch(self, n: PitchType) -> Self;
+    fn invert_pitch(self, n: PitchType) -> Self;
+    fn modulus(self, n: PitchType) -> Self;
+    fn trim_min(self, n: PitchType) -> Self;
+    fn trim_max(self, n: PitchType) -> Self;
+    fn bounce_min(self, n: PitchType) -> Self;
+    fn bounce_max(self, n: PitchType) -> Self;
 
     fn min_value(&self) -> Option<PitchType> {
         self.to_flat_pitches()

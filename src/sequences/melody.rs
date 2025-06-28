@@ -278,7 +278,7 @@ macro_rules! try_from_seq {
     )*)
 }
 
-try_from_seq!(for NumericSeq<T> NoteSeq<T> ChordSeq<T>);
+//try_from_seq!(for NumericSeq<T> NoteSeq<T> ChordSeq<T>);
 
 impl<T: Clone + Num + Debug + PartialOrd + Bounded> Collection<MelodyMember<T>> for Melody<T> {
     default_collection_methods!(MelodyMember<T>);
