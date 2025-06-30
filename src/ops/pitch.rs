@@ -498,6 +498,7 @@ macro_rules! impl_traits_for_pitch_containers {
             }
         }
 
+        /*
         impl Pitch<$ty> for &mut MelodyMember<$ty> {
             impl_fns_for_melody_member!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
 
@@ -555,6 +556,7 @@ macro_rules! impl_traits_for_pitch_containers {
                 self.values.is_empty() || self.volume == 0
             }
         }
+        */
 
         /*
         impl Pitch<$ty> for NumericSeq<$ty> {

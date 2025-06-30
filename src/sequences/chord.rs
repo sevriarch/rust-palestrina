@@ -100,7 +100,7 @@ macro_rules! try_from_seq {
     (for $($t:ty)*) => ($(
         impl<T> TryFrom<$t> for ChordSeq<T>
         where
-            T: Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
+            T: Pitch<T> + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
         {
             type Error = anyhow::Error;
 
@@ -114,7 +114,7 @@ macro_rules! try_from_seq {
     )*)
 }
 
-//try_from_seq!(for NumericSeq<T> NoteSeq<T> Melody<T>);
+try_from_seq!(for NumericSeq<T> NoteSeq<T> Melody<T>);
 
 impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded> Collection<Vec<T>> for ChordSeq<T> {
     default_collection_methods!(Vec<T>);

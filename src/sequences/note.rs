@@ -96,7 +96,7 @@ macro_rules! try_from_seq {
     )*)
 }
 
-//try_from_seq!(for NumericSeq<T> ChordSeq<T> Melody<T>);
+try_from_seq!(for NumericSeq<T> ChordSeq<T> Melody<T>);
 
 impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
     Collection<Option<T>> for NoteSeq<T>

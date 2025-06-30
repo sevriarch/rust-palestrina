@@ -1,6 +1,7 @@
 use crate::collections::traits::Collection;
 use crate::default_collection_methods;
 use crate::metadata::{MetadataList, PushMetadata};
+use crate::ops::pitch::Pitch;
 use crate::sequences::melody::Melody;
 use crate::sequences::traits::Sequence;
 use anyhow::Result;
@@ -62,7 +63,7 @@ where
 
 impl<T> Score<T>
 where
-    T: Clone + Copy + Debug + PartialOrd + Bounded + From<i32> + Num + Sum,
+    T: Pitch<T> + Clone + Copy + Debug + PartialOrd + Bounded + From<i32> + Num + Sum,
 {
     pub fn pitch_range(&self) -> Option<(T, T)> {
         let min = self

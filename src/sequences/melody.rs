@@ -2,6 +2,7 @@ use crate::algorithms;
 use crate::collections::traits::Collection;
 use crate::entities::timing::{DurationalEventTiming, Timing};
 use crate::metadata::{Metadata, MetadataList};
+use crate::ops::pitch::{AugDim, Pitch, PitchError};
 use crate::sequences::chord::ChordSeq;
 use crate::sequences::note::NoteSeq;
 use crate::sequences::numeric::NumericSeq;
@@ -125,6 +126,98 @@ where
             values: what,
             ..Default::default()
         }
+    }
+}
+
+macro_rules! impl_fns_for_melody_member {
+    ($ty:ident, for $($fn:ident)*) => ($(
+        fn $fn(self, n: $ty) -> Self {
+            self.values.iter_mut().for_each(|p| { *p = p.$fn(n); });
+            self
+        }
+    )*)
+}
+
+impl<T> Pitch<T> for &mut MelodyMember<T>
+where
+    T: Pitch<T> + Copy,
+{
+    impl_fns_for_melody_member!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
+
+    fn set_pitches(self, p: Vec<T>) -> Result<Self> {
+        self.values = p.clone();
+        Ok(self)
+    }
+
+    fn map_pitch<MapT: Fn(&T) -> T>(self, f: MapT) -> Self {
+        self.values.iter_mut().for_each(|p| *p = f(p));
+        self
+    }
+
+    fn map_pitch_enumerated<MapT: Fn((Option<usize>, &T)) -> T>(self, f: MapT) -> Self {
+        self.values.iter_mut().for_each(|p| *p = f((None, p)));
+        self
+    }
+
+    fn filter_pitch<FilterT: Fn(&T) -> bool>(self, f: FilterT) -> Result<Self> {
+        self.values.retain(f);
+        Ok(self)
+    }
+
+    fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(self, f: MapT) -> Result<Self> {
+        self.values = self
+            .values
+            .clone()
+            .into_iter()
+            .filter_map(|v| f(&v))
+            .collect();
+        Ok(self)
+    }
+
+    fn filter_map_pitch_enumerated<MapT: Fn((Option<usize>, &T)) -> Option<T>>(
+        self,
+        f: MapT,
+    ) -> Result<Self> {
+        self.values = self
+            .values
+            .clone()
+            .into_iter()
+            .enumerate()
+            .filter_map(|(i, v)| f((Some(i), &v)))
+            .collect();
+        Ok(self)
+    }
+
+    fn augment_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self {
+        self.values.iter_mut().for_each(|p| {
+            *p = p.augment_pitch(n);
+        });
+        self
+    }
+
+    fn diminish_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self {
+        self.values.iter_mut().for_each(|p| {
+            *p = p.diminish_pitch(n);
+        });
+        self
+    }
+
+    fn trim(self, first: T, last: T) -> Self {
+        self.values.iter_mut().for_each(|p| {
+            *p = p.trim(first, last);
+        });
+        self
+    }
+
+    fn bounce(self, first: T, last: T) -> Self {
+        self.values.iter_mut().for_each(|p| {
+            *p = p.trim(first, last);
+        });
+        self
+    }
+
+    fn is_silent(self) -> bool {
+        self.values.is_empty() || self.volume == 0
     }
 }
 
@@ -260,7 +353,7 @@ macro_rules! try_from_seq {
     (for $($t:ty)*) => ($(
         impl<T> TryFrom<$t> for Melody<T>
         where
-            T: Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
+            T: Pitch<T> + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
         {
             type Error = anyhow::Error;
 
@@ -278,16 +371,29 @@ macro_rules! try_from_seq {
     )*)
 }
 
-//try_from_seq!(for NumericSeq<T> NoteSeq<T> ChordSeq<T>);
+try_from_seq!(for NumericSeq<T> NoteSeq<T> ChordSeq<T>);
 
 impl<T: Clone + Num + Debug + PartialOrd + Bounded> Collection<MelodyMember<T>> for Melody<T> {
     default_collection_methods!(MelodyMember<T>);
     default_sequence_methods!(MelodyMember<T>);
 }
 
-impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
+macro_rules! impl_fns_for_seq {
+    ($ty:ident, for $($fn:ident)*) => ($(
+        fn $fn(mut self, n: $ty) -> Self {
+            self.contents.iter_mut().for_each(|p| {
+                p.$fn(n);
+            });
+            self
+        }
+    )*)
+}
+
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
     Sequence<MelodyMember<T>, T> for Melody<T>
 {
+    impl_fns_for_seq!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
+
     fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
         self.contents.iter_mut().for_each(|m| {
             for p in m.values.iter_mut() {
@@ -328,6 +434,92 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
                 _ => Err(anyhow!("must contain zero or one values")),
             })
             .collect()
+    }
+}
+
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Melody<T> {
+    pub fn set_pitches(self, p: Vec<T>) -> Self {
+        todo!()
+    }
+
+    pub fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
+        self.contents.iter_mut().for_each(|p| {
+            p.map_pitch(&f);
+        });
+        self
+    }
+
+    pub fn map_pitch_enumerated<MapT: Fn((usize, &T)) -> T>(mut self, f: MapT) -> Self {
+        self.contents.iter_mut().enumerate().for_each(|(i, p)| {
+            p.map_pitch(|v| f((i, v)));
+        });
+        self
+    }
+
+    pub fn filter_pitch<FilterT: Fn(&T) -> bool>(mut self, f: FilterT) -> Result<Self> {
+        self.contents.iter_mut().for_each(|p| {
+            p.filter_pitch(&f);
+        });
+        Ok(self)
+    }
+
+    pub fn filter_pitch_enumerated<FilterT: Fn((usize, &T)) -> bool>(
+        mut self,
+        f: FilterT,
+    ) -> Result<Self> {
+        self.contents.iter_mut().enumerate().for_each(|(i, p)| {
+            p.filter_pitch(|v| f((i, v)));
+        });
+        Ok(self)
+    }
+
+    pub fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
+        for p in self.contents.iter_mut() {
+            p.filter_map_pitch(&f)?;
+        }
+        Ok(self)
+    }
+
+    pub fn filter_map_pitch_enumerated<MapT: Fn((usize, &T)) -> Option<T>>(
+        mut self,
+        f: MapT,
+    ) -> Result<Self> {
+        for (i, p) in self.contents.iter_mut().enumerate() {
+            p.filter_map_pitch(|v| f((i, v)))?;
+        }
+        Ok(self)
+    }
+
+    pub fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
+        self.contents.iter_mut().for_each(|p| {
+            p.augment_pitch(n);
+        });
+        self
+    }
+
+    pub fn diminish_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
+        self.contents.iter_mut().for_each(|p| {
+            p.diminish_pitch(n);
+        });
+        self
+    }
+
+    pub fn trim(mut self, first: T, second: T) -> Self {
+        self.contents.iter_mut().for_each(|p| {
+            p.trim(first, second);
+        });
+        self
+    }
+
+    pub fn bounce(mut self, first: T, second: T) -> Self {
+        self.contents.iter_mut().for_each(|p| {
+            p.bounce(first, second);
+        });
+        self
+    }
+
+    pub fn is_silent(mut self) -> bool {
+        self.contents.iter_mut().all(|m| m.is_silent())
     }
 }
 

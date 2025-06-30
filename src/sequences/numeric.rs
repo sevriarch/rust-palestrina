@@ -101,7 +101,7 @@ macro_rules! try_from_seq {
     )*)
 }
 
-//try_from_seq!(for NoteSeq<T> ChordSeq<T> Melody<T>);
+try_from_seq!(for NoteSeq<T> ChordSeq<T> Melody<T>);
 
 macro_rules! impl_fns_for_seq {
     ($ty:ident, for $($fn:ident)*) => ($(
@@ -149,8 +149,6 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + Fro
 impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
     NumericSeq<T>
 {
-    impl_fns_for_seq!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
-
     pub fn set_pitches(self, p: Vec<T>) -> Self {
         todo!()
     }
