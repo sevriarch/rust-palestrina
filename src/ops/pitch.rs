@@ -940,7 +940,7 @@ mod tests {
 
         assert_eq!(
             *mm!([5, 6, 7]).filter_pitch(|v| *v % 2 == 0).unwrap(),
-            mm!([3])
+            mm!([6])
         );
     }
 
@@ -1053,7 +1053,7 @@ mod tests {
         invert_pitch_test!(Some(5), 6, Some(7));
         invert_pitch_test!(vec![4, 5, 6], 6, vec![8, 7, 6]);
 
-        assert_eq!(*mm!([4, 5, 6]).invert_pitch(6), mm!([10, 11, 12]));
+        assert_eq!(*mm!([4, 5, 6]).invert_pitch(6), mm!([8, 7, 6]));
     }
 
     #[test]
@@ -1125,7 +1125,7 @@ mod tests {
             mm!([4.0, 5.5, 6.5])
         );
         assert_eq!(
-            *mm!([14.0, 19.25, 22.75]).augment_pitch(3.5),
+            *mm!([14.0, 19.25, 22.75]).diminish_pitch(3.5),
             mm!([4.0, 5.5, 6.5])
         );
     }
