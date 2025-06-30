@@ -244,8 +244,8 @@ fn get_meta_event_string_data(event: &str, value: String) -> Result<MetadataData
 }
 
 fn try_into_7bit_int(val: &i16) -> Result<u8> {
-    if (0..128).contains(val) {
-        Ok((*val % 128) as u8)
+    if (0..=127).contains(val) {
+        Ok(*val as u8)
     } else {
         Err(anyhow!(MetadataError::Invalid7BitInt(*val)))
     }
@@ -356,8 +356,8 @@ macro_rules! metadata_vec {
 
     ($data:expr) => (
         vec![Metadata {
-                data: $data,
-                timing: EventTiming::default()
+            data: $data,
+            timing: EventTiming::default()
         }]
     );
 

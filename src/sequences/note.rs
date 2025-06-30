@@ -1,6 +1,6 @@
 use crate::collections::traits::Collection;
 use crate::metadata::MetadataList;
-use crate::ops::pitch::{AugDim, Pitch, PitchError};
+use crate::ops::pitch::{AugDim, Pitch};
 use crate::sequences::chord::ChordSeq;
 use crate::sequences::melody::Melody;
 use crate::sequences::numeric::NumericSeq;
@@ -8,7 +8,7 @@ use crate::sequences::traits::Sequence;
 use crate::{default_collection_methods, default_sequence_methods};
 
 use anyhow::{anyhow, Result};
-use num_traits::{Bounded, Num};
+use num_traits::{Bounded, FromPrimitive, Num};
 use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::iter::Sum;
@@ -33,7 +33,7 @@ macro_rules! noteseq {
 
 impl<T> TryFrom<Vec<T>> for NoteSeq<T>
 where
-    T: Pitch<T> + Copy + Clone + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
+    T: Pitch<T> + Copy + Clone + Num + Debug + PartialOrd + Bounded + Sum,
 {
     type Error = anyhow::Error;
 
@@ -44,7 +44,7 @@ where
 
 impl<T> TryFrom<Vec<Option<T>>> for NoteSeq<T>
 where
-    T: Pitch<T> + Copy + Clone + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
+    T: Pitch<T> + Copy + Clone + Num + Debug + PartialOrd + Bounded + Sum,
 {
     type Error = anyhow::Error;
 
@@ -55,7 +55,7 @@ where
 
 impl<T> TryFrom<Vec<Vec<T>>> for NoteSeq<T>
 where
-    T: Pitch<T> + Copy + Clone + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
+    T: Pitch<T> + Copy + Clone + Num + Debug + PartialOrd + Bounded + Sum,
 {
     type Error = anyhow::Error;
 
@@ -82,7 +82,7 @@ macro_rules! try_from_seq {
     (for $($type:ty)*) => ($(
         impl<T> TryFrom<$type> for NoteSeq<T>
         where
-            T: Pitch<T> + Copy + Clone + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
+            T: Pitch<T> + Copy + Clone + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum,
         {
             type Error = anyhow::Error;
 
@@ -98,8 +98,8 @@ macro_rules! try_from_seq {
 
 try_from_seq!(for NumericSeq<T> ChordSeq<T> Melody<T>);
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
-    Collection<Option<T>> for NoteSeq<T>
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Collection<Option<T>>
+    for NoteSeq<T>
 {
     default_collection_methods!(Option<T>);
     default_sequence_methods!(Option<T>);
@@ -119,7 +119,7 @@ macro_rules! impl_fns_for_seq {
     )*)
 }
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum>
     Sequence<Option<T>, T> for NoteSeq<T>
 {
     impl_fns_for_seq!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
@@ -163,8 +163,8 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + Fro
     }
 }
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> NoteSeq<T> {
-    pub fn set_pitches(self, p: Vec<T>) -> Self {
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> NoteSeq<T> {
+    pub fn set_pitches(self, _p: Vec<T>) -> Self {
         todo!()
     }
 

@@ -8,7 +8,7 @@ use crate::sequences::traits::Sequence;
 use crate::{default_collection_methods, default_sequence_methods};
 
 use anyhow::{anyhow, Context, Result};
-use num_traits::{Bounded, Num};
+use num_traits::{Bounded, FromPrimitive, Num};
 use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::iter::Sum;
@@ -36,7 +36,7 @@ pub enum NumSeqError {
 
 impl<T> TryFrom<Vec<T>> for NumericSeq<T>
 where
-    T: Pitch<T> + Copy + Clone + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
+    T: Pitch<T> + Copy + Clone + Num + Debug + PartialOrd + Bounded + Sum,
 {
     type Error = anyhow::Error;
 
@@ -47,7 +47,7 @@ where
 
 impl<T> TryFrom<Vec<Option<T>>> for NumericSeq<T>
 where
-    T: Pitch<T> + Copy + Clone + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
+    T: Pitch<T> + Copy + Clone + Num + Debug + PartialOrd + Bounded + Sum,
 {
     type Error = anyhow::Error;
 
@@ -64,7 +64,7 @@ where
 
 impl<T> TryFrom<Vec<Vec<T>>> for NumericSeq<T>
 where
-    T: Pitch<T> + Copy + Clone + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
+    T: Pitch<T> + Copy + Clone + Num + Debug + PartialOrd + Bounded + Sum,
 {
     type Error = anyhow::Error;
 
@@ -87,7 +87,7 @@ macro_rules! try_from_seq {
     (for $($type:ty)*) => ($(
         impl<T> TryFrom<$type> for NumericSeq<T>
         where
-            T: Pitch<T> + Copy + Clone + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
+            T: Pitch<T> + Copy + Clone + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum,
         {
             type Error = anyhow::Error;
 
@@ -112,14 +112,14 @@ macro_rules! impl_fns_for_seq {
     )*)
 }
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
-    Collection<T> for NumericSeq<T>
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Collection<T>
+    for NumericSeq<T>
 {
     default_collection_methods!(T);
     default_sequence_methods!(T);
 }
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum>
     Sequence<T, T> for NumericSeq<T>
 {
     impl_fns_for_seq!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
@@ -146,10 +146,8 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + Fro
     }
 }
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
-    NumericSeq<T>
-{
-    pub fn set_pitches(self, p: Vec<T>) -> Self {
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> NumericSeq<T> {
+    pub fn set_pitches(self, _p: Vec<T>) -> Self {
         todo!()
     }
 
@@ -494,7 +492,7 @@ mod tests {
                     None
                 })
                 .unwrap(),
-            numseq![8, 4, 10, 12, 6]
+            numseq![4, 3, 7, 9, 7]
         );
 
         assert!(numseq![4, 2, 5, 6, 3]
@@ -537,7 +535,7 @@ mod tests {
     fn bounce() {
         assert_eq!(
             numseq![34, 12, 25, 46, 3].bounce(20, 30),
-            numseq![26, 28, 25, 24, 23]
+            numseq![26, 28, 25, 26, 23]
         );
     }
 

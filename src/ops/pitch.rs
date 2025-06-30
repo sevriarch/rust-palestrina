@@ -1,4 +1,3 @@
-use crate::sequences::melody::MelodyMember;
 use anyhow::{anyhow, Result};
 use num_traits::Zero;
 use thiserror::Error;
@@ -339,15 +338,6 @@ macro_rules! impl_fns_for_vec {
     ($ty:ident, for $($fn:ident)*) => ($(
         fn $fn(mut self, n: $ty) -> Self {
             self.iter_mut().for_each(|p| { *p = p.$fn(n); });
-            self
-        }
-    )*)
-}
-
-macro_rules! impl_fns_for_melody_member {
-    ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(self, n: $ty) -> Self {
-            self.values.iter_mut().for_each(|p| { *p = p.$fn(n); });
             self
         }
     )*)
@@ -878,6 +868,7 @@ mod tests {
     use super::*;
     use crate::entities::timing::DurationalEventTiming;
     use crate::metadata::MetadataList;
+    use crate::sequences::melody::MelodyMember;
 
     macro_rules! mm {
         ($v:expr) => {

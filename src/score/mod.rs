@@ -5,7 +5,7 @@ use crate::ops::pitch::Pitch;
 use crate::sequences::melody::Melody;
 use crate::sequences::traits::Sequence;
 use anyhow::Result;
-use num_traits::{Bounded, Num};
+use num_traits::{Bounded, FromPrimitive, Num};
 use std::convert::From;
 use std::fmt::Debug;
 use std::iter::Sum;
@@ -63,7 +63,16 @@ where
 
 impl<T> Score<T>
 where
-    T: Pitch<T> + Clone + Copy + Debug + PartialOrd + Bounded + From<i32> + Num + Sum,
+    T: Pitch<T>
+        + Clone
+        + Copy
+        + Debug
+        + FromPrimitive
+        + PartialOrd
+        + Bounded
+        + From<i32>
+        + Num
+        + Sum,
 {
     pub fn pitch_range(&self) -> Option<(T, T)> {
         let min = self

@@ -1,6 +1,6 @@
 use crate::collections::traits::Collection;
 use crate::metadata::MetadataList;
-use crate::ops::pitch::{AugDim, Pitch, PitchError};
+use crate::ops::pitch::{AugDim, Pitch};
 use crate::sequences::melody::Melody;
 use crate::sequences::note::NoteSeq;
 use crate::sequences::numeric::NumericSeq;
@@ -8,7 +8,7 @@ use crate::sequences::traits::Sequence;
 use crate::{default_collection_methods, default_sequence_methods};
 
 use anyhow::{anyhow, Result};
-use num_traits::{Bounded, Num};
+use num_traits::{Bounded, FromPrimitive, Num};
 use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::iter::Sum;
@@ -100,7 +100,7 @@ macro_rules! try_from_seq {
     (for $($t:ty)*) => ($(
         impl<T> TryFrom<$t> for ChordSeq<T>
         where
-            T: Pitch<T> + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
+            T: Pitch<T> + Copy + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum,
         {
             type Error = anyhow::Error;
 
@@ -132,7 +132,7 @@ macro_rules! impl_fns_for_seq {
     )*)
 }
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum>
     Sequence<Vec<T>, T> for ChordSeq<T>
 {
     impl_fns_for_seq!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
@@ -180,10 +180,8 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + Fro
     }
 }
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
-    ChordSeq<T>
-{
-    pub fn set_pitches(self, p: Vec<T>) -> Self {
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> ChordSeq<T> {
+    pub fn set_pitches(self, _p: Vec<T>) -> Self {
         todo!()
     }
 

@@ -25,7 +25,7 @@ use crate::entities::scale::Scale;
 use crate::imports::rasmussen;
 use crate::metadata::Metadata;
 use crate::ops::pitch::Pitch;
-use crate::sequences::{note::NoteSeq, numeric::NumericSeq, traits::Sequence};
+use crate::sequences::{melody::Melody, note::NoteSeq, numeric::NumericSeq, traits::Sequence};
 use anyhow::Result;
 
 const LEN: usize = 2816;
@@ -252,28 +252,36 @@ pub fn tempo_events() -> Result<Vec<Metadata>> {
     .map(|(t, bar)| Metadata::try_from(("tempo", *t as f32, Some((bar - 1) * 2 * TICKS), 0)))
     .collect()
 }
-/*
-fn melody1(n: usize) {
-    //log('entering m1', n)
 
+fn melody1(n: usize) -> Result<Melody<i32>> {
     let barlen = 8 - n;
-    let len1 = (8 - n) * LEN / 8;
+    let len1 = barlen * LEN / 8;
     let rhy1 = rhythm(n.try_into().unwrap());
     let vol1 = dynamics1(len1);
 
-    let first = [ 30, 29, 28, 55 ][n];
+    let first = [30, 29, 28, 55][n];
     let p_gap = 28 * barlen; // 28 bars
 
-    let mut s_on = vec![ 0 ];
+    let mut s_on = vec![0];
     let mut s_off = vec![];
+
+    let (m1, m2) = build_base_sequences()?;
 
     (barlen * first..len1).step_by(p_gap).for_each(|i| {
         s_off.push(i - 2);
         s_on.push(i);
     });
+    let sieve1 = |(i, v): (Option<usize>, &i32)| -> Option<i32> {
+        let m = (48 + v) % 12;
+        let lpad = 1024; // 128 bars
+        let gap = 128; // 16 bars
 
-    let sieve1 = |(i, v)| {
-        let rotator = match v {
+        let s = match i {
+            Some(ix) => (ix as i32 - lpad) / gap,
+            None => return Some(*v),
+        };
+
+        let rotator = match m {
             2 => 5,
             3 => 1,
             5 => 3,
@@ -284,45 +292,36 @@ fn melody1(n: usize) {
             _ => 0,
         };
 
-        let m = (48 + v) % 12;
-    });
-
-    function sieve1(v, i) {
-        const rotators = { 2: 5, 3: 1, 5: 3, 6: 0, 8: 4, 9: 2, 11: 6 }
-
-        const GAP  = 128 // 16 bars
-        const LPAD = 1024 // 128 bars
-
-        const m = (48 + v) % 12
-        const n = null
-        const s = (i - LPAD) / GAP
-
-        function rotato(x) {
-            if (s < x) { return v }
-            if (s < (13 - x)) { return n }
-            if (s < (14 + x)) { return -v }
-            if (s < (27 - x)) { return n }
-            return v
+        match rotator {
+            x if s < x => Some(*v),
+            x if s < (13 - x) => None,
+            x if s < (14 + x) => Some(-v),
+            x if s < (27 - x) => None,
+            _ => Some(*v),
         }
+    };
 
-        return rotato(rotators[m])
-    }
+    let mel: Melody<i32> = m1
+        .keep(len1)?
+        //.if(!n).then(s => s.replaceIndices(-1, null)) // Not implemented yet
+        // TODO .filter_map_pitch_enumerated(sieve1)?
+        .transpose_pitch(84 - 12 * n as i32)
+        .try_into()?;
 
-    return m1
-        .keep(len1)
-        .if(!n)
-            .then(s => s.replaceIndices(-1, null))
-        .mapPitch(sieve1)
-        .transpose(84 - 12 * n)
-        .toMelody()
-        .withDuration(rhy1)
-        .withVolume(vol1)
-        .withStartTick(n * TICKS * 14)
-        .withEventBefore(s_on, 'sustain', 1)
-        .withEventAfter(s_off, 'sustain', 0)
-        .tap(s => logTrack(n, 'part1', s))
+    mel.with_duration(rhy1)
+        .with_volumes(vol1.contents)?
+        .with_start_tick(14 * TICKS * n as u32)
+    //.with_event_at(s_on, "sustain", 1)
+    //.with_event_after(s_off, "sustain", 0)
 }
-*/
+
+#[test]
+fn test_melody1() {
+    let e = melody1(0).unwrap();
+    let f = Melody::try_from(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]).unwrap();
+
+    assert_eq!(e, f);
+}
 
 /*
 function melody1(n) {

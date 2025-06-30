@@ -1,9 +1,8 @@
 use crate::algorithms;
 use crate::collections::traits::{Collection, CollectionError};
 use crate::entities::scale::Scale;
-use crate::ops::pitch::Pitch;
 use anyhow::{anyhow, Result};
-use num_traits::{Num, PrimInt};
+use num_traits::{FromPrimitive, Num, PrimInt};
 use std::fmt::Debug;
 use std::iter::{zip, Sum};
 use std::ops::SubAssign;
@@ -30,7 +29,7 @@ macro_rules! default_sequence_methods {
 
 pub trait Sequence<
     T: Clone + Debug + PartialEq,
-    PitchType: Clone + Copy + Debug + Num + PartialOrd + Sum + From<i32>,
+    PitchType: Clone + Copy + Debug + FromPrimitive + Num + PartialOrd + Sum,
 >: Collection<T>
 {
     fn mutate_pitches<F: Fn(&mut PitchType)>(self, f: F) -> Self;
@@ -66,11 +65,10 @@ pub trait Sequence<
 
     fn mean(&self) -> Option<PitchType> {
         let pitches = self.to_flat_pitches();
-        let len = pitches.len() as i32;
         let mut iter = pitches.iter();
         let first = iter.next()?;
 
-        Some(iter.fold(*first, |acc, x| acc + *x) / PitchType::from(len))
+        Some(iter.fold(*first, |acc, x| acc + *x) / PitchType::from_usize(pitches.len())?)
     }
 
     fn range(&self) -> Option<PitchType> {
@@ -237,7 +235,6 @@ pub trait Sequence<
     fn scale(self, scale: Scale<PitchType>, zeroval: PitchType) -> Result<Self>
     where
         PitchType: PrimInt
-            + From<i32>
             + From<i8>
             + TryFrom<usize>
             + TryInto<usize>

@@ -2,7 +2,7 @@ use crate::algorithms;
 use crate::collections::traits::Collection;
 use crate::entities::timing::{DurationalEventTiming, Timing};
 use crate::metadata::{Metadata, MetadataList};
-use crate::ops::pitch::{AugDim, Pitch, PitchError};
+use crate::ops::pitch::{AugDim, Pitch};
 use crate::sequences::chord::ChordSeq;
 use crate::sequences::note::NoteSeq;
 use crate::sequences::numeric::NumericSeq;
@@ -10,7 +10,7 @@ use crate::sequences::traits::Sequence;
 use crate::{default_collection_methods, default_sequence_methods};
 
 use anyhow::{anyhow, Result};
-use num_traits::{Bounded, Num};
+use num_traits::{Bounded, FromPrimitive, Num};
 use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::iter::Sum;
@@ -211,7 +211,7 @@ where
 
     fn bounce(self, first: T, last: T) -> Self {
         self.values.iter_mut().for_each(|p| {
-            *p = p.trim(first, last);
+            *p = p.bounce(first, last);
         });
         self
     }
@@ -353,7 +353,7 @@ macro_rules! try_from_seq {
     (for $($t:ty)*) => ($(
         impl<T> TryFrom<$t> for Melody<T>
         where
-            T: Pitch<T> + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>,
+            T: Pitch<T> + Copy + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum,
         {
             type Error = anyhow::Error;
 
@@ -389,7 +389,7 @@ macro_rules! impl_fns_for_seq {
     )*)
 }
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>>
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum>
     Sequence<MelodyMember<T>, T> for Melody<T>
 {
     impl_fns_for_seq!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
@@ -437,8 +437,8 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + Fro
     }
 }
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + From<i32>> Melody<T> {
-    pub fn set_pitches(self, p: Vec<T>) -> Self {
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Melody<T> {
+    pub fn set_pitches(self, _p: Vec<T>) -> Self {
         todo!()
     }
 
@@ -457,9 +457,9 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + Fro
     }
 
     pub fn filter_pitch<FilterT: Fn(&T) -> bool>(mut self, f: FilterT) -> Result<Self> {
-        self.contents.iter_mut().for_each(|p| {
-            p.filter_pitch(&f);
-        });
+        for p in self.contents.iter_mut() {
+            p.filter_pitch(&f)?;
+        }
         Ok(self)
     }
 
@@ -467,9 +467,9 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + Fro
         mut self,
         f: FilterT,
     ) -> Result<Self> {
-        self.contents.iter_mut().enumerate().for_each(|(i, p)| {
-            p.filter_pitch(|v| f((i, v)));
-        });
+        for (i, p) in self.contents.iter_mut().enumerate() {
+            p.filter_pitch(|v| f((i, v)))?;
+        }
         Ok(self)
     }
 
