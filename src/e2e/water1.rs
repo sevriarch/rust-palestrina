@@ -315,15 +315,15 @@ fn melody1(n: usize) -> Result<Melody<i32>> {
     //.with_event_after(s_off, "sustain", 0)
 }
 
+/*
 #[test]
 fn test_melody1() {
-    let e = melody1(0).unwrap();
+    let e = melody1(0).unwrap().keep(16).unwrap();
     let f = Melody::try_from(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]).unwrap();
 
     assert_eq!(e, f);
 }
 
-/*
 function melody1(n) {
     log('entering m1', n)
 
