@@ -424,6 +424,16 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
         self
     }
 
+    fn filter_pitch_enumerated<FilterT: Fn((usize, &T)) -> bool>(
+        mut self,
+        f: FilterT,
+    ) -> Result<Self> {
+        for (i, m) in self.contents.iter_mut().enumerate() {
+            m.filter_pitch(|v| f((i, v)))?;
+        }
+        Ok(self)
+    }
+
     fn filter_map_pitch_enumerated<MapT: Fn((usize, &T)) -> Option<T>>(
         mut self,
         f: MapT,
@@ -453,16 +463,6 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Melo
     pub fn filter_pitch<FilterT: Fn(&T) -> bool>(mut self, f: FilterT) -> Result<Self> {
         for m in self.contents.iter_mut() {
             m.filter_pitch(&f)?;
-        }
-        Ok(self)
-    }
-
-    pub fn filter_pitch_enumerated<FilterT: Fn((usize, &T)) -> bool>(
-        mut self,
-        f: FilterT,
-    ) -> Result<Self> {
-        for (i, m) in self.contents.iter_mut().enumerate() {
-            m.filter_pitch(|v| f((i, v)))?;
         }
         Ok(self)
     }

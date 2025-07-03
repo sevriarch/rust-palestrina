@@ -171,6 +171,20 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
         self
     }
 
+    fn filter_pitch_enumerated<FilterT: Fn((usize, &T)) -> bool>(
+        mut self,
+        f: FilterT,
+    ) -> Result<Self> {
+        self.contents.iter_mut().enumerate().for_each(|(i, m)| {
+            if let Some(p) = m {
+                if !f((i, p)) {
+                    *m = None;
+                }
+            }
+        });
+        Ok(self)
+    }
+
     fn filter_map_pitch_enumerated<MapT: Fn((usize, &T)) -> Option<T>>(
         mut self,
         f: MapT,
@@ -213,20 +227,6 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Note
         self.contents.iter_mut().for_each(|m| {
             if let Some(p) = m {
                 if !f(p) {
-                    *m = None;
-                }
-            }
-        });
-        Ok(self)
-    }
-
-    pub fn filter_pitch_enumerated<FilterT: Fn((usize, &T)) -> bool>(
-        mut self,
-        f: FilterT,
-    ) -> Result<Self> {
-        self.contents.iter_mut().enumerate().for_each(|(i, m)| {
-            if let Some(p) = m {
-                if !f((i, p)) {
                     *m = None;
                 }
             }

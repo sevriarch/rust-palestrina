@@ -44,7 +44,10 @@ pub trait Sequence<
     /// context, and will contain the position in the Sequence if the map operation
     /// takes place in a Sequence context.
     fn map_pitch_enumerated<MapT: Fn((usize, &PitchType)) -> PitchType>(self, f: MapT) -> Self;
-
+    fn filter_pitch_enumerated<FilterT: Fn((usize, &PitchType)) -> bool>(
+        self,
+        f: FilterT,
+    ) -> Result<Self>;
     fn filter_map_pitch_enumerated<MapT: Fn((usize, &PitchType)) -> Option<PitchType>>(
         self,
         f: MapT,

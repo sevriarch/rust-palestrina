@@ -152,6 +152,16 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
         self
     }
 
+    fn filter_pitch_enumerated<FilterT: Fn((usize, &T)) -> bool>(self, f: FilterT) -> Result<Self> {
+        if self.contents.iter().enumerate().all(f) {
+            Ok(self)
+        } else {
+            Err(anyhow!(PitchError::RequiredPitchAbsent(
+                "filter_pitch_enumerated()".to_string()
+            )))
+        }
+    }
+
     fn filter_map_pitch_enumerated<MapT: Fn((usize, &T)) -> Option<T>>(
         mut self,
         f: MapT,
@@ -201,19 +211,6 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Nume
         } else {
             Err(anyhow!(PitchError::RequiredPitchAbsent(
                 "filter_pitch()".to_string()
-            )))
-        }
-    }
-
-    pub fn filter_pitch_enumerated<FilterT: Fn((usize, &T)) -> bool>(
-        self,
-        f: FilterT,
-    ) -> Result<Self> {
-        if self.contents.iter().enumerate().all(f) {
-            Ok(self)
-        } else {
-            Err(anyhow!(PitchError::RequiredPitchAbsent(
-                "filter_pitch_enumerated()".to_string()
             )))
         }
     }
