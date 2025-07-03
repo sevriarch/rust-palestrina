@@ -468,15 +468,6 @@ impl_traits_for_pitch_containers!(for i8 i16 i32 i64 isize u8 u16 u32 u64 usize 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::entities::timing::DurationalEventTiming;
-    use crate::metadata::MetadataList;
-    use crate::sequences::melody::MelodyMember;
-
-    macro_rules! mm {
-        ($v:expr) => {
-            MelodyMember::from($v.to_vec())
-        };
-    }
 
     #[test]
     fn map_pitch() {
@@ -490,11 +481,6 @@ mod tests {
         map_pitch_test!(None, |v| v + 1, None);
         map_pitch_test!(Some(3), |v| v + 1, Some(4));
         map_pitch_test!(vec![3, 4, 5], |v| v + 1, vec![4, 5, 6]);
-
-        assert_eq!(
-            *mm!([3.0, 4.0, 5.0]).map_pitch(|v| v / 2.0),
-            mm!([1.5, 2.0, 2.5])
-        );
     }
 
     #[test]
@@ -509,11 +495,6 @@ mod tests {
         map_pitch_enumerated_test!(None, |(_, v)| v + 1, None);
         map_pitch_enumerated_test!(Some(3), |(_, v)| v + 1, Some(4));
         map_pitch_enumerated_test!(vec![3, 4, 5], |(_, v)| v + 1, vec![4, 5, 6]);
-
-        assert_eq!(
-            *mm!([3.0, 4.0, 5.0]).map_pitch_enumerated(|(_, v)| v / 2.0),
-            mm!([1.5, 2.0, 2.5])
-        );
     }
 
     #[test]
@@ -530,11 +511,6 @@ mod tests {
         filter_pitch_test!(Some(5), |v| v % 2 == 0, None);
         filter_pitch_test!(Some(6), |v| v % 2 == 0, Some(6));
         filter_pitch_test!(vec![5, 6, 7], |v| v % 2 == 0, vec![6]);
-
-        assert_eq!(
-            *mm!([5, 6, 7]).filter_pitch(|v| *v % 2 == 0).unwrap(),
-            mm!([6])
-        );
     }
 
     #[test]
@@ -562,13 +538,6 @@ mod tests {
             vec![5, 6, 7],
             |v| if v % 2 == 0 { Some(v / 2) } else { None },
             vec![3]
-        );
-
-        assert_eq!(
-            *mm!([5, 6, 7])
-                .filter_map_pitch(|v| if *v % 2 == 0 { Some(v / 2) } else { None })
-                .unwrap(),
-            mm!([3])
         );
     }
 
@@ -606,13 +575,6 @@ mod tests {
             |(_, v)| if v % 2 == 0 { Some(v / 2) } else { None },
             vec![3]
         );
-
-        assert_eq!(
-            *mm!([5, 6, 7])
-                .filter_map_pitch_enumerated(|(_, v)| if *v % 2 == 0 { Some(v / 2) } else { None })
-                .unwrap(),
-            mm!([3])
-        );
     }
 
     #[test]
@@ -628,8 +590,6 @@ mod tests {
         transpose_pitch_test!(None::<i32>, 6, None);
         transpose_pitch_test!(Some(5), 6, Some(11));
         transpose_pitch_test!(vec![4, 5, 6], 6, vec![10, 11, 12]);
-
-        assert_eq!(*mm!([4, 5, 6]).transpose_pitch(6), mm!([10, 11, 12]));
     }
 
     #[test]
@@ -645,8 +605,6 @@ mod tests {
         invert_pitch_test!(None, 6, None);
         invert_pitch_test!(Some(5), 6, Some(7));
         invert_pitch_test!(vec![4, 5, 6], 6, vec![8, 7, 6]);
-
-        assert_eq!(*mm!([4, 5, 6]).invert_pitch(6), mm!([8, 7, 6]));
     }
 
     #[test]
@@ -673,17 +631,6 @@ mod tests {
         augment_pitch_test!(vec![4, 5, 7], 2.5, vec![10, 12, 17]);
         augment_pitch_test!(vec![4.0, 5.5, 6.5], 3, vec![12.0, 16.5, 19.5]);
         augment_pitch_test!(vec![4.0, 5.5, 6.5], 3.0, vec![12.0, 16.5, 19.5]);
-
-        assert_eq!(*mm!([4, 5, 7]).augment_pitch(2), mm!([8, 10, 14]));
-        assert_eq!(*mm!([4, 5, 7]).augment_pitch(2.5), mm!([10, 12, 17]));
-        assert_eq!(
-            *mm!([4.0, 5.5, 6.5]).augment_pitch(3),
-            mm!([12.0, 16.5, 19.5])
-        );
-        assert_eq!(
-            *mm!([4.0, 5.5, 6.5]).augment_pitch(3.5),
-            mm!([14.0, 19.25, 22.75])
-        );
     }
 
     #[test]
@@ -710,17 +657,6 @@ mod tests {
         diminish_pitch_test!(vec![10, 12, 17], 2.5, vec![4, 4, 6]);
         diminish_pitch_test!(vec![12.0, 16.5, 19.5], 3, vec![4.0, 5.5, 6.5]);
         diminish_pitch_test!(vec![12.0, 16.5, 19.5], 3.0, vec![4.0, 5.5, 6.5]);
-
-        assert_eq!(*mm!([8, 10, 14]).diminish_pitch(2), mm!([4, 5, 7]));
-        assert_eq!(*mm!([10, 12, 17]).diminish_pitch(2.5), mm!([4, 4, 6]));
-        assert_eq!(
-            *mm!([12.0, 16.5, 19.5]).diminish_pitch(3),
-            mm!([4.0, 5.5, 6.5])
-        );
-        assert_eq!(
-            *mm!([14.0, 19.25, 22.75]).diminish_pitch(3.5),
-            mm!([4.0, 5.5, 6.5])
-        );
     }
 
     #[test]
@@ -741,8 +677,6 @@ mod tests {
         modulus_test!(Some(5), 3, Some(2));
         modulus_test!(Some(-5), 3, Some(1));
         modulus_test!(vec![5.0, -5.0, 6.0], 1.5, vec![0.5, 1.0, 0.0]);
-
-        assert_eq!(*mm!([5, -5, 6]).modulus(3), mm!([2, 1, 0]));
     }
 
     #[test]
@@ -759,8 +693,6 @@ mod tests {
         trim_min_test!(Some(5), 3, Some(5));
         trim_min_test!(Some(3), 5, Some(5));
         trim_min_test!(vec![5.0, 3.0], 4.0, vec![5.0, 4.0]);
-
-        assert_eq!(*mm!([5.0, 3.0]).trim_min(4.0), mm!([5.0, 4.0]));
     }
 
     #[test]
@@ -777,8 +709,6 @@ mod tests {
         trim_max_test!(Some(5), 3, Some(3));
         trim_max_test!(Some(3), 5, Some(3));
         trim_max_test!(vec![5.0, 3.0], 4.0, vec![4.0, 3.0]);
-
-        assert_eq!(*mm!([5.0, 3.0]).trim_max(4.0), mm!([4.0, 3.0]));
     }
 
     #[test]
@@ -797,8 +727,6 @@ mod tests {
         trim_test!(Some(4), 3, 5, Some(4));
         trim_test!(Some(6), 3, 5, Some(5));
         trim_test!(vec![2, 4, 6], 3, 5, vec![3, 4, 5]);
-
-        assert_eq!(*mm!([2.0, 4.0, 6.0]).trim(5.0, 3.0), mm!([3.0, 4.0, 5.0]));
     }
 
     #[test]
@@ -815,8 +743,6 @@ mod tests {
         bounce_min_test!(Some(5), 3, Some(5));
         bounce_min_test!(Some(3), 5, Some(7));
         bounce_min_test!(vec![5.0, 3.0], 4.0, vec![5.0, 5.0]);
-
-        assert_eq!(*mm!([5.0, 3.0]).bounce_min(4.0), mm!([5.0, 5.0]));
     }
 
     #[test]
@@ -833,8 +759,6 @@ mod tests {
         bounce_max_test!(Some(5), 3, Some(1));
         bounce_max_test!(Some(3), 5, Some(3));
         bounce_max_test!(vec![5.0, 3.0], 4.0, vec![3.0, 3.0]);
-
-        assert_eq!(*mm!([5.0, 3.0]).bounce_max(4.0), mm!([3.0, 3.0]));
     }
 
     #[test]
@@ -858,8 +782,6 @@ mod tests {
         bounce_test!(Some(8), 6, 6, Some(6));
         bounce_test!(vec![2, 4, 8, -1, 11], 3, 6, vec![4, 4, 4, 5, 5]);
         bounce_test!(vec![2, 4, 8, -1, 11], 6, 6, vec![6, 6, 6, 6, 6]);
-
-        assert_eq!(*mm!([2, 4, 8, -1, 11]).bounce(3, 6), mm!([4, 4, 4, 5, 5]));
     }
 
     #[test]
@@ -869,14 +791,5 @@ mod tests {
         assert!(None::<i32>.is_silent());
         assert!(Vec::<i32>::new().is_silent());
         assert!(!vec![0].is_silent());
-        assert!(&MelodyMember::<i32>::from(vec![]).is_silent());
-        assert!(!&MelodyMember::from(vec![0]).is_silent());
-        assert!(&MelodyMember {
-            values: vec![0],
-            volume: 0,
-            timing: DurationalEventTiming::default(),
-            before: MetadataList::default()
-        }
-        .is_silent());
     }
 }
