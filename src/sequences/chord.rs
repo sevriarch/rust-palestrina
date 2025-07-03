@@ -181,8 +181,11 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
 }
 
 impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> ChordSeq<T> {
-    pub fn set_pitches(self, _p: Vec<T>) -> Self {
-        todo!()
+    pub fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
+        for m in self.contents.iter_mut() {
+            *m = p.clone();
+        }
+        Ok(self)
     }
 
     pub fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
@@ -419,6 +422,26 @@ mod tests {
                 .to_optional_numeric_values()
                 .unwrap(),
             vec![Some(5), None, Some(12), Some(16)]
+        );
+    }
+
+    #[test]
+    fn set_pitches() {
+        assert_eq!(
+            ChordSeq::<i32>::new(vec![]).set_pitches(vec![55]).unwrap(),
+            ChordSeq::<i32>::new(vec![])
+        );
+        assert_eq!(
+            chordseq![4, 2, 5, 6, 3].set_pitches(vec![]).unwrap(),
+            chordseq![[], [], [], [], []]
+        );
+        assert_eq!(
+            chordseq![4, 2, 5, 6, 3].set_pitches(vec![55]).unwrap(),
+            chordseq![55, 55, 55, 55, 55]
+        );
+        assert_eq!(
+            chordseq![4, 2, 5, 6, 3].set_pitches(vec![55, 66]).unwrap(),
+            chordseq![[55, 66], [55, 66], [55, 66], [55, 66], [55, 66]]
         );
     }
 }

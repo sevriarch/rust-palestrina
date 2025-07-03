@@ -147,8 +147,25 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
 }
 
 impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> NumericSeq<T> {
-    pub fn set_pitches(self, _p: Vec<T>) -> Self {
-        todo!()
+    pub fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
+        let repval = match p.len() {
+            0 => {
+                return Err(anyhow!(PitchError::RequiredPitchAbsent(
+                    "set_pitches()".to_string()
+                )))
+            }
+            1 => p[0],
+            _ => {
+                return Err(anyhow!(PitchError::MultiplePitchesNotAllowed(
+                    "set_pitches()".to_string()
+                )))
+            }
+        };
+
+        self.contents.iter_mut().for_each(|m| {
+            *m = repval;
+        });
+        Ok(self)
     }
 
     pub fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
@@ -426,6 +443,24 @@ mod tests {
     #[test]
     fn bounce_max() {
         assert_eq!(numseq![4, 2, 5, 6, 3].bounce_max(4), numseq![4, 2, 3, 2, 3]);
+    }
+
+    #[test]
+    fn set_pitches() {
+        assert!(NumericSeq::<i32>::new(vec![]).set_pitches(vec![]).is_err());
+        assert!(NumericSeq::<i32>::new(vec![])
+            .set_pitches(vec![55, 66])
+            .is_err());
+        assert_eq!(
+            NumericSeq::<i32>::new(vec![])
+                .set_pitches(vec![55])
+                .unwrap(),
+            NumericSeq::<i32>::new(vec![])
+        );
+        assert_eq!(
+            numseq![4, 2, 5, 6, 3].set_pitches(vec![55]).unwrap(),
+            numseq![55, 55, 55, 55, 55]
+        );
     }
 
     #[test]

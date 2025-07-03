@@ -1,6 +1,6 @@
 use crate::collections::traits::Collection;
 use crate::metadata::MetadataList;
-use crate::ops::pitch::{AugDim, Pitch};
+use crate::ops::pitch::{AugDim, Pitch, PitchError};
 use crate::sequences::chord::ChordSeq;
 use crate::sequences::melody::Melody;
 use crate::sequences::numeric::NumericSeq;
@@ -164,8 +164,20 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
 }
 
 impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> NoteSeq<T> {
-    pub fn set_pitches(self, _p: Vec<T>) -> Self {
-        todo!()
+    pub fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
+        let repval = match p.len() {
+            0 => None,
+            1 => Some(p[0]),
+            _ => {
+                return Err(anyhow!(PitchError::MultiplePitchesNotAllowed(
+                    "set_pitches()".to_string()
+                )))
+            }
+        };
+        self.contents.iter_mut().for_each(|m| {
+            *m = repval;
+        });
+        Ok(self)
     }
 
     pub fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
@@ -395,6 +407,25 @@ mod tests {
                 .to_optional_numeric_values()
                 .unwrap(),
             vec![Some(1), None, Some(2), Some(3)]
+        );
+    }
+
+    #[test]
+    fn set_pitches() {
+        assert!(NoteSeq::<i32>::new(vec![])
+            .set_pitches(vec![55, 66])
+            .is_err());
+        assert_eq!(
+            NoteSeq::<i32>::new(vec![]).set_pitches(vec![55]).unwrap(),
+            NoteSeq::<i32>::new(vec![])
+        );
+        assert_eq!(
+            noteseq![4, 2, 5, 6, 3].set_pitches(vec![]).unwrap(),
+            noteseq![None, None, None, None, None]
+        );
+        assert_eq!(
+            noteseq![4, 2, 5, 6, 3].set_pitches(vec![55]).unwrap(),
+            noteseq![55, 55, 55, 55, 55]
         );
     }
 }

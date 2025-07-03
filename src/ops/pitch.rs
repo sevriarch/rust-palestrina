@@ -406,7 +406,7 @@ macro_rules! impl_traits_for_pitch_containers {
 
             #[allow(unused_assignments)]
             fn set_pitches(mut self, p: Vec<$ty>) -> Result<Self> {
-                self = p.clone();
+                self = p;
                 Ok(self)
             }
 

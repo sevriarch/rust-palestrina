@@ -145,7 +145,7 @@ where
     impl_fns_for_melody_member!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
 
     fn set_pitches(self, p: Vec<T>) -> Result<Self> {
-        self.values = p.clone();
+        self.values = p;
         Ok(self)
     }
 
@@ -438,27 +438,30 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
 }
 
 impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Melody<T> {
-    pub fn set_pitches(self, _p: Vec<T>) -> Self {
-        todo!()
+    pub fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
+        for m in self.contents.iter_mut() {
+            m.set_pitches(p.clone())?;
+        }
+        Ok(self)
     }
 
     pub fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
-        self.contents.iter_mut().for_each(|p| {
-            p.map_pitch(&f);
+        self.contents.iter_mut().for_each(|m| {
+            m.map_pitch(&f);
         });
         self
     }
 
     pub fn map_pitch_enumerated<MapT: Fn((usize, &T)) -> T>(mut self, f: MapT) -> Self {
-        self.contents.iter_mut().enumerate().for_each(|(i, p)| {
-            p.map_pitch(|v| f((i, v)));
+        self.contents.iter_mut().enumerate().for_each(|(i, m)| {
+            m.map_pitch(|v| f((i, v)));
         });
         self
     }
 
     pub fn filter_pitch<FilterT: Fn(&T) -> bool>(mut self, f: FilterT) -> Result<Self> {
-        for p in self.contents.iter_mut() {
-            p.filter_pitch(&f)?;
+        for m in self.contents.iter_mut() {
+            m.filter_pitch(&f)?;
         }
         Ok(self)
     }
@@ -467,15 +470,15 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Melo
         mut self,
         f: FilterT,
     ) -> Result<Self> {
-        for (i, p) in self.contents.iter_mut().enumerate() {
-            p.filter_pitch(|v| f((i, v)))?;
+        for (i, m) in self.contents.iter_mut().enumerate() {
+            m.filter_pitch(|v| f((i, v)))?;
         }
         Ok(self)
     }
 
     pub fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
-        for p in self.contents.iter_mut() {
-            p.filter_map_pitch(&f)?;
+        for m in self.contents.iter_mut() {
+            m.filter_map_pitch(&f)?;
         }
         Ok(self)
     }
@@ -484,36 +487,36 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Melo
         mut self,
         f: MapT,
     ) -> Result<Self> {
-        for (i, p) in self.contents.iter_mut().enumerate() {
-            p.filter_map_pitch(|v| f((i, v)))?;
+        for (i, m) in self.contents.iter_mut().enumerate() {
+            m.filter_map_pitch(|v| f((i, v)))?;
         }
         Ok(self)
     }
 
     pub fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
-        self.contents.iter_mut().for_each(|p| {
-            p.augment_pitch(n);
+        self.contents.iter_mut().for_each(|m| {
+            m.augment_pitch(n);
         });
         self
     }
 
     pub fn diminish_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
-        self.contents.iter_mut().for_each(|p| {
-            p.diminish_pitch(n);
+        self.contents.iter_mut().for_each(|m| {
+            m.diminish_pitch(n);
         });
         self
     }
 
     pub fn trim(mut self, first: T, second: T) -> Self {
-        self.contents.iter_mut().for_each(|p| {
-            p.trim(first, second);
+        self.contents.iter_mut().for_each(|m| {
+            m.trim(first, second);
         });
         self
     }
 
     pub fn bounce(mut self, first: T, second: T) -> Self {
-        self.contents.iter_mut().for_each(|p| {
-            p.bounce(first, second);
+        self.contents.iter_mut().for_each(|m| {
+            m.bounce(first, second);
         });
         self
     }
@@ -1749,6 +1752,75 @@ mod tests {
                 melody_member!(12, 20, 96),
                 melody_member!(16, 40, 32),
                 melody_member!(12, 50, 224)
+            ])
+        );
+    }
+
+    #[test]
+    fn set_pitches() {
+        assert_eq!(
+            Melody::<i32>::new(vec![]).set_pitches(vec![55]).unwrap(),
+            Melody::<i32>::new(vec![])
+        );
+        assert_eq!(
+            melody![4, 2, 5, 6, 3].set_pitches(vec![]).unwrap(),
+            melody![[], [], [], [], []]
+        );
+        assert_eq!(
+            melody![4, 2, 5, 6, 3].set_pitches(vec![55]).unwrap(),
+            melody![55, 55, 55, 55, 55]
+        );
+        assert_eq!(
+            melody![4, 2, 5, 6, 3].set_pitches(vec![55, 66]).unwrap(),
+            melody![[55, 66], [55, 66], [55, 66], [55, 66], [55, 66]]
+        );
+
+        assert_eq!(
+            Melody::new(vec![
+                MelodyMember {
+                    values: vec![12],
+                    timing: DurationalEventTiming::new(96, None, 300),
+                    volume: DEFAULT_VOLUME,
+                    before: MetadataList::new(vec![Metadata::new(
+                        MetadataData::Sustain(true),
+                        None,
+                        48
+                    )]),
+                },
+                MelodyMember {
+                    values: vec![16],
+                    timing: DurationalEventTiming::new(75, None, 225),
+                    volume: DEFAULT_VOLUME,
+                    before: MetadataList::new(vec![Metadata::new(
+                        MetadataData::Sustain(false),
+                        Some(96),
+                        75
+                    )]),
+                }
+            ])
+            .set_pitches(vec![55])
+            .unwrap(),
+            Melody::new(vec![
+                MelodyMember {
+                    values: vec![55],
+                    timing: DurationalEventTiming::new(96, None, 300),
+                    volume: DEFAULT_VOLUME,
+                    before: MetadataList::new(vec![Metadata::new(
+                        MetadataData::Sustain(true),
+                        None,
+                        48
+                    )]),
+                },
+                MelodyMember {
+                    values: vec![55],
+                    timing: DurationalEventTiming::new(75, None, 225),
+                    volume: DEFAULT_VOLUME,
+                    before: MetadataList::new(vec![Metadata::new(
+                        MetadataData::Sustain(false),
+                        Some(96),
+                        75
+                    )]),
+                }
             ])
         );
     }
