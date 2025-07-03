@@ -161,6 +161,26 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
     fn to_optional_numeric_values(&self) -> Result<Vec<Option<T>>> {
         Ok(self.contents.clone())
     }
+
+    fn map_pitch_enumerated<MapT: Fn((usize, &T)) -> T>(mut self, f: MapT) -> Self {
+        self.contents.iter_mut().enumerate().for_each(|(i, m)| {
+            if let Some(p) = m {
+                *p = f((i, p));
+            }
+        });
+        self
+    }
+
+    fn filter_map_pitch_enumerated<MapT: Fn((usize, &T)) -> Option<T>>(
+        mut self,
+        f: MapT,
+    ) -> Result<Self> {
+        self.contents
+            .iter_mut()
+            .enumerate()
+            .for_each(|(i, p)| *p = p.map(|v| f((i, &v))).flatten());
+        Ok(self)
+    }
 }
 
 impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> NoteSeq<T> {
@@ -184,15 +204,6 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Note
         self.contents.iter_mut().for_each(|m| {
             if let Some(p) = m {
                 *p = f(p);
-            }
-        });
-        self
-    }
-
-    pub fn map_pitch_enumerated<MapT: Fn((usize, &T)) -> T>(mut self, f: MapT) -> Self {
-        self.contents.iter_mut().enumerate().for_each(|(i, m)| {
-            if let Some(p) = m {
-                *p = f((i, p));
             }
         });
         self
@@ -227,17 +238,6 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Note
         self.contents
             .iter_mut()
             .for_each(|p| *p = p.map(|v| f(&v)).flatten());
-        Ok(self)
-    }
-
-    pub fn filter_map_pitch_enumerated<MapT: Fn((usize, &T)) -> Option<T>>(
-        mut self,
-        f: MapT,
-    ) -> Result<Self> {
-        self.contents
-            .iter_mut()
-            .enumerate()
-            .for_each(|(i, p)| *p = p.map(|v| f((i, &v))).flatten());
         Ok(self)
     }
 

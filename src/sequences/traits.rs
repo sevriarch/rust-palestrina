@@ -37,6 +37,21 @@ pub trait Sequence<
     fn to_pitches(&self) -> Vec<Vec<PitchType>>;
     fn to_numeric_values(&self) -> Result<Vec<PitchType>>;
     fn to_optional_numeric_values(&self) -> Result<Vec<Option<PitchType>>>;
+
+    /// A map operation on pitches where the pitch is passed to the mapper function
+    /// in a tuple of (position, pitch). The position passed is an Option<usize>, which
+    /// is always None when the map operation is taking place outside of a Sequence
+    /// context, and will contain the position in the Sequence if the map operation
+    /// takes place in a Sequence context.
+    fn map_pitch_enumerated<MapT: Fn((usize, &PitchType)) -> PitchType>(self, f: MapT) -> Self;
+
+    fn filter_map_pitch_enumerated<MapT: Fn((usize, &PitchType)) -> Option<PitchType>>(
+        self,
+        f: MapT,
+    ) -> Result<Self>
+    where
+        Self: std::marker::Sized;
+
     fn transpose_pitch(self, n: PitchType) -> Self;
     fn invert_pitch(self, n: PitchType) -> Self;
     fn modulus(self, n: PitchType) -> Self;

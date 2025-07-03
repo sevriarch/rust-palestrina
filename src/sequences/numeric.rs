@@ -144,6 +144,26 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
     fn to_optional_numeric_values(&self) -> Result<Vec<Option<T>>> {
         Ok(self.contents.clone().into_iter().map(|p| Some(p)).collect())
     }
+
+    fn map_pitch_enumerated<MapT: Fn((usize, &T)) -> T>(mut self, f: MapT) -> Self {
+        self.contents.iter_mut().enumerate().for_each(|(i, p)| {
+            *p = f((i, p));
+        });
+        self
+    }
+
+    fn filter_map_pitch_enumerated<MapT: Fn((usize, &T)) -> Option<T>>(
+        mut self,
+        f: MapT,
+    ) -> Result<Self> {
+        for (i, p) in self.contents.iter_mut().enumerate() {
+            *p = f((i, p)).ok_or(anyhow!(PitchError::RequiredPitchAbsent(format!(
+                "at index {}",
+                i
+            ))))?;
+        }
+        Ok(self)
+    }
 }
 
 impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> NumericSeq<T> {
@@ -171,13 +191,6 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Nume
     pub fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
         self.contents.iter_mut().for_each(|p| {
             *p = f(p);
-        });
-        self
-    }
-
-    pub fn map_pitch_enumerated<MapT: Fn((usize, &T)) -> T>(mut self, f: MapT) -> Self {
-        self.contents.iter_mut().enumerate().for_each(|(i, p)| {
-            *p = f((i, p));
         });
         self
     }

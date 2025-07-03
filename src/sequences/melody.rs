@@ -154,11 +154,6 @@ where
         self
     }
 
-    fn map_pitch_enumerated<MapT: Fn((Option<usize>, &T)) -> T>(self, f: MapT) -> Self {
-        self.values.iter_mut().for_each(|p| *p = f((None, p)));
-        self
-    }
-
     fn filter_pitch<FilterT: Fn(&T) -> bool>(self, f: FilterT) -> Result<Self> {
         self.values.retain(f);
         Ok(self)
@@ -170,20 +165,6 @@ where
             .clone()
             .into_iter()
             .filter_map(|v| f(&v))
-            .collect();
-        Ok(self)
-    }
-
-    fn filter_map_pitch_enumerated<MapT: Fn((Option<usize>, &T)) -> Option<T>>(
-        self,
-        f: MapT,
-    ) -> Result<Self> {
-        self.values = self
-            .values
-            .clone()
-            .into_iter()
-            .enumerate()
-            .filter_map(|(i, v)| f((Some(i), &v)))
             .collect();
         Ok(self)
     }
@@ -435,6 +416,23 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
             })
             .collect()
     }
+
+    fn map_pitch_enumerated<MapT: Fn((usize, &T)) -> T>(mut self, f: MapT) -> Self {
+        self.contents.iter_mut().enumerate().for_each(|(i, m)| {
+            m.map_pitch(|v| f((i, v)));
+        });
+        self
+    }
+
+    fn filter_map_pitch_enumerated<MapT: Fn((usize, &T)) -> Option<T>>(
+        mut self,
+        f: MapT,
+    ) -> Result<Self> {
+        for (i, m) in self.contents.iter_mut().enumerate() {
+            m.filter_map_pitch(|v| f((i, v)))?;
+        }
+        Ok(self)
+    }
 }
 
 impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Melody<T> {
@@ -448,13 +446,6 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Melo
     pub fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
         self.contents.iter_mut().for_each(|m| {
             m.map_pitch(&f);
-        });
-        self
-    }
-
-    pub fn map_pitch_enumerated<MapT: Fn((usize, &T)) -> T>(mut self, f: MapT) -> Self {
-        self.contents.iter_mut().enumerate().for_each(|(i, m)| {
-            m.map_pitch(|v| f((i, v)));
         });
         self
     }
@@ -479,16 +470,6 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Melo
     pub fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
         for m in self.contents.iter_mut() {
             m.filter_map_pitch(&f)?;
-        }
-        Ok(self)
-    }
-
-    pub fn filter_map_pitch_enumerated<MapT: Fn((usize, &T)) -> Option<T>>(
-        mut self,
-        f: MapT,
-    ) -> Result<Self> {
-        for (i, m) in self.contents.iter_mut().enumerate() {
-            m.filter_map_pitch(|v| f((i, v)))?;
         }
         Ok(self)
     }

@@ -82,15 +82,6 @@ where
     /// A map operation on pitches.
     fn map_pitch<MapT: Fn(&T) -> T>(self, f: MapT) -> Self;
 
-    /// A map operation on pitches where the pitch is passed to the mapper function
-    /// in a tuple of (position, pitch). The position passed is an Option<usize>, which
-    /// is always None when the map operation is taking place outside of a Sequence
-    /// context, and will contain the position in the Sequence if the map operation
-    /// takes place in a Sequence context.
-    ///
-    /// Hence, there is no reason to use this mathod outside of a Sequence context.
-    fn map_pitch_enumerated<MapT: Fn((Option<usize>, &T)) -> T>(self, f: MapT) -> Self;
-
     /// A filter operation on pitches.
     ///
     /// Returns an Error if pitches are filtered out when they are required.
@@ -103,13 +94,6 @@ where
     ///
     /// Returns an Error if pitches are filtered out when they are required.
     fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(self, f: MapT) -> Result<Self>
-    where
-        Self: std::marker::Sized;
-
-    fn filter_map_pitch_enumerated<MapT: Fn((Option<usize>, &T)) -> Option<T>>(
-        self,
-        f: MapT,
-    ) -> Result<Self>
     where
         Self: std::marker::Sized;
 
@@ -193,11 +177,6 @@ macro_rules! impl_traits_for_pitches {
                 self
             }
 
-            fn map_pitch_enumerated<MapT: Fn((Option<usize>, &$ty)) -> $ty>(mut self, f: MapT) -> Self {
-                self = f((None, &self));
-                self
-            }
-
             fn filter_pitch<FilterT: Fn(&$ty) -> bool>(self, f: FilterT) -> Result<Self> {
                 if f(&self) {
                     Ok(self)
@@ -208,15 +187,6 @@ macro_rules! impl_traits_for_pitches {
 
             fn filter_map_pitch<MapT: Fn(&$ty) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
                 if let Some(p) = f(&self) {
-                    self = p;
-                    Ok(self)
-                } else {
-                    Err(anyhow!(PitchError::RequiredPitchAbsent("Pitch.filter_map_pitch()".to_string())))
-                }
-            }
-
-            fn filter_map_pitch_enumerated<MapT: Fn((Option<usize>, &$ty)) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
-                if let Some(p) = f((None, &self)) {
                     self = p;
                     Ok(self)
                 } else {
@@ -364,20 +334,12 @@ macro_rules! impl_traits_for_pitch_containers {
                 self.map(|p| f(&p))
             }
 
-            fn map_pitch_enumerated<MapT: Fn((Option<usize>, &$ty)) -> $ty>(self, f: MapT) -> Self {
-                self.map(|p| f((None, &p)))
-            }
-
             fn filter_pitch<FilterT: Fn(&$ty) -> bool>(self, f: FilterT) -> Result<Self> {
                 Ok(self.filter(|p| f(&p)))
             }
 
             fn filter_map_pitch<MapT: Fn(&$ty) -> Option<$ty>>(self, f: MapT) -> Result<Self> {
                 Ok(self.map(|p| f(&p)).flatten())
-            }
-
-            fn filter_map_pitch_enumerated<MapT: Fn((Option<usize>, &$ty)) -> Option<$ty>>(self, f: MapT) -> Result<Self> {
-                Ok(self.map(|p| f((None, &p))).flatten())
             }
 
             fn augment_pitch<AT: AugDim<$ty> + Copy>(self, n: AT) -> Self {
@@ -415,11 +377,6 @@ macro_rules! impl_traits_for_pitch_containers {
                 self
             }
 
-            fn map_pitch_enumerated<MapT: Fn((Option<usize>, &$ty)) -> $ty>(mut self, f: MapT) -> Self {
-                self.iter_mut().for_each(|p| *p = f((None, p)));
-                self
-            }
-
             fn filter_pitch<FilterT: Fn(&$ty) -> bool>(mut self, f: FilterT) -> Result<Self> {
                 self = self.into_iter().filter(f).collect();
                 Ok(self)
@@ -427,11 +384,6 @@ macro_rules! impl_traits_for_pitch_containers {
 
             fn filter_map_pitch<MapT: Fn(&$ty) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
                 self = self.into_iter().filter_map(|p| f(&p)).collect();
-                Ok(self)
-            }
-
-            fn filter_map_pitch_enumerated<MapT: Fn((Option<usize>, &$ty)) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
-                self = self.into_iter().filter_map(|p| f((None, &p))).collect();
                 Ok(self)
             }
 
@@ -484,20 +436,6 @@ mod tests {
     }
 
     #[test]
-    fn map_pitch_enumerated() {
-        macro_rules! map_pitch_enumerated_test {
-            ($init:expr, $fn:expr, $ret:expr) => {
-                assert_eq!($init.map_pitch_enumerated($fn), $ret);
-            };
-        }
-
-        map_pitch_enumerated_test!(3, |(_, v)| v + 1, 4);
-        map_pitch_enumerated_test!(None, |(_, v)| v + 1, None);
-        map_pitch_enumerated_test!(Some(3), |(_, v)| v + 1, Some(4));
-        map_pitch_enumerated_test!(vec![3, 4, 5], |(_, v)| v + 1, vec![4, 5, 6]);
-    }
-
-    #[test]
     fn filter_pitch() {
         macro_rules! filter_pitch_test {
             ($init:expr, $fn:expr, $ret:expr) => {
@@ -537,42 +475,6 @@ mod tests {
         filter_map_pitch_test!(
             vec![5, 6, 7],
             |v| if v % 2 == 0 { Some(v / 2) } else { None },
-            vec![3]
-        );
-    }
-
-    #[test]
-    fn filter_map_pitch_enumerated() {
-        macro_rules! filter_map_pitch_enumerated_test {
-            ($init:expr, $fn:expr, $ret:expr) => {
-                assert_eq!($init.filter_map_pitch_enumerated($fn).unwrap(), $ret);
-            };
-        }
-
-        assert!(6.filter_map_pitch_enumerated(|_| None).is_err());
-        filter_map_pitch_enumerated_test!(
-            6,
-            |(_, v)| if v % 2 == 0 { Some(v / 2) } else { None },
-            3
-        );
-        filter_map_pitch_enumerated_test!(
-            None,
-            |(_, v)| if v % 2 == 0 { Some(v / 2) } else { None },
-            None
-        );
-        filter_map_pitch_enumerated_test!(
-            Some(5),
-            |(_, v)| if v % 2 == 0 { Some(v / 2) } else { None },
-            None
-        );
-        filter_map_pitch_enumerated_test!(
-            Some(6),
-            |(_, v)| if v % 2 == 0 { Some(v / 2) } else { None },
-            Some(3)
-        );
-        filter_map_pitch_enumerated_test!(
-            vec![5, 6, 7],
-            |(_, v)| if v % 2 == 0 { Some(v / 2) } else { None },
             vec![3]
         );
     }

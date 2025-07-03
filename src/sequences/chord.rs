@@ -178,6 +178,28 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
             })
             .collect()
     }
+
+    fn map_pitch_enumerated<MapT: Fn((usize, &T)) -> T>(mut self, f: MapT) -> Self {
+        self.contents.iter_mut().enumerate().for_each(|(i, p)| {
+            p.iter_mut().for_each(|v| {
+                *v = f((i, v));
+            });
+        });
+        self
+    }
+
+    fn filter_map_pitch_enumerated<MapT: Fn((usize, &T)) -> Option<T>>(
+        mut self,
+        f: MapT,
+    ) -> Result<Self> {
+        self.contents = self
+            .contents
+            .into_iter()
+            .enumerate()
+            .map(|(i, p)| p.into_iter().filter_map(|v| f((i, &v))).collect())
+            .collect();
+        Ok(self)
+    }
 }
 
 impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> ChordSeq<T> {
@@ -192,15 +214,6 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Chor
         self.contents.iter_mut().for_each(|p| {
             p.iter_mut().for_each(|v| {
                 *v = f(v);
-            });
-        });
-        self
-    }
-
-    pub fn map_pitch_enumerated<MapT: Fn((usize, &T)) -> T>(mut self, f: MapT) -> Self {
-        self.contents.iter_mut().enumerate().for_each(|(i, p)| {
-            p.iter_mut().for_each(|v| {
-                *v = f((i, v));
             });
         });
         self
@@ -233,19 +246,6 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Chor
             .contents
             .into_iter()
             .map(|p| p.into_iter().filter_map(|v| f(&v)).collect())
-            .collect();
-        Ok(self)
-    }
-
-    pub fn filter_map_pitch_enumerated<MapT: Fn((usize, &T)) -> Option<T>>(
-        mut self,
-        f: MapT,
-    ) -> Result<Self> {
-        self.contents = self
-            .contents
-            .into_iter()
-            .enumerate()
-            .map(|(i, p)| p.into_iter().filter_map(|v| f((i, &v))).collect())
             .collect();
         Ok(self)
     }
