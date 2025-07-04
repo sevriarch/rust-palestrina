@@ -124,6 +124,34 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
 {
     impl_fns_for_seq!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
 
+    fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
+        let repval = match p.len() {
+            0 => {
+                return Err(anyhow!(PitchError::RequiredPitchAbsent(
+                    "set_pitches()".to_string()
+                )))
+            }
+            1 => p[0],
+            _ => {
+                return Err(anyhow!(PitchError::MultiplePitchesNotAllowed(
+                    "set_pitches()".to_string()
+                )))
+            }
+        };
+
+        self.contents.iter_mut().for_each(|m| {
+            *m = repval;
+        });
+        Ok(self)
+    }
+
+    fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
+        self.contents.iter_mut().for_each(|p| {
+            *p = p.map_pitch(&f);
+        });
+        self
+    }
+
     fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
         self.contents.iter_mut().for_each(f);
         self
@@ -177,34 +205,6 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
 }
 
 impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> NumericSeq<T> {
-    pub fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
-        let repval = match p.len() {
-            0 => {
-                return Err(anyhow!(PitchError::RequiredPitchAbsent(
-                    "set_pitches()".to_string()
-                )))
-            }
-            1 => p[0],
-            _ => {
-                return Err(anyhow!(PitchError::MultiplePitchesNotAllowed(
-                    "set_pitches()".to_string()
-                )))
-            }
-        };
-
-        self.contents.iter_mut().for_each(|m| {
-            *m = repval;
-        });
-        Ok(self)
-    }
-
-    pub fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
-        self.contents.iter_mut().for_each(|p| {
-            *p = f(p);
-        });
-        self
-    }
-
     pub fn filter_pitch<FilterT: Fn(&T) -> bool>(self, f: FilterT) -> Result<Self> {
         if self.contents.iter().all(f) {
             Ok(self)

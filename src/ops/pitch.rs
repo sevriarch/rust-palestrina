@@ -408,9 +408,9 @@ where
     }
 
     fn map_pitch<MapT: Fn(&T) -> T>(self, f: MapT) -> Self {
-        self.map(|mut p| {
-            p = f(&p);
-        });
+        if let Some(p) = self {
+            *p = f(p);
+        }
         self
     }
 

@@ -1,6 +1,7 @@
 use crate::algorithms;
 use crate::collections::traits::{Collection, CollectionError};
 use crate::entities::scale::Scale;
+use crate::ops::pitch::Pitch;
 use anyhow::{anyhow, Result};
 use num_traits::{FromPrimitive, Num, PrimInt};
 use std::fmt::Debug;
@@ -29,9 +30,11 @@ macro_rules! default_sequence_methods {
 
 pub trait Sequence<
     T: Clone + Debug + PartialEq,
-    PitchType: Clone + Copy + Debug + FromPrimitive + Num + PartialOrd + Sum,
+    PitchType: Pitch<PitchType> + Clone + Copy + Debug + FromPrimitive + Num + PartialOrd + Sum,
 >: Collection<T>
 {
+    fn set_pitches(self, p: Vec<PitchType>) -> Result<Self>;
+    fn map_pitch<MapT: Fn(&PitchType) -> PitchType>(self, f: MapT) -> Self;
     fn mutate_pitches<F: Fn(&mut PitchType)>(self, f: F) -> Self;
     fn to_flat_pitches(&self) -> Vec<PitchType>;
     fn to_pitches(&self) -> Vec<Vec<PitchType>>;

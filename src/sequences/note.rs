@@ -124,6 +124,31 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
 {
     impl_fns_for_seq!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
 
+    fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
+        let repval = match p.len() {
+            0 => None,
+            1 => Some(p[0]),
+            _ => {
+                return Err(anyhow!(PitchError::MultiplePitchesNotAllowed(
+                    "set_pitches()".to_string()
+                )))
+            }
+        };
+        self.contents.iter_mut().for_each(|m| {
+            *m = repval;
+        });
+        Ok(self)
+    }
+
+    fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
+        self.contents.iter_mut().for_each(|m| {
+            if let Some(p) = m {
+                *p = f(p);
+            }
+        });
+        self
+    }
+
     fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
         self.contents.iter_mut().for_each(|m| {
             if let Some(p) = m {
@@ -198,31 +223,6 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
 }
 
 impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> NoteSeq<T> {
-    pub fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
-        let repval = match p.len() {
-            0 => None,
-            1 => Some(p[0]),
-            _ => {
-                return Err(anyhow!(PitchError::MultiplePitchesNotAllowed(
-                    "set_pitches()".to_string()
-                )))
-            }
-        };
-        self.contents.iter_mut().for_each(|m| {
-            *m = repval;
-        });
-        Ok(self)
-    }
-
-    pub fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
-        self.contents.iter_mut().for_each(|m| {
-            if let Some(p) = m {
-                *p = f(p);
-            }
-        });
-        self
-    }
-
     pub fn filter_pitch<FilterT: Fn(&T) -> bool>(mut self, f: FilterT) -> Result<Self> {
         self.contents.iter_mut().for_each(|m| {
             if let Some(p) = m {

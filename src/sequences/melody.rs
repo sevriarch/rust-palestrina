@@ -375,6 +375,20 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
 {
     impl_fns_for_seq!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
 
+    fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
+        for m in self.contents.iter_mut() {
+            m.set_pitches(p.clone())?;
+        }
+        Ok(self)
+    }
+
+    fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
+        self.contents.iter_mut().for_each(|m| {
+            m.map_pitch(&f);
+        });
+        self
+    }
+
     fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
         self.contents.iter_mut().for_each(|m| {
             for p in m.values.iter_mut() {
@@ -446,20 +460,6 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
 }
 
 impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Melody<T> {
-    pub fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
-        for m in self.contents.iter_mut() {
-            m.set_pitches(p.clone())?;
-        }
-        Ok(self)
-    }
-
-    pub fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
-        self.contents.iter_mut().for_each(|m| {
-            m.map_pitch(&f);
-        });
-        self
-    }
-
     pub fn filter_pitch<FilterT: Fn(&T) -> bool>(mut self, f: FilterT) -> Result<Self> {
         for m in self.contents.iter_mut() {
             m.filter_pitch(&f)?;
