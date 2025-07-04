@@ -1,5 +1,8 @@
 use anyhow::{anyhow, Result};
-use num_traits::Zero;
+use num_traits::{Bounded, Num};
+use std::fmt::Debug;
+use std::iter::Sum;
+use std::ops::AddAssign;
 use thiserror::Error;
 
 pub trait AugDim<MT>
@@ -156,152 +159,220 @@ where
     fn is_silent(self) -> bool;
 }
 
-/// Macro to generate implementations of traits for pitches
-macro_rules! impl_traits_for_pitches {
-    (for $($ty:ident)*) => ($(
-        impl Pitch<$ty> for $ty {
-            #[allow(unused_assignments)]
-            fn set_pitches(mut self, p: Vec<$ty>) -> Result<Self> {
-                match p.len() {
-                    0 => Err(anyhow!(PitchError::RequiredPitchAbsent("set_pitches()".to_string()))),
-                    1 => {
-                        self = p[0];
-                        Ok(self)
-                    },
-                    _ => Err(anyhow!(PitchError::MultiplePitchesNotAllowed("set_pitches()".to_string()))),
-                }
-            }
-
-            fn map_pitch<MapT: Fn(&$ty) -> $ty>(mut self, f: MapT) -> Self {
-                self = f(&self);
-                self
-            }
-
-            fn filter_pitch<FilterT: Fn(&$ty) -> bool>(self, f: FilterT) -> Result<Self> {
-                if f(&self) {
-                    Ok(self)
-                } else {
-                    Err(anyhow!(PitchError::RequiredPitchAbsent("Pitch.filter_pitch()".to_string())))
-                }
-            }
-
-            fn filter_map_pitch<MapT: Fn(&$ty) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
-                if let Some(p) = f(&self) {
-                    self = p;
-                    Ok(self)
-                } else {
-                    Err(anyhow!(PitchError::RequiredPitchAbsent("Pitch.filter_map_pitch()".to_string())))
-                }
-            }
-
-            fn transpose_pitch(mut self, n: $ty) -> Self {
-                self += n;
-                self
-            }
-
-            fn invert_pitch(mut self, n: $ty) -> Self {
-                self = n + n - self;
-                self
-            }
-
-            fn augment_pitch<MT: AugDim<$ty> + Copy>(mut self, n: MT) -> Self {
-                n.augment_target(&mut self);
-                self
-            }
-
-            fn diminish_pitch<MT: AugDim<$ty> + Copy>(mut self, n: MT) -> Self {
-                n.diminish_target(&mut self);
-                self
-            }
-
-            fn modulus(mut self, n: $ty) -> Self {
-                // Can't use n.abs() as it's not implemented for unsigned ints
-                let n = if n < $ty::zero() { $ty::zero() - n } else { n };
-                let ret = self % n;
-
-                self = if ret < $ty::zero() { ret + n } else { ret };
-                self
-            }
-
-            fn trim_min(mut self, n: $ty) -> Self {
-                if self < n {
-                    self = n;
-                }
-                self
-            }
-
-            fn trim_max(mut self, n: $ty) -> Self {
-                if self > n {
-                    self = n;
-                }
-                self
-            }
-
-            fn trim(mut self, first: $ty, second: $ty) -> Self {
-                let (min, max) = if first > second { (second, first ) } else { (first, second) };
-
-                if self < min {
-                    self = min;
-                } else if self > max {
-                    self = max;
-                }
-                self
-            }
-
-            fn is_silent(self) -> bool {
-                false
-            }
-
-            fn bounce_min(mut self, n: $ty) -> Self {
-                if self < n {
-                    self = n + n - self;
-                }
-                self
-            }
-
-            fn bounce_max(mut self, n: $ty) -> Self {
-                if self > n {
-                    self = n + n - self;
-                }
-                self
-            }
-
-            fn bounce(mut self, first: $ty, second: $ty) -> Self {
-                let (min, max) = if first > second { (second, first ) } else { (first, second) };
-
-                let diff = max - min;
-
-                if diff.is_zero() {
-                    self = min;
-                } else if self < min {
-                let mut modulus = (min - self) % (diff + diff);
-
-                if modulus > diff {
-                    modulus = diff + diff - modulus;
-                }
-
-                self = min + modulus;
-            } else if self > max {
-                let mut modulus = (self - max) % (diff + diff);
-
-                if modulus > diff {
-                    modulus = diff + diff - modulus;
-                }
-
-                self = max - modulus;
-            }
-                self
-            }
-        }
-    )*)
-}
-
 macro_rules! impl_fns_for_option {
     ($ty:ident, for $($fn:ident)*) => ($(
         fn $fn(self, n: $ty) -> Self {
             self.map(|v| v.$fn(n))
         }
     )*)
+}
+
+impl<T> Pitch<T> for T
+where
+    T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + AddAssign,
+{
+    #[allow(unused_assignments)]
+    fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
+        match p.len() {
+            0 => Err(anyhow!(PitchError::RequiredPitchAbsent(
+                "set_pitches()".to_string()
+            ))),
+            1 => {
+                self = p[0];
+                Ok(self)
+            }
+            _ => Err(anyhow!(PitchError::MultiplePitchesNotAllowed(
+                "set_pitches()".to_string()
+            ))),
+        }
+    }
+
+    fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
+        self = f(&self);
+        self
+    }
+
+    fn filter_pitch<FilterT: Fn(&T) -> bool>(self, f: FilterT) -> Result<Self> {
+        if f(&self) {
+            Ok(self)
+        } else {
+            Err(anyhow!(PitchError::RequiredPitchAbsent(
+                "Pitch.filter_pitch()".to_string()
+            )))
+        }
+    }
+
+    fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
+        if let Some(p) = f(&self) {
+            self = p;
+            Ok(self)
+        } else {
+            Err(anyhow!(PitchError::RequiredPitchAbsent(
+                "Pitch.filter_map_pitch()".to_string()
+            )))
+        }
+    }
+
+    fn transpose_pitch(mut self, n: T) -> Self {
+        self += n;
+        self
+    }
+
+    fn invert_pitch(mut self, n: T) -> Self {
+        self = n + n - self;
+        self
+    }
+
+    fn augment_pitch<MT: AugDim<T> + Copy>(mut self, n: MT) -> Self {
+        n.augment_target(&mut self);
+        self
+    }
+
+    fn diminish_pitch<MT: AugDim<T> + Copy>(mut self, n: MT) -> Self {
+        n.diminish_target(&mut self);
+        self
+    }
+
+    fn modulus(mut self, n: T) -> Self {
+        // Can't use n.abs() as it's not implemented for unsigned ints
+        let n = if n < T::zero() { T::zero() - n } else { n };
+        let ret = self % n;
+
+        self = if ret < T::zero() { ret + n } else { ret };
+        self
+    }
+
+    fn trim_min(mut self, n: T) -> Self {
+        if self < n {
+            self = n;
+        }
+        self
+    }
+
+    fn trim_max(mut self, n: T) -> Self {
+        if self > n {
+            self = n;
+        }
+        self
+    }
+
+    fn trim(mut self, first: T, second: T) -> Self {
+        let (min, max) = if first > second {
+            (second, first)
+        } else {
+            (first, second)
+        };
+
+        if self < min {
+            self = min;
+        } else if self > max {
+            self = max;
+        }
+        self
+    }
+
+    fn is_silent(self) -> bool {
+        false
+    }
+
+    fn bounce_min(mut self, n: T) -> Self {
+        if self < n {
+            self = n + n - self;
+        }
+        self
+    }
+
+    fn bounce_max(mut self, n: T) -> Self {
+        if self > n {
+            self = n + n - self;
+        }
+        self
+    }
+
+    fn bounce(mut self, first: T, second: T) -> Self {
+        let (min, max) = if first > second {
+            (second, first)
+        } else {
+            (first, second)
+        };
+
+        let diff = max - min;
+
+        if diff.is_zero() {
+            self = min;
+        } else if self < min {
+            let mut modulus = (min - self) % (diff + diff);
+
+            if modulus > diff {
+                modulus = diff + diff - modulus;
+            }
+
+            self = min + modulus;
+        } else if self > max {
+            let mut modulus = (self - max) % (diff + diff);
+
+            if modulus > diff {
+                modulus = diff + diff - modulus;
+            }
+
+            self = max - modulus;
+        }
+        self
+    }
+}
+
+impl<T> Pitch<T> for Option<T>
+where
+    T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + AddAssign,
+{
+    impl_fns_for_option!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
+
+    #[allow(unused_assignments)]
+    fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
+        match p.len() {
+            0 => self = None,
+            1 => self = Some(p[0]),
+            _ => {
+                return Err(anyhow!(PitchError::MultiplePitchesNotAllowed(
+                    "set_pitches()".to_string()
+                )))
+            }
+        }
+
+        Ok(self)
+    }
+
+    fn map_pitch<MapT: Fn(&T) -> T>(self, f: MapT) -> Self {
+        self.map(|p| f(&p))
+    }
+
+    fn filter_pitch<FilterT: Fn(&T) -> bool>(self, f: FilterT) -> Result<Self> {
+        Ok(self.filter(f))
+    }
+
+    fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(self, f: MapT) -> Result<Self> {
+        Ok(self.and_then(|p| f(&p)))
+    }
+
+    fn augment_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self {
+        self.map(|p| p.augment_pitch(n))
+    }
+
+    fn diminish_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self {
+        self.map(|p| p.diminish_pitch(n))
+    }
+
+    fn trim(self, first: T, last: T) -> Self {
+        self.map(|p| p.trim(first, last))
+    }
+
+    fn bounce(self, first: T, last: T) -> Self {
+        self.map(|p| p.bounce(first, last))
+    }
+
+    fn is_silent(self) -> bool {
+        self.is_none()
+    }
 }
 
 macro_rules! impl_fns_for_vec {
@@ -313,109 +384,125 @@ macro_rules! impl_fns_for_vec {
     )*)
 }
 
-/// Macro to implement traits for entities containing pitches
-macro_rules! impl_traits_for_pitch_containers {
-    (for $($ty:ident)*) => ($(
-        impl Pitch<$ty> for Option<$ty> {
-            impl_fns_for_option!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
+impl<T> Pitch<T> for Vec<T>
+where
+    T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + AddAssign,
+{
+    impl_fns_for_vec!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
 
-            #[allow(unused_assignments)]
-            fn set_pitches(mut self, p: Vec<$ty>) -> Result<Self> {
-                match p.len() {
-                    0 => self = None,
-                    1 => self = Some(p[0]),
-                    _ => return Err(anyhow!(PitchError::MultiplePitchesNotAllowed("set_pitches()".to_string()))),
-                }
+    #[allow(unused_assignments)]
+    fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
+        self = p;
+        Ok(self)
+    }
 
-                Ok(self)
-             }
+    fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
+        self.iter_mut().for_each(|p| *p = f(p));
+        self
+    }
 
-            fn map_pitch<MapT: Fn(&$ty) -> $ty>(self, f: MapT) -> Self {
-                self.map(|p| f(&p))
-            }
+    fn filter_pitch<FilterT: Fn(&T) -> bool>(mut self, f: FilterT) -> Result<Self> {
+        self = self.into_iter().filter(f).collect();
+        Ok(self)
+    }
 
-            fn filter_pitch<FilterT: Fn(&$ty) -> bool>(self, f: FilterT) -> Result<Self> {
-                Ok(self.filter(|p| f(&p)))
-            }
+    fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
+        self = self.into_iter().filter_map(|p| f(&p)).collect();
+        Ok(self)
+    }
 
-            fn filter_map_pitch<MapT: Fn(&$ty) -> Option<$ty>>(self, f: MapT) -> Result<Self> {
-                Ok(self.map(|p| f(&p)).flatten())
-            }
+    fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
+        self.iter_mut().for_each(|p| {
+            *p = p.augment_pitch(n);
+        });
+        self
+    }
 
-            fn augment_pitch<AT: AugDim<$ty> + Copy>(self, n: AT) -> Self {
-                self.map(|p| p.augment_pitch(n))
-            }
+    fn diminish_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
+        self.iter_mut().for_each(|p| {
+            *p = p.diminish_pitch(n);
+        });
+        self
+    }
 
-            fn diminish_pitch<AT: AugDim<$ty> + Copy>(self, n: AT) -> Self {
-                self.map(|p| p.diminish_pitch(n))
-            }
+    fn trim(mut self, first: T, last: T) -> Self {
+        self = self.into_iter().map(|p| p.trim(first, last)).collect();
+        self
+    }
 
-            fn trim(self, first: $ty, last: $ty) -> Self {
-                self.map(|p| p.trim(first, last))
-            }
+    fn bounce(mut self, first: T, last: T) -> Self {
+        self = self.into_iter().map(|p| p.bounce(first, last)).collect();
+        self
+    }
 
-            fn bounce(self, first: $ty, last: $ty) -> Self {
-                self.map(|p| p.bounce(first, last))
-            }
+    fn is_silent(self) -> bool {
+        self.is_empty()
+    }
+}
 
-            fn is_silent(self) -> bool {
-                self.is_none()
-            }
-        }
-
-        impl Pitch<$ty> for Vec<$ty> {
-            impl_fns_for_vec!($ty, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
-
-            #[allow(unused_assignments)]
-            fn set_pitches(mut self, p: Vec<$ty>) -> Result<Self> {
-                self = p;
-                Ok(self)
-            }
-
-            fn map_pitch<MapT: Fn(&$ty) -> $ty>(mut self, f: MapT) -> Self {
-                self.iter_mut().for_each(|p| *p = f(p));
-                self
-            }
-
-            fn filter_pitch<FilterT: Fn(&$ty) -> bool>(mut self, f: FilterT) -> Result<Self> {
-                self = self.into_iter().filter(f).collect();
-                Ok(self)
-            }
-
-            fn filter_map_pitch<MapT: Fn(&$ty) -> Option<$ty>>(mut self, f: MapT) -> Result<Self> {
-                self = self.into_iter().filter_map(|p| f(&p)).collect();
-                Ok(self)
-            }
-
-            fn augment_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
-                self.iter_mut().for_each(|p| { *p = p.augment_pitch(n); });
-                self
-            }
-
-            fn diminish_pitch<AT: AugDim<$ty> + Copy>(mut self, n: AT) -> Self {
-                self.iter_mut().for_each(|p| { *p = p.diminish_pitch(n); });
-                self
-            }
-
-            fn trim(mut self, first: $ty, last: $ty) -> Self {
-                self = self.into_iter().map(|p| p.trim(first, last)).collect();
-                self
-            }
-
-            fn bounce(mut self, first: $ty, last: $ty) -> Self {
-                self = self.into_iter().map(|p| p.bounce(first, last)).collect();
-                self
-            }
-
-            fn is_silent(self) -> bool {
-                self.is_empty()
-            }
+macro_rules! impl_fns_for_mut_vec {
+    ($ty:ident, for $($fn:ident)*) => ($(
+        fn $fn(self, n: $ty) -> Self {
+            self.iter_mut().for_each(|p| { *p = p.$fn(n); });
+            self
         }
     )*)
 }
 
-impl_traits_for_pitches!(for i8 i16 i32 i64 isize u8 u16 u32 u64 usize f32 f64);
-impl_traits_for_pitch_containers!(for i8 i16 i32 i64 isize u8 u16 u32 u64 usize f32 f64);
+impl<T> Pitch<T> for &mut Vec<T>
+where
+    T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + AddAssign,
+{
+    impl_fns_for_mut_vec!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
+
+    fn set_pitches(self, p: Vec<T>) -> Result<Self> {
+        *self = p;
+        Ok(self)
+    }
+
+    fn map_pitch<MapT: Fn(&T) -> T>(self, f: MapT) -> Self {
+        self.iter_mut().for_each(|p| *p = f(p));
+        self
+    }
+
+    fn filter_pitch<FilterT: Fn(&T) -> bool>(self, f: FilterT) -> Result<Self> {
+        *self = self.iter().filter(|p| f(*p)).copied().collect();
+        Ok(self)
+    }
+
+    fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(self, f: MapT) -> Result<Self> {
+        *self = self.iter().filter_map(f).collect();
+        Ok(self)
+    }
+
+    fn augment_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self {
+        self.iter_mut().for_each(|p| {
+            *p = p.augment_pitch(n);
+        });
+        self
+    }
+
+    fn diminish_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self {
+        self.iter_mut().for_each(|p| {
+            *p = p.diminish_pitch(n);
+        });
+        self
+    }
+
+    fn trim(self, first: T, last: T) -> Self {
+        *self = self.iter().map(|p| p.trim(first, last)).collect();
+        self
+    }
+
+    fn bounce(self, first: T, last: T) -> Self {
+        *self = self.iter().map(|p| p.bounce(first, last)).collect();
+        self
+    }
+
+    fn is_silent(self) -> bool {
+        self.is_empty()
+    }
+}
 
 #[cfg(test)]
 mod tests {
