@@ -147,7 +147,7 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
     fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
         self.contents.iter_mut().for_each(|m| {
             for p in m.iter_mut() {
-                *p = f(&p);
+                *p = f(p);
             }
         });
         self
