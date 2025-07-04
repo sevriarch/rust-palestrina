@@ -159,14 +159,6 @@ where
     fn is_silent(self) -> bool;
 }
 
-macro_rules! impl_fns_for_option {
-    ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(self, n: $ty) -> Self {
-            self.map(|v| v.$fn(n))
-        }
-    )*)
-}
-
 impl<T> Pitch<T> for T
 where
     T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + AddAssign,
@@ -321,6 +313,14 @@ where
     }
 }
 
+macro_rules! impl_fns_for_option {
+    ($ty:ident, for $($fn:ident)*) => ($(
+        fn $fn(self, n: $ty) -> Self {
+            self.map(|v| v.$fn(n))
+        }
+    )*)
+}
+
 impl<T> Pitch<T> for Option<T>
 where
     T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + AddAssign,
@@ -368,6 +368,94 @@ where
 
     fn bounce(self, first: T, last: T) -> Self {
         self.map(|p| p.bounce(first, last))
+    }
+
+    fn is_silent(self) -> bool {
+        self.is_none()
+    }
+}
+
+macro_rules! impl_fns_for_mut_option {
+    ($ty:ident, for $($fn:ident)*) => ($(
+        fn $fn(self, n: $ty) -> Self {
+            if let Some(v) = self {
+                *v = v.$fn(n);
+            }
+            self
+        }
+    )*)
+}
+
+impl<T> Pitch<T> for &mut Option<T>
+where
+    T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + AddAssign,
+{
+    impl_fns_for_mut_option!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
+
+    #[allow(unused_assignments)]
+    fn set_pitches(self, p: Vec<T>) -> Result<Self> {
+        match p.len() {
+            0 => *self = None,
+            1 => *self = Some(p[0]),
+            _ => {
+                return Err(anyhow!(PitchError::MultiplePitchesNotAllowed(
+                    "set_pitches()".to_string()
+                )))
+            }
+        }
+
+        Ok(self)
+    }
+
+    fn map_pitch<MapT: Fn(&T) -> T>(self, f: MapT) -> Self {
+        self.map(|mut p| {
+            p = f(&p);
+        });
+        self
+    }
+
+    fn filter_pitch<FilterT: Fn(&T) -> bool>(self, f: FilterT) -> Result<Self> {
+        self.map(|p| {
+            if !f(&p) {
+                *self = None;
+            }
+        });
+        Ok(self)
+    }
+
+    fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(self, f: MapT) -> Result<Self> {
+        if let Some(v) = *self {
+            *self = f(&v);
+        }
+        Ok(self)
+    }
+
+    fn augment_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self {
+        if let Some(v) = self {
+            *v = v.augment_pitch(n);
+        }
+        self
+    }
+
+    fn diminish_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self {
+        if let Some(v) = self {
+            *v = v.augment_pitch(n);
+        }
+        self
+    }
+
+    fn trim(self, first: T, last: T) -> Self {
+        if let Some(v) = self {
+            *v = v.trim(first, last);
+        }
+        self
+    }
+
+    fn bounce(self, first: T, last: T) -> Self {
+        if let Some(v) = self {
+            *v = v.bounce(first, last);
+        }
+        self
     }
 
     fn is_silent(self) -> bool {
