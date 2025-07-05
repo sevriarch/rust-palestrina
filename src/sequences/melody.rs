@@ -471,23 +471,23 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
         }
         Ok(self)
     }
-}
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Melody<T> {
-    pub fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
+    fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.contents.iter_mut().for_each(|m| {
             m.augment_pitch(n);
         });
         self
     }
 
-    pub fn diminish_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
+    fn diminish_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.contents.iter_mut().for_each(|m| {
             m.diminish_pitch(n);
         });
         self
     }
+}
 
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Melody<T> {
     pub fn trim(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|m| {
             m.trim(first, second);

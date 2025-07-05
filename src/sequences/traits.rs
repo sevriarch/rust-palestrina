@@ -1,7 +1,7 @@
 use crate::algorithms;
 use crate::collections::traits::{Collection, CollectionError};
 use crate::entities::scale::Scale;
-use crate::ops::pitch::Pitch;
+use crate::ops::pitch::{AugDim, Pitch};
 use anyhow::{anyhow, Result};
 use num_traits::{FromPrimitive, Num, PrimInt};
 use std::fmt::Debug;
@@ -67,6 +67,9 @@ pub trait Sequence<
     fn trim_max(self, n: PitchType) -> Self;
     fn bounce_min(self, n: PitchType) -> Self;
     fn bounce_max(self, n: PitchType) -> Self;
+
+    fn augment_pitch<AT: AugDim<PitchType> + Copy>(self, n: AT) -> Self;
+    fn diminish_pitch<AT: AugDim<PitchType> + Copy>(self, n: AT) -> Self;
 
     fn min_value(&self) -> Option<PitchType> {
         self.to_flat_pitches()

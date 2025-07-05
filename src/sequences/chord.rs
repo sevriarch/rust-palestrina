@@ -247,10 +247,8 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
             .collect();
         Ok(self)
     }
-}
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> ChordSeq<T> {
-    pub fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
+    fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.contents.iter_mut().for_each(|p| {
             p.iter_mut().for_each(|v| {
                 *v = v.augment_pitch(n);
@@ -259,7 +257,7 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Chor
         self
     }
 
-    pub fn diminish_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
+    fn diminish_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.contents.iter_mut().for_each(|p| {
             p.iter_mut().for_each(|v| {
                 *v = v.diminish_pitch(n);
@@ -267,7 +265,9 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Chor
         });
         self
     }
+}
 
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> ChordSeq<T> {
     pub fn trim(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|p| {
             p.iter_mut().for_each(|v| {

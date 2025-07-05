@@ -238,10 +238,8 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
             .for_each(|(i, p)| *p = p.map(|v| f((i, &v))).flatten());
         Ok(self)
     }
-}
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> NoteSeq<T> {
-    pub fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
+    fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.contents.iter_mut().for_each(|m| {
             if let Some(p) = m {
                 *p = p.augment_pitch(n);
@@ -250,7 +248,7 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Note
         self
     }
 
-    pub fn diminish_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
+    fn diminish_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.contents.iter_mut().for_each(|m| {
             if let Some(p) = m {
                 *p = p.diminish_pitch(n);
@@ -258,7 +256,9 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Note
         });
         self
     }
+}
 
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> NoteSeq<T> {
     pub fn trim(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|m| {
             if let Some(p) = m {
