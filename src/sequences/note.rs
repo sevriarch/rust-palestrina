@@ -256,10 +256,8 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
         });
         self
     }
-}
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> NoteSeq<T> {
-    pub fn trim(mut self, first: T, second: T) -> Self {
+    fn trim(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|m| {
             if let Some(p) = m {
                 *p = p.trim(first, second);
@@ -268,7 +266,7 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Note
         self
     }
 
-    pub fn bounce(mut self, first: T, second: T) -> Self {
+    fn bounce(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|m| {
             if let Some(p) = m {
                 *p = p.bounce(first, second);
@@ -276,7 +274,9 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Note
         });
         self
     }
+}
 
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> NoteSeq<T> {
     pub fn is_silent(&self) -> bool {
         self.contents.iter().all(|m| m.is_none())
     }

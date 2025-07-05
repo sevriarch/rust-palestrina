@@ -152,25 +152,6 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
         self
     }
 
-    fn filter_pitch<FilterT: Fn(&T) -> bool>(self, f: FilterT) -> Result<Self> {
-        if self.contents.iter().all(f) {
-            Ok(self)
-        } else {
-            Err(anyhow!(PitchError::RequiredPitchAbsent(
-                "filter_pitch()".to_string()
-            )))
-        }
-    }
-
-    fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
-        for p in self.contents.iter_mut() {
-            *p = f(p).ok_or(anyhow!(PitchError::RequiredPitchAbsent(
-                "Pitch.filter_map_pitch()".to_string()
-            )))?;
-        }
-        Ok(self)
-    }
-
     fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
         self.contents.iter_mut().for_each(f);
         self
@@ -222,6 +203,25 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
         Ok(self)
     }
 
+    fn filter_pitch<FilterT: Fn(&T) -> bool>(self, f: FilterT) -> Result<Self> {
+        if self.contents.iter().all(f) {
+            Ok(self)
+        } else {
+            Err(anyhow!(PitchError::RequiredPitchAbsent(
+                "filter_pitch()".to_string()
+            )))
+        }
+    }
+
+    fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
+        for p in self.contents.iter_mut() {
+            *p = f(p).ok_or(anyhow!(PitchError::RequiredPitchAbsent(
+                "Pitch.filter_map_pitch()".to_string()
+            )))?;
+        }
+        Ok(self)
+    }
+
     fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.contents.iter_mut().for_each(|p| {
             *p = p.augment_pitch(n);
@@ -235,23 +235,23 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
         });
         self
     }
-}
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> NumericSeq<T> {
-    pub fn trim(mut self, first: T, second: T) -> Self {
+    fn trim(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|p| {
             *p = p.trim(first, second);
         });
         self
     }
 
-    pub fn bounce(mut self, first: T, second: T) -> Self {
+    fn bounce(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|p| {
             *p = p.bounce(first, second);
         });
         self
     }
+}
 
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> NumericSeq<T> {
     pub fn is_silent(&self) -> bool {
         self.contents.iter().all(|m| m.is_silent())
     }

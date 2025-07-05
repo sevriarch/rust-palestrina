@@ -265,10 +265,8 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
         });
         self
     }
-}
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> ChordSeq<T> {
-    pub fn trim(mut self, first: T, second: T) -> Self {
+    fn trim(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|p| {
             p.iter_mut().for_each(|v| {
                 *v = v.trim(first, second);
@@ -277,7 +275,7 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Chor
         self
     }
 
-    pub fn bounce(mut self, first: T, second: T) -> Self {
+    fn bounce(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|p| {
             p.iter_mut().for_each(|v| {
                 *v = v.bounce(first, second);
@@ -285,7 +283,9 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Chor
         });
         self
     }
+}
 
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> ChordSeq<T> {
     pub fn is_silent(&self) -> bool {
         self.contents.iter().all(|m| m.is_empty())
     }

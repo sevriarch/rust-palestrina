@@ -71,6 +71,9 @@ pub trait Sequence<
     fn augment_pitch<AT: AugDim<PitchType> + Copy>(self, n: AT) -> Self;
     fn diminish_pitch<AT: AugDim<PitchType> + Copy>(self, n: AT) -> Self;
 
+    fn trim(self, first: PitchType, second: PitchType) -> Self;
+    fn bounce(self, first: PitchType, second: PitchType) -> Self;
+
     fn min_value(&self) -> Option<PitchType> {
         self.to_flat_pitches()
             .iter()

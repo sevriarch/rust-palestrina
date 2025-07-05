@@ -485,23 +485,23 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
         });
         self
     }
-}
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Melody<T> {
-    pub fn trim(mut self, first: T, second: T) -> Self {
+    fn trim(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|m| {
             m.trim(first, second);
         });
         self
     }
 
-    pub fn bounce(mut self, first: T, second: T) -> Self {
+    fn bounce(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|m| {
             m.bounce(first, second);
         });
         self
     }
+}
 
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Melody<T> {
     pub fn is_silent(mut self) -> bool {
         self.contents.iter_mut().all(|m| m.is_silent())
     }
