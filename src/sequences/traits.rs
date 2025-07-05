@@ -35,6 +35,7 @@ pub trait Sequence<
 {
     fn set_pitches(self, p: Vec<PitchType>) -> Result<Self>;
     fn map_pitch<MapT: Fn(&PitchType) -> PitchType>(self, f: MapT) -> Self;
+    fn filter_pitch<FilterT: Fn(&PitchType) -> bool>(self, f: FilterT) -> Result<Self>;
     fn mutate_pitches<F: Fn(&mut PitchType)>(self, f: F) -> Self;
     fn to_flat_pitches(&self) -> Vec<PitchType>;
     fn to_pitches(&self) -> Vec<Vec<PitchType>>;
