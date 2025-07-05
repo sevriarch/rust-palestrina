@@ -224,19 +224,6 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
 }
 
 impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> NumericSeq<T> {
-    pub fn filter_map_pitch_enumerated<MapT: Fn((usize, &T)) -> Option<T>>(
-        mut self,
-        f: MapT,
-    ) -> Result<Self> {
-        for (i, p) in self.contents.iter_mut().enumerate() {
-            *p = f((i, p)).ok_or(anyhow!(PitchError::RequiredPitchAbsent(format!(
-                "at index {}",
-                i
-            ))))?;
-        }
-        Ok(self)
-    }
-
     pub fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.contents.iter_mut().for_each(|p| {
             *p = p.augment_pitch(n);
