@@ -499,13 +499,16 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
         });
         self
     }
-}
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Melody<T> {
-    pub fn is_silent(mut self) -> bool {
-        self.contents.iter_mut().all(|m| m.is_silent())
+    fn is_silent(self) -> bool {
+        // TODO make this work better
+        self.contents
+            .iter()
+            .all(|m| m.values.is_empty() || m.volume == 0)
     }
 }
+
+impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Melody<T> {}
 
 impl<T> Melody<T>
 where
@@ -703,6 +706,7 @@ mod tests {
     use crate::collections::traits::Collection;
     use crate::entities::timing::DurationalEventTiming;
     use crate::metadata::{Metadata, MetadataData, MetadataList};
+    use crate::ops::pitch::Pitch;
     use crate::sequences::chord::ChordSeq;
     use crate::sequences::note::NoteSeq;
     use crate::sequences::numeric::NumericSeq;

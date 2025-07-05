@@ -249,13 +249,12 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
         });
         self
     }
-}
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> NumericSeq<T> {
-    pub fn is_silent(&self) -> bool {
+    fn is_silent(self) -> bool {
         self.contents.iter().all(|m| m.is_silent())
     }
 }
+
 // equality methods: equals isSubsetOf isSupersetOf isTransformationOf isTranspositionOf isInversionOf isRetrogradeOf
 // isRetrogradeInversionOf hasPeriodicity[Of]
 

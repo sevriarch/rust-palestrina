@@ -274,10 +274,8 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
         });
         self
     }
-}
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> NoteSeq<T> {
-    pub fn is_silent(&self) -> bool {
+    fn is_silent(self) -> bool {
         self.contents.iter().all(|m| m.is_none())
     }
 }

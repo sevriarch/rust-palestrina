@@ -74,6 +74,8 @@ pub trait Sequence<
     fn trim(self, first: PitchType, second: PitchType) -> Self;
     fn bounce(self, first: PitchType, second: PitchType) -> Self;
 
+    fn is_silent(self) -> bool;
+
     fn min_value(&self) -> Option<PitchType> {
         self.to_flat_pitches()
             .iter()
