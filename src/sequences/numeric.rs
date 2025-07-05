@@ -162,6 +162,15 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
         }
     }
 
+    fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
+        for p in self.contents.iter_mut() {
+            *p = f(p).ok_or(anyhow!(PitchError::RequiredPitchAbsent(
+                "Pitch.filter_map_pitch()".to_string()
+            )))?;
+        }
+        Ok(self)
+    }
+
     fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
         self.contents.iter_mut().for_each(f);
         self
@@ -215,15 +224,6 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
 }
 
 impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> NumericSeq<T> {
-    pub fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
-        for p in self.contents.iter_mut() {
-            *p = f(p).ok_or(anyhow!(PitchError::RequiredPitchAbsent(
-                "Pitch.filter_map_pitch()".to_string()
-            )))?;
-        }
-        Ok(self)
-    }
-
     pub fn filter_map_pitch_enumerated<MapT: Fn((usize, &T)) -> Option<T>>(
         mut self,
         f: MapT,

@@ -160,6 +160,13 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
         Ok(self)
     }
 
+    fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
+        self.contents
+            .iter_mut()
+            .for_each(|p| *p = p.map(|v| f(&v)).flatten());
+        Ok(self)
+    }
+
     fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
         self.contents.iter_mut().for_each(|m| {
             if let Some(p) = m {
@@ -234,13 +241,6 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
 }
 
 impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> NoteSeq<T> {
-    pub fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
-        self.contents
-            .iter_mut()
-            .for_each(|p| *p = p.map(|v| f(&v)).flatten());
-        Ok(self)
-    }
-
     pub fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.contents.iter_mut().for_each(|m| {
             if let Some(p) = m {
