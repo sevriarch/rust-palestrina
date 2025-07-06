@@ -415,45 +415,45 @@ where
     }
 
     fn filter_pitch<FilterT: Fn(&T) -> bool>(self, f: FilterT) -> Result<Self> {
-        self.map(|p| {
-            if !f(&p) {
+        if let Some(p) = self {
+            if !f(p) {
                 *self = None;
             }
-        });
+        }
         Ok(self)
     }
 
     fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(self, f: MapT) -> Result<Self> {
-        if let Some(v) = *self {
-            *self = f(&v);
+        if let Some(p) = self {
+            *self = f(p);
         }
         Ok(self)
     }
 
     fn augment_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self {
-        if let Some(v) = self {
-            *v = v.augment_pitch(n);
+        if let Some(p) = self {
+            *p = p.augment_pitch(n);
         }
         self
     }
 
     fn diminish_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self {
-        if let Some(v) = self {
-            *v = v.augment_pitch(n);
+        if let Some(p) = self {
+            *p = p.augment_pitch(n);
         }
         self
     }
 
     fn trim(self, first: T, last: T) -> Self {
-        if let Some(v) = self {
-            *v = v.trim(first, last);
+        if let Some(p) = self {
+            *p = p.trim(first, last);
         }
         self
     }
 
     fn bounce(self, first: T, last: T) -> Self {
-        if let Some(v) = self {
-            *v = v.bounce(first, last);
+        if let Some(p) = self {
+            *p = p.bounce(first, last);
         }
         self
     }
@@ -514,12 +514,16 @@ where
     }
 
     fn trim(mut self, first: T, last: T) -> Self {
-        self = self.into_iter().map(|p| p.trim(first, last)).collect();
+        self.iter_mut().for_each(|p| {
+            *p = p.trim(first, last);
+        });
         self
     }
 
     fn bounce(mut self, first: T, last: T) -> Self {
-        self = self.into_iter().map(|p| p.bounce(first, last)).collect();
+        self.iter_mut().for_each(|p| {
+            *p = p.bounce(first, last);
+        });
         self
     }
 
@@ -578,12 +582,16 @@ where
     }
 
     fn trim(self, first: T, last: T) -> Self {
-        *self = self.iter().map(|p| p.trim(first, last)).collect();
+        self.iter_mut().for_each(|p| {
+            *p = p.trim(first, last);
+        });
         self
     }
 
     fn bounce(self, first: T, last: T) -> Self {
-        *self = self.iter().map(|p| p.bounce(first, last)).collect();
+        self.iter_mut().for_each(|p| {
+            *p = p.bounce(first, last);
+        });
         self
     }
 
