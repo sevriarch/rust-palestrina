@@ -185,10 +185,8 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
 macro_rules! impl_fns_for_seq {
     ($ty:ident, for $($fn:ident)*) => ($(
         fn $fn(mut self, n: $ty) -> Self {
-            self.contents.iter_mut().for_each(|m| {
-                if let Some(p) = m {
-                    p.$fn(n);
-                }
+            self.contents.iter_mut().for_each(|p| {
+                p.$fn(n);
             });
             self
         }

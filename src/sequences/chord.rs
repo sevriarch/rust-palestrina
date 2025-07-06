@@ -183,7 +183,7 @@ macro_rules! impl_fns_for_seq {
     ($ty:ident, for $($fn:ident)*) => ($(
         fn $fn(mut self, n: $ty) -> Self {
             self.contents.iter_mut().for_each(|p| {
-                p.iter_mut().for_each(|v| { v.$fn(n); });
+                p.$fn(n);
             });
             self
         }

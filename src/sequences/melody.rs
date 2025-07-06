@@ -133,7 +133,9 @@ where
 macro_rules! impl_fns_for_melody_member {
     ($ty:ident, for $($fn:ident)*) => ($(
         fn $fn(self, n: $ty) -> Self {
-            self.values.iter_mut().for_each(|p| { *p = *p.$fn(n); });
+            self.values.iter_mut().for_each(|p| {
+                p.$fn(n);
+            });
             self
         }
     )*)
@@ -216,7 +218,6 @@ where
 
     pub fn with_event(&mut self, e: &Metadata) -> &mut Self {
         self.before.append(e.clone());
-
         self
     }
 
