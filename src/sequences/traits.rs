@@ -1,4 +1,3 @@
-use crate::algorithms;
 use crate::collections::traits::{Collection, CollectionError};
 use crate::entities::scale::Scale;
 use crate::ops::pitch::Pitch;
@@ -31,7 +30,7 @@ macro_rules! default_sequence_methods {
 pub trait Sequence<
     T: Clone + Debug + PartialEq,
     PitchType: Pitch<PitchType> + Clone + Copy + Debug + FromPrimitive + Num + PartialOrd + Sum,
->: Collection<T>
+>: Pitch<PitchType> + Collection<T>
 {
     /// Modify all pitches in the Sequence by passing a mutable reference to them to the
     /// function passed in the argument.
@@ -131,21 +130,17 @@ pub trait Sequence<
             .collect()
     }
 
-    fn transpose(self, t: PitchType) -> Result<Self> {
-        Ok(self.mutate_pitches(algorithms::transpose(&t)))
-    }
-
-    fn transpose_to_min(self, t: PitchType) -> Result<Self> {
+    fn transpose_to_min(self, t: PitchType) -> Self {
         match self.min_value() {
-            Some(m) => self.transpose(t - m),
-            None => Ok(self),
+            Some(m) => self.transpose_pitch(t - m),
+            None => self,
         }
     }
 
-    fn transpose_to_max(self, t: PitchType) -> Result<Self> {
+    fn transpose_to_max(self, t: PitchType) -> Self {
         match self.max_value() {
-            Some(m) => self.transpose(t - m),
-            None => Ok(self),
+            Some(m) => self.transpose_pitch(t - m),
+            None => self,
         }
     }
 
@@ -413,11 +408,11 @@ mod tests {
     }
 
     #[test]
-    fn transpose() {
-        assert_eq!(numseq![1, 6, 4].transpose(2).unwrap(), numseq![3, 8, 6]);
+    fn transpose_pitch() {
+        assert_eq!(numseq![1, 6, 4].transpose_pitch(2), numseq![3, 8, 6]);
 
         assert_contents_f64_near!(
-            numseq![1.7, 3.4, 6.3].transpose(-1.8).unwrap(),
+            numseq![1.7, 3.4, 6.3].transpose_pitch(-1.8),
             numseq![-0.1, 1.6, 4.5]
         );
     }
@@ -425,16 +420,13 @@ mod tests {
     #[test]
     fn transpose_to_min() {
         assert_eq!(
-            NumericSeq::<i32>::new(vec![]).transpose_to_min(44).unwrap(),
+            NumericSeq::<i32>::new(vec![]).transpose_to_min(44),
             NumericSeq::<i32>::new(vec![])
         );
-        assert_eq!(
-            chordseq![1, 6, 4].transpose_to_min(2).unwrap(),
-            chordseq![2, 7, 5]
-        );
+        assert_eq!(chordseq![1, 6, 4].transpose_to_min(2), chordseq![2, 7, 5]);
 
         assert_contents_f64_near!(
-            numseq![1.7, 3.4, 6.3].transpose_to_min(-1.8).unwrap(),
+            numseq![1.7, 3.4, 6.3].transpose_to_min(-1.8),
             numseq![-1.8, -0.1, 2.8]
         );
     }
@@ -442,16 +434,13 @@ mod tests {
     #[test]
     fn transpose_to_max() {
         assert_eq!(
-            NumericSeq::new(vec![]).transpose_to_max(44).unwrap(),
+            NumericSeq::new(vec![]).transpose_to_max(44),
             NumericSeq::new(vec![])
         );
-        assert_eq!(
-            chordseq![1, 6, 4].transpose_to_max(2).unwrap(),
-            chordseq![-3, 2, 0]
-        );
+        assert_eq!(chordseq![1, 6, 4].transpose_to_max(2), chordseq![-3, 2, 0]);
 
         assert_contents_f64_near!(
-            numseq![1.7, 3.4, 6.3].transpose_to_max(-1.8).unwrap(),
+            numseq![1.7, 3.4, 6.3].transpose_to_max(-1.8),
             numseq![-6.4, -4.7, -1.8]
         );
     }

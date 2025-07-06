@@ -345,7 +345,7 @@ macro_rules! try_from_seq {
     (for $($t:ty)*) => ($(
         impl<T> TryFrom<$t> for Melody<T>
         where
-            T: Pitch<T> + Copy + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum,
+            T: Pitch<T> + Copy + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum + AddAssign,
         {
             type Error = anyhow::Error;
 
@@ -367,7 +367,7 @@ try_from_seq!(for NumericSeq<T> NoteSeq<T> ChordSeq<T>);
 
 impl<T> Collection<MelodyMember<T>> for Melody<T>
 where
-    T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum,
+    T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum + AddAssign,
 {
     default_collection_methods!(MelodyMember<T>);
     default_sequence_methods!(MelodyMember<T>);

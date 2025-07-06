@@ -28,7 +28,7 @@ fn make_overlay() -> Result<NumericSeq<i32>> {
     let max = overlay.max_value().unwrap();
     let min = overlay.min_value().unwrap();
 
-    overlay
+    Ok(overlay
         .mutate_slice(bar(29), bar(37), |v| {
             *v = *v.invert_pitch(max);
         })?
@@ -44,17 +44,17 @@ fn make_overlay() -> Result<NumericSeq<i32>> {
             *v = min + (i as i32 - 76 * BAR + 1) * 8 / BAR;
         })?
         .append_items(&[8, 8])
-        .transpose(-16)
+        .transpose_pitch(-16))
 }
 
 // Raw musical material using every nth note of a variant of Per Nørgård's infinity series,
 // with 0 mapped to the A below middle C
 fn make_melody(offset: usize) -> Result<NumericSeq<i32>> {
-    NumericSeq::new(infinity_var1(LEN * GAP))
+    Ok(NumericSeq::new(infinity_var1(LEN * GAP))
         .keep_nth_from(GAP, offset)?
         .modulus(MOD)
         .clone()
-        .transpose(57)
+        .transpose_pitch(57))
 }
 
 // Function to transpose each member of the passed sequence up or down in pitch according to

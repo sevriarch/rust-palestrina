@@ -106,8 +106,18 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Coll
     default_sequence_methods!(Option<T>);
 }
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum>
-    Sequence<Option<T>, T> for NoteSeq<T>
+impl<
+        T: Pitch<T>
+            + Clone
+            + Copy
+            + Num
+            + Debug
+            + FromPrimitive
+            + PartialOrd
+            + Bounded
+            + Sum
+            + AddAssign,
+    > Sequence<Option<T>, T> for NoteSeq<T>
 {
     fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
         self.contents.iter_mut().for_each(|m| {

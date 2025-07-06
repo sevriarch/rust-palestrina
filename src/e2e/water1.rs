@@ -67,7 +67,7 @@ pub fn build_base_sequences() -> Result<(NoteSeq<i32>, NoteSeq<i32>)> {
         .modulus(33)
         .clone()
         .dedupe()
-        .transpose(-16)?
+        .transpose_pitch(-16)
         .retrograde()?
         .scale(Scale::from_name("octatonic21")?, 0)?;
 
@@ -377,7 +377,7 @@ function melody1(n) {
         .if(!n)
             .then(s => s.replaceIndices(-1, null))
         .mapPitch(sieve1)
-        .transpose(84 - 12 * n)
+        .transpose_pitch(84 - 12 * n)
         .toMelody()
         .withDuration(rhy1)
         .withVolume(vol1)
@@ -484,7 +484,7 @@ function melody2(n) {
         .withVolume(v2)
         .if(!n)
             .then(s => s.append(v0_part2()))
-        .transpose(48)
+        .transpose_pitch(48)
         .pad({ pitch: [], duration: delay2 * TICKS, velocity: 0 })
         .tap(s => logTrack(n, 'part2', s))
 }
@@ -654,9 +654,9 @@ function oct3ending(n) {
         .keepRight(len)
         .combine((a, b) => b.val() ? a : a.silence(), mek)
         .replaceIndices(len - 1178, null)
-        .replaceIndices([ len - 814, len - 812, len - 473 ], v => v.transpose(12))
+        .replaceIndices([ len - 814, len - 812, len - 473 ], v => v.transpose_pitch(12))
         .replaceSlice(...SILENCE, s => s.map(v => v.silence()))
-        .transpose(47 + 12 * n)
+        .transpose_pitch(47 + 12 * n)
         .toMelody()
         .withDuration(rhy)
         .withVolume(vol)
@@ -722,17 +722,17 @@ function falling(bar) {
 
     bar *= tix
 
-    return mel.transpose(15).withStartTick(bar + 38 * tix).append(
-        mel.transpose(10).withStartTick(bar + 50 * tix),
-        mel.transpose(5).withStartTick(bar + 53 * tix),
+    return mel.transpose_pitch(15).withStartTick(bar + 38 * tix).append(
+        mel.transpose_pitch(10).withStartTick(bar + 50 * tix),
+        mel.transpose_pitch(5).withStartTick(bar + 53 * tix),
         mel.withStartTick(bar + 61 * tix),
-        mel.transpose(-5).withStartTick(bar + 64 * tix),
-        mel.transpose(-10).withStartTick(bar + 69 * tix),
-        mel.transpose(-15).withStartTick(bar + 80 * tix),
-        mel.keep(15).transpose(-20).withStartTick(bar + 87 * tix),
-        mel.keep(9).transpose(-25).withStartTick(bar + 91 * tix),
-        mel.keep(9).transpose(-30).withStartTick(bar + 93 * tix),
-        mel.keep(6).transpose(-35).withStartTick(bar + 95 * tix)
+        mel.transpose_pitch(-5).withStartTick(bar + 64 * tix),
+        mel.transpose_pitch(-10).withStartTick(bar + 69 * tix),
+        mel.transpose_pitch(-15).withStartTick(bar + 80 * tix),
+        mel.keep(15).transpose_pitch(-20).withStartTick(bar + 87 * tix),
+        mel.keep(9).transpose_pitch(-25).withStartTick(bar + 91 * tix),
+        mel.keep(9).transpose_pitch(-30).withStartTick(bar + 93 * tix),
+        mel.keep(6).transpose_pitch(-35).withStartTick(bar + 95 * tix)
     ).if(SIB_IMPORT)
         .then(s => s.map(e => e.max() < 1 ? e.setPitches([ 1 ]) : e))
 }
@@ -784,7 +784,7 @@ function glisses(bar) {
         gliss(77, 62, 77), // 15
         gliss(66, 78, 89.25), // 12
         gliss(71, 80, 96.25), // 9
-    ).transpose(-12)
+    ).transpose_pitch(-12)
 }
 
 function cleanPianoIntervals([ a, b, c ], i) {

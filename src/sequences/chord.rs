@@ -98,8 +98,18 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded> Collection<Vec<T>> fo
     default_sequence_methods!(Vec<T>);
 }
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum>
-    Sequence<Vec<T>, T> for ChordSeq<T>
+impl<
+        T: Pitch<T>
+            + Clone
+            + Copy
+            + Num
+            + Debug
+            + FromPrimitive
+            + PartialOrd
+            + Bounded
+            + Sum
+            + AddAssign,
+    > Sequence<Vec<T>, T> for ChordSeq<T>
 {
     fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
         self.contents.iter_mut().for_each(|m| {

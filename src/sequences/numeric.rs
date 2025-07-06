@@ -111,8 +111,18 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Coll
     default_sequence_methods!(T);
 }
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum>
-    Sequence<T, T> for NumericSeq<T>
+impl<
+        T: Pitch<T>
+            + Clone
+            + Copy
+            + Num
+            + Debug
+            + FromPrimitive
+            + PartialOrd
+            + Bounded
+            + Sum
+            + AddAssign,
+    > Sequence<T, T> for NumericSeq<T>
 {
     fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
         self.contents.iter_mut().for_each(f);
