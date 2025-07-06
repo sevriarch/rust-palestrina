@@ -12,6 +12,7 @@ use num_traits::{Bounded, FromPrimitive, Num};
 use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::iter::Sum;
+use std::ops::AddAssign;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct NoteSeq<T> {
@@ -105,68 +106,9 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Coll
     default_sequence_methods!(Option<T>);
 }
 
-macro_rules! impl_fns_for_seq {
-    ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(mut self, n: $ty) -> Self {
-            self.contents.iter_mut().for_each(|m| {
-                if let Some(p) = m {
-                    *p = p.$fn(n);
-                }
-            });
-            //self.contents.iter_mut().for_each(|p| { *p = p.$fn(n); });
-            self
-        }
-    )*)
-}
-
 impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum>
     Sequence<Option<T>, T> for NoteSeq<T>
 {
-    impl_fns_for_seq!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
-
-    fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
-        let repval = match p.len() {
-            0 => None,
-            1 => Some(p[0]),
-            _ => {
-                return Err(anyhow!(PitchError::MultiplePitchesNotAllowed(
-                    "set_pitches()".to_string()
-                )))
-            }
-        };
-        self.contents.iter_mut().for_each(|m| {
-            *m = repval;
-        });
-        Ok(self)
-    }
-
-    fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
-        self.contents.iter_mut().for_each(|m| {
-            if let Some(p) = m {
-                *p = f(p);
-            }
-        });
-        self
-    }
-
-    fn filter_pitch<FilterT: Fn(&T) -> bool>(mut self, f: FilterT) -> Result<Self> {
-        self.contents.iter_mut().for_each(|m| {
-            if let Some(p) = m {
-                if !f(p) {
-                    *m = None;
-                }
-            }
-        });
-        Ok(self)
-    }
-
-    fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
-        self.contents
-            .iter_mut()
-            .for_each(|p| *p = p.map(|v| f(&v)).flatten());
-        Ok(self)
-    }
-
     fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
         self.contents.iter_mut().for_each(|m| {
             if let Some(p) = m {
@@ -238,6 +180,68 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
             .for_each(|(i, p)| *p = p.map(|v| f((i, &v))).flatten());
         Ok(self)
     }
+}
+
+macro_rules! impl_fns_for_seq {
+    ($ty:ident, for $($fn:ident)*) => ($(
+        fn $fn(mut self, n: $ty) -> Self {
+            self.contents.iter_mut().for_each(|m| {
+                if let Some(p) = m {
+                    *p = p.$fn(n);
+                }
+            });
+            self
+        }
+    )*)
+}
+
+impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pitch<T>
+    for NoteSeq<T>
+{
+    impl_fns_for_seq!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
+
+    fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
+        let repval = match p.len() {
+            0 => None,
+            1 => Some(p[0]),
+            _ => {
+                return Err(anyhow!(PitchError::MultiplePitchesNotAllowed(
+                    "set_pitches()".to_string()
+                )))
+            }
+        };
+        self.contents.iter_mut().for_each(|m| {
+            *m = repval;
+        });
+        Ok(self)
+    }
+
+    fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
+        self.contents.iter_mut().for_each(|m| {
+            if let Some(p) = m {
+                *p = f(p);
+            }
+        });
+        self
+    }
+
+    fn filter_pitch<FilterT: Fn(&T) -> bool>(mut self, f: FilterT) -> Result<Self> {
+        self.contents.iter_mut().for_each(|m| {
+            if let Some(p) = m {
+                if !f(p) {
+                    *m = None;
+                }
+            }
+        });
+        Ok(self)
+    }
+
+    fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
+        self.contents
+            .iter_mut()
+            .for_each(|p| *p = p.map(|v| f(&v)).flatten());
+        Ok(self)
+    }
 
     fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.contents.iter_mut().for_each(|m| {
@@ -284,6 +288,7 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
 mod tests {
     use crate::collections::traits::Collection;
     use crate::metadata::{MetadataData, MetadataList};
+    use crate::ops::pitch::Pitch;
     use crate::sequences::chord::ChordSeq;
     use crate::sequences::melody::{Melody, MelodyMember};
     use crate::sequences::note::NoteSeq;

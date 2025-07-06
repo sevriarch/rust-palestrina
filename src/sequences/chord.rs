@@ -12,6 +12,7 @@ use num_traits::{Bounded, FromPrimitive, Num};
 use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::iter::Sum;
+use std::ops::AddAssign;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ChordSeq<T> {
@@ -23,30 +24,6 @@ pub struct ChordSeq<T> {
 pub enum ChordSeqError {
     InvalidValues,
 }
-
-/*
- * TODO: is a less clunky version of this possible?
- *
-#[macro_export]
-macro_rules! chordseq_member {
-    ([$($x:expr),*]) => (
-        Vec::from([ $($x),* ])
-    );
-
-    ($x:expr) => (
-        Vec::from([ $x ])
-    );
-}
-
-#[macro_export]
-macro_rules! chordseq {
-    ($($item:tt),*) => (
-        ChordSeq::new(vec![
-            $(chordseq_member!($item)),*
-        ])
-    );
-}
-*/
 
 #[macro_export]
 macro_rules! chordseq {
@@ -121,56 +98,9 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded> Collection<Vec<T>> fo
     default_sequence_methods!(Vec<T>);
 }
 
-macro_rules! impl_fns_for_seq {
-    ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(mut self, n: $ty) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                p.iter_mut().for_each(|v| { *v = v.$fn(n); });
-            });
-            self
-        }
-    )*)
-}
-
 impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum>
     Sequence<Vec<T>, T> for ChordSeq<T>
 {
-    impl_fns_for_seq!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
-
-    fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
-        for m in self.contents.iter_mut() {
-            *m = p.clone();
-        }
-        Ok(self)
-    }
-
-    fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
-        self.contents.iter_mut().for_each(|m| {
-            for p in m.iter_mut() {
-                *p = f(p);
-            }
-        });
-        self
-    }
-
-    fn filter_pitch<FilterT: Fn(&T) -> bool>(mut self, f: FilterT) -> Result<Self> {
-        self.contents = self
-            .contents
-            .into_iter()
-            .map(|p| p.into_iter().filter(|v| f(v)).collect())
-            .collect();
-        Ok(self)
-    }
-
-    fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
-        self.contents = self
-            .contents
-            .into_iter()
-            .map(|p| p.into_iter().filter_map(|v| f(&v)).collect())
-            .collect();
-        Ok(self)
-    }
-
     fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
         self.contents.iter_mut().for_each(|m| {
             for p in m.iter_mut() {
@@ -247,6 +177,57 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
             .collect();
         Ok(self)
     }
+}
+
+macro_rules! impl_fns_for_seq {
+    ($ty:ident, for $($fn:ident)*) => ($(
+        fn $fn(mut self, n: $ty) -> Self {
+            self.contents.iter_mut().for_each(|p| {
+                p.iter_mut().for_each(|v| { *v = v.$fn(n); });
+            });
+            self
+        }
+    )*)
+}
+
+impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pitch<T>
+    for ChordSeq<T>
+{
+    impl_fns_for_seq!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
+
+    fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
+        for m in self.contents.iter_mut() {
+            *m = p.clone();
+        }
+        Ok(self)
+    }
+
+    fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
+        self.contents.iter_mut().for_each(|m| {
+            for p in m.iter_mut() {
+                *p = f(p);
+            }
+        });
+        self
+    }
+
+    fn filter_pitch<FilterT: Fn(&T) -> bool>(mut self, f: FilterT) -> Result<Self> {
+        self.contents = self
+            .contents
+            .into_iter()
+            .map(|p| p.into_iter().filter(|v| f(v)).collect())
+            .collect();
+        Ok(self)
+    }
+
+    fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
+        self.contents = self
+            .contents
+            .into_iter()
+            .map(|p| p.into_iter().filter_map(|v| f(&v)).collect())
+            .collect();
+        Ok(self)
+    }
 
     fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.contents.iter_mut().for_each(|p| {
@@ -293,6 +274,7 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
 mod tests {
     use crate::collections::traits::Collection;
     use crate::metadata::{MetadataData, MetadataList};
+    use crate::ops::pitch::Pitch;
     use crate::sequences::chord::ChordSeq;
     use crate::sequences::melody::{Melody, MelodyMember};
     use crate::sequences::note::NoteSeq;

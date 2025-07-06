@@ -14,6 +14,7 @@ use num_traits::{Bounded, FromPrimitive, Num};
 use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::iter::Sum;
+use std::ops::AddAssign;
 
 pub const DEFAULT_VOLUME: u8 = 64;
 
@@ -359,50 +360,9 @@ impl<T: Clone + Num + Debug + PartialOrd + Bounded> Collection<MelodyMember<T>> 
     default_sequence_methods!(MelodyMember<T>);
 }
 
-macro_rules! impl_fns_for_seq {
-    ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(mut self, n: $ty) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                p.$fn(n);
-            });
-            self
-        }
-    )*)
-}
-
 impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum>
     Sequence<MelodyMember<T>, T> for Melody<T>
 {
-    impl_fns_for_seq!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
-
-    fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
-        for m in self.contents.iter_mut() {
-            m.set_pitches(p.clone())?;
-        }
-        Ok(self)
-    }
-
-    fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
-        self.contents.iter_mut().for_each(|m| {
-            m.map_pitch(&f);
-        });
-        self
-    }
-
-    fn filter_pitch<FilterT: Fn(&T) -> bool>(mut self, f: FilterT) -> Result<Self> {
-        for m in self.contents.iter_mut() {
-            m.filter_pitch(&f)?;
-        }
-        Ok(self)
-    }
-
-    fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
-        for m in self.contents.iter_mut() {
-            m.filter_map_pitch(&f)?;
-        }
-        Ok(self)
-    }
-
     fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
         self.contents.iter_mut().for_each(|m| {
             for p in m.values.iter_mut() {
@@ -471,6 +431,51 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
         }
         Ok(self)
     }
+}
+
+macro_rules! impl_fns_for_seq {
+    ($ty:ident, for $($fn:ident)*) => ($(
+        fn $fn(mut self, n: $ty) -> Self {
+            self.contents.iter_mut().for_each(|p| {
+                p.$fn(n);
+            });
+            self
+        }
+    )*)
+}
+
+impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pitch<T>
+    for Melody<T>
+{
+    impl_fns_for_seq!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
+
+    fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
+        for m in self.contents.iter_mut() {
+            m.set_pitches(p.clone())?;
+        }
+        Ok(self)
+    }
+
+    fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
+        self.contents.iter_mut().for_each(|m| {
+            m.map_pitch(&f);
+        });
+        self
+    }
+
+    fn filter_pitch<FilterT: Fn(&T) -> bool>(mut self, f: FilterT) -> Result<Self> {
+        for m in self.contents.iter_mut() {
+            m.filter_pitch(&f)?;
+        }
+        Ok(self)
+    }
+
+    fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
+        for m in self.contents.iter_mut() {
+            m.filter_map_pitch(&f)?;
+        }
+        Ok(self)
+    }
 
     fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.contents.iter_mut().for_each(|m| {
@@ -507,8 +512,6 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
             .all(|m| m.values.is_empty() || m.volume == 0)
     }
 }
-
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Melody<T> {}
 
 impl<T> Melody<T>
 where

@@ -1,7 +1,7 @@
 use crate::algorithms;
 use crate::collections::traits::{Collection, CollectionError};
 use crate::entities::scale::Scale;
-use crate::ops::pitch::{AugDim, Pitch};
+use crate::ops::pitch::Pitch;
 use anyhow::{anyhow, Result};
 use num_traits::{FromPrimitive, Num, PrimInt};
 use std::fmt::Debug;
@@ -33,26 +33,37 @@ pub trait Sequence<
     PitchType: Pitch<PitchType> + Clone + Copy + Debug + FromPrimitive + Num + PartialOrd + Sum,
 >: Collection<T>
 {
-    fn set_pitches(self, p: Vec<PitchType>) -> Result<Self>;
-    fn map_pitch<MapT: Fn(&PitchType) -> PitchType>(self, f: MapT) -> Self;
-    fn filter_pitch<FilterT: Fn(&PitchType) -> bool>(self, f: FilterT) -> Result<Self>;
-    fn filter_map_pitch<MapT: Fn(&PitchType) -> Option<PitchType>>(self, f: MapT) -> Result<Self>;
+    /// Modify all pitches in the Sequence by passing a mutable reference to them to the
+    /// function passed in the argument.
     fn mutate_pitches<F: Fn(&mut PitchType)>(self, f: F) -> Self;
+
+    /// Return a Vec of pitches in the order they appear in the Sequence.
     fn to_flat_pitches(&self) -> Vec<PitchType>;
+
+    /// Return a Vec containing the pitches for each member of this Sequence.
     fn to_pitches(&self) -> Vec<Vec<PitchType>>;
+
+    /// If all members of this sequence contain exactly one pitch, return a result containing a
+    /// Vec of these pitches, otherwise return an Error.
     fn to_numeric_values(&self) -> Result<Vec<PitchType>>;
+
+    /// If all members of this sequence contain zero or one pitches, return a result containing a
+    /// Vec of these pitches, expressed as Options, otherwise return an Error.
     fn to_optional_numeric_values(&self) -> Result<Vec<Option<PitchType>>>;
 
     /// A map operation on pitches where the pitch is passed to the mapper function
-    /// in a tuple of (position, pitch). The position passed is an Option<usize>, which
-    /// is always None when the map operation is taking place outside of a Sequence
-    /// context, and will contain the position in the Sequence if the map operation
-    /// takes place in a Sequence context.
+    /// in a tuple of (position, pitch).
     fn map_pitch_enumerated<MapT: Fn((usize, &PitchType)) -> PitchType>(self, f: MapT) -> Self;
+
+    /// A filter operation on pitches where the pitch is passed to the mapper function
+    /// in a tuple of (position, pitch).
     fn filter_pitch_enumerated<FilterT: Fn((usize, &PitchType)) -> bool>(
         self,
         f: FilterT,
     ) -> Result<Self>;
+
+    /// A filter_map operation on pitches where the pitch is passed to the mapper function
+    /// in a tuple of (position, pitch).
     fn filter_map_pitch_enumerated<MapT: Fn((usize, &PitchType)) -> Option<PitchType>>(
         self,
         f: MapT,
@@ -60,22 +71,7 @@ pub trait Sequence<
     where
         Self: std::marker::Sized;
 
-    fn transpose_pitch(self, n: PitchType) -> Self;
-    fn invert_pitch(self, n: PitchType) -> Self;
-    fn modulus(self, n: PitchType) -> Self;
-    fn trim_min(self, n: PitchType) -> Self;
-    fn trim_max(self, n: PitchType) -> Self;
-    fn bounce_min(self, n: PitchType) -> Self;
-    fn bounce_max(self, n: PitchType) -> Self;
-
-    fn augment_pitch<AT: AugDim<PitchType> + Copy>(self, n: AT) -> Self;
-    fn diminish_pitch<AT: AugDim<PitchType> + Copy>(self, n: AT) -> Self;
-
-    fn trim(self, first: PitchType, second: PitchType) -> Self;
-    fn bounce(self, first: PitchType, second: PitchType) -> Self;
-
-    fn is_silent(self) -> bool;
-
+    /// Return an Option containing the lowest pitch in this Sequence, if any.
     fn min_value(&self) -> Option<PitchType> {
         self.to_flat_pitches()
             .iter()
@@ -83,6 +79,7 @@ pub trait Sequence<
             .min_by(|a, b| a.partial_cmp(b).unwrap())
     }
 
+    /// Return an Option containing the highest pitch in this Sequence, if any.
     fn max_value(&self) -> Option<PitchType> {
         self.to_flat_pitches()
             .iter()
@@ -90,10 +87,12 @@ pub trait Sequence<
             .max_by(|a, b| a.partial_cmp(b).unwrap())
     }
 
+    /// Return an Option containing the sum of all pitches in this Sequence, if any.
     fn total(&self) -> Option<PitchType> {
         Some(self.to_flat_pitches().iter().copied().sum())
     }
 
+    /// Return an Option containing the mean value of all pitches in this Sequence, if any.
     fn mean(&self) -> Option<PitchType> {
         let pitches = self.to_flat_pitches();
         let mut iter = pitches.iter();
@@ -102,6 +101,8 @@ pub trait Sequence<
         Some(iter.fold(*first, |acc, x| acc + *x) / PitchType::from_usize(pitches.len())?)
     }
 
+    /// Return an Option containing the distance between maximum and minimum pitches in
+    /// this Sequence, if any.
     fn range(&self) -> Option<PitchType> {
         if let (Some(min), Some(max)) = (self.min_value(), self.max_value()) {
             Some(max - min)
