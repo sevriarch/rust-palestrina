@@ -107,7 +107,7 @@ try_from_seq!(for NoteSeq<T> ChordSeq<T> Melody<T>);
 macro_rules! impl_fns_for_seq {
     ($ty:ident, for $($fn:ident)*) => ($(
         fn $fn(mut self, n: $ty) -> Self {
-            self.contents.iter_mut().for_each(|p| { *p = p.$fn(n); });
+            self.contents.iter_mut().for_each(|p| { *p = *p.$fn(n); });
             self
         }
     )*)
@@ -203,7 +203,7 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pit
 
     fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
         self.contents.iter_mut().for_each(|p| {
-            *p = p.map_pitch(&f);
+            *p = *p.map_pitch(&f);
         });
         self
     }
@@ -229,28 +229,28 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pit
 
     fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.contents.iter_mut().for_each(|p| {
-            *p = p.augment_pitch(n);
+            *p = *p.augment_pitch(n);
         });
         self
     }
 
     fn diminish_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.contents.iter_mut().for_each(|p| {
-            *p = p.diminish_pitch(n);
+            *p = *p.diminish_pitch(n);
         });
         self
     }
 
     fn trim(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|p| {
-            *p = p.trim(first, second);
+            *p = *p.trim(first, second);
         });
         self
     }
 
     fn bounce(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|p| {
-            *p = p.bounce(first, second);
+            *p = *p.bounce(first, second);
         });
         self
     }

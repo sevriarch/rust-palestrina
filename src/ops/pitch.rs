@@ -313,6 +313,160 @@ where
     }
 }
 
+impl<T> Pitch<T> for &mut T
+where
+    T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + AddAssign,
+{
+    #[allow(unused_assignments)]
+    fn set_pitches(self, p: Vec<T>) -> Result<Self> {
+        match p.len() {
+            0 => Err(anyhow!(PitchError::RequiredPitchAbsent(
+                "set_pitches()".to_string()
+            ))),
+            1 => {
+                *self = p[0];
+                Ok(self)
+            }
+            _ => Err(anyhow!(PitchError::MultiplePitchesNotAllowed(
+                "set_pitches()".to_string()
+            ))),
+        }
+    }
+
+    fn map_pitch<MapT: Fn(&T) -> T>(self, f: MapT) -> Self {
+        *self = f(self);
+        self
+    }
+
+    fn filter_pitch<FilterT: Fn(&T) -> bool>(self, f: FilterT) -> Result<Self> {
+        if f(self) {
+            Ok(self)
+        } else {
+            Err(anyhow!(PitchError::RequiredPitchAbsent(
+                "Pitch.filter_pitch()".to_string()
+            )))
+        }
+    }
+
+    fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(self, f: MapT) -> Result<Self> {
+        if let Some(p) = f(self) {
+            *self = p;
+            Ok(self)
+        } else {
+            Err(anyhow!(PitchError::RequiredPitchAbsent(
+                "Pitch.filter_map_pitch()".to_string()
+            )))
+        }
+    }
+
+    fn transpose_pitch(self, n: T) -> Self {
+        *self += n;
+        self
+    }
+
+    fn invert_pitch(self, n: T) -> Self {
+        *self = n + n - *self;
+        self
+    }
+
+    fn augment_pitch<MT: AugDim<T> + Copy>(self, n: MT) -> Self {
+        n.augment_target(self);
+        self
+    }
+
+    fn diminish_pitch<MT: AugDim<T> + Copy>(self, n: MT) -> Self {
+        n.diminish_target(self);
+        self
+    }
+
+    fn modulus(self, n: T) -> Self {
+        // Can't use n.abs() as it's not implemented for unsigned ints
+        let n = if n < T::zero() { T::zero() - n } else { n };
+        let ret = *self % n;
+
+        *self = if ret < T::zero() { ret + n } else { ret };
+        self
+    }
+
+    fn trim_min(self, n: T) -> Self {
+        if *self < n {
+            *self = n;
+        }
+        self
+    }
+
+    fn trim_max(self, n: T) -> Self {
+        if *self > n {
+            *self = n;
+        }
+        self
+    }
+
+    fn trim(self, first: T, second: T) -> Self {
+        let (min, max) = if first > second {
+            (second, first)
+        } else {
+            (first, second)
+        };
+
+        if *self < min {
+            *self = min;
+        } else if *self > max {
+            *self = max;
+        }
+        self
+    }
+
+    fn is_silent(self) -> bool {
+        false
+    }
+
+    fn bounce_min(self, n: T) -> Self {
+        if *self < n {
+            *self = n + n - *self;
+        }
+        self
+    }
+
+    fn bounce_max(self, n: T) -> Self {
+        if *self > n {
+            *self = n + n - *self;
+        }
+        self
+    }
+
+    fn bounce(self, first: T, second: T) -> Self {
+        let (min, max) = if first > second {
+            (second, first)
+        } else {
+            (first, second)
+        };
+
+        let diff = max - min;
+
+        if diff.is_zero() {
+            *self = min;
+        } else if *self < min {
+            let mut modulus = (min - *self) % (diff + diff);
+
+            if modulus > diff {
+                modulus = diff + diff - modulus;
+            }
+
+            *self = min + modulus;
+        } else if *self > max {
+            let mut modulus = (*self - max) % (diff + diff);
+
+            if modulus > diff {
+                modulus = diff + diff - modulus;
+            }
+
+            *self = max - modulus;
+        }
+        self
+    }
+}
+
 macro_rules! impl_fns_for_option {
     ($ty:ident, for $($fn:ident)*) => ($(
         fn $fn(self, n: $ty) -> Self {
@@ -379,7 +533,7 @@ macro_rules! impl_fns_for_mut_option {
     ($ty:ident, for $($fn:ident)*) => ($(
         fn $fn(self, n: $ty) -> Self {
             if let Some(v) = self {
-                *v = v.$fn(n);
+                *v = *v.$fn(n);
             }
             self
         }
@@ -432,28 +586,28 @@ where
 
     fn augment_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self {
         if let Some(p) = self {
-            *p = p.augment_pitch(n);
+            *p = *p.augment_pitch(n);
         }
         self
     }
 
     fn diminish_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self {
         if let Some(p) = self {
-            *p = p.augment_pitch(n);
+            *p = *p.augment_pitch(n);
         }
         self
     }
 
     fn trim(self, first: T, last: T) -> Self {
         if let Some(p) = self {
-            *p = p.trim(first, last);
+            *p = *p.trim(first, last);
         }
         self
     }
 
     fn bounce(self, first: T, last: T) -> Self {
         if let Some(p) = self {
-            *p = p.bounce(first, last);
+            *p = *p.bounce(first, last);
         }
         self
     }
@@ -466,7 +620,7 @@ where
 macro_rules! impl_fns_for_vec {
     ($ty:ident, for $($fn:ident)*) => ($(
         fn $fn(mut self, n: $ty) -> Self {
-            self.iter_mut().for_each(|p| { *p = p.$fn(n); });
+            self.iter_mut().for_each(|p| { *p = *p.$fn(n); });
             self
         }
     )*)
@@ -501,28 +655,28 @@ where
 
     fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.iter_mut().for_each(|p| {
-            *p = p.augment_pitch(n);
+            *p = *p.augment_pitch(n);
         });
         self
     }
 
     fn diminish_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.iter_mut().for_each(|p| {
-            *p = p.diminish_pitch(n);
+            *p = *p.diminish_pitch(n);
         });
         self
     }
 
     fn trim(mut self, first: T, last: T) -> Self {
         self.iter_mut().for_each(|p| {
-            *p = p.trim(first, last);
+            *p = *p.trim(first, last);
         });
         self
     }
 
     fn bounce(mut self, first: T, last: T) -> Self {
         self.iter_mut().for_each(|p| {
-            *p = p.bounce(first, last);
+            *p = *p.bounce(first, last);
         });
         self
     }
@@ -535,7 +689,7 @@ where
 macro_rules! impl_fns_for_mut_vec {
     ($ty:ident, for $($fn:ident)*) => ($(
         fn $fn(self, n: $ty) -> Self {
-            self.iter_mut().for_each(|p| { *p = p.$fn(n); });
+            self.iter_mut().for_each(|p| { *p = *p.$fn(n); });
             self
         }
     )*)
@@ -569,28 +723,28 @@ where
 
     fn augment_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self {
         self.iter_mut().for_each(|p| {
-            *p = p.augment_pitch(n);
+            *p = *p.augment_pitch(n);
         });
         self
     }
 
     fn diminish_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self {
         self.iter_mut().for_each(|p| {
-            *p = p.diminish_pitch(n);
+            *p = *p.diminish_pitch(n);
         });
         self
     }
 
     fn trim(self, first: T, last: T) -> Self {
         self.iter_mut().for_each(|p| {
-            *p = p.trim(first, last);
+            *p = *p.trim(first, last);
         });
         self
     }
 
     fn bounce(self, first: T, last: T) -> Self {
         self.iter_mut().for_each(|p| {
-            *p = p.bounce(first, last);
+            *p = *p.bounce(first, last);
         });
         self
     }
