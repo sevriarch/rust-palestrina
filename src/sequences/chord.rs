@@ -5,7 +5,7 @@ use crate::sequences::melody::Melody;
 use crate::sequences::note::NoteSeq;
 use crate::sequences::numeric::NumericSeq;
 use crate::sequences::traits::Sequence;
-use crate::{default_collection_methods, default_sequence_methods};
+use crate::{default_collection_methods, default_sequence_methods, sequence_pitch_methods};
 
 use anyhow::{anyhow, Result};
 use num_traits::{Bounded, FromPrimitive, Num};
@@ -98,6 +98,8 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + Bounded> Collection<Vec<T>> fo
     default_sequence_methods!(Vec<T>);
 }
 
+sequence_pitch_methods!(ChordSeq);
+
 impl<
         T: Pitch<T>
             + Clone
@@ -189,6 +191,7 @@ impl<
     }
 }
 
+/*
 macro_rules! impl_fns_for_seq {
     ($ty:ident, for $($fn:ident)*) => ($(
         fn $fn(mut self, n: $ty) -> Self {
@@ -268,9 +271,7 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pit
 
     fn bounce(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|p| {
-            p.iter_mut().for_each(|v| {
-                v.bounce(first, second);
-            });
+            p.bounce(first, second);
         });
         self
     }
@@ -279,6 +280,7 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pit
         self.contents.iter().all(|m| m.is_empty())
     }
 }
+*/
 
 #[cfg(test)]
 mod tests {

@@ -9,6 +9,124 @@ use std::ops::SubAssign;
 use std::slice::Iter;
 
 #[macro_export]
+macro_rules! sequence_pitch_methods {
+    ($ty:ident) => {
+        impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pitch<T>
+            for $ty<T>
+        {
+            fn transpose_pitch(mut self, v: T) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.transpose_pitch(v);
+                });
+                self
+            }
+
+            fn invert_pitch(mut self, v: T) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.invert_pitch(v);
+                });
+                self
+            }
+
+            fn modulus(mut self, v: T) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.modulus(v);
+                });
+                self
+            }
+
+            fn trim_min(mut self, v: T) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.trim_min(v);
+                });
+                self
+            }
+
+            fn trim_max(mut self, v: T) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.trim_max(v);
+                });
+                self
+            }
+
+            fn bounce_min(mut self, v: T) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.bounce_min(v);
+                });
+                self
+            }
+
+            fn bounce_max(mut self, v: T) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.bounce_max(v);
+                });
+                self
+            }
+
+            fn set_pitches(mut self, v: Vec<T>) -> Result<Self> {
+                for p in self.contents.iter_mut() {
+                    p.set_pitches(v.clone())?;
+                }
+                Ok(self)
+            }
+
+            fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.map_pitch(&f);
+                });
+                self
+            }
+
+            fn filter_pitch<FilterT: Fn(&T) -> bool>(mut self, f: FilterT) -> Result<Self> {
+                for p in self.contents.iter_mut() {
+                    p.filter_pitch(&f)?;
+                }
+                Ok(self)
+            }
+
+            fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
+                for p in self.contents.iter_mut() {
+                    p.filter_map_pitch(&f)?;
+                }
+                Ok(self)
+            }
+
+            fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.augment_pitch(n);
+                });
+                self
+            }
+
+            fn diminish_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.diminish_pitch(n);
+                });
+                self
+            }
+
+            fn trim(mut self, first: T, second: T) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.trim(first, second);
+                });
+                self
+            }
+
+            fn bounce(mut self, first: T, second: T) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.bounce(first, second);
+                });
+                self
+            }
+
+            fn is_silent(mut self) -> bool {
+                self.contents.iter_mut().all(|m| m.is_silent())
+            }
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! default_sequence_methods {
     ($type:ty) => {
         fn new(contents: Vec<$type>) -> Self {

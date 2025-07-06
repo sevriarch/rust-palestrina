@@ -1,11 +1,11 @@
 use crate::collections::traits::Collection;
 use crate::metadata::MetadataList;
-use crate::ops::pitch::{AugDim, Pitch, PitchError};
+use crate::ops::pitch::{AugDim, Pitch};
 use crate::sequences::chord::ChordSeq;
 use crate::sequences::melody::Melody;
 use crate::sequences::numeric::NumericSeq;
 use crate::sequences::traits::Sequence;
-use crate::{default_collection_methods, default_sequence_methods};
+use crate::{default_collection_methods, default_sequence_methods, sequence_pitch_methods};
 
 use anyhow::{anyhow, Result};
 use num_traits::{Bounded, FromPrimitive, Num};
@@ -192,105 +192,7 @@ impl<
     }
 }
 
-macro_rules! impl_fns_for_seq {
-    ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(mut self, n: $ty) -> Self {
-            self.contents.iter_mut().for_each(|p| {
-                p.$fn(n);
-            });
-            self
-        }
-    )*)
-}
-
-impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pitch<T>
-    for NoteSeq<T>
-{
-    impl_fns_for_seq!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
-
-    fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
-        let repval = match p.len() {
-            0 => None,
-            1 => Some(p[0]),
-            _ => {
-                return Err(anyhow!(PitchError::MultiplePitchesNotAllowed(
-                    "set_pitches()".to_string()
-                )))
-            }
-        };
-        self.contents.iter_mut().for_each(|m| {
-            *m = repval;
-        });
-        Ok(self)
-    }
-
-    fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
-        self.contents.iter_mut().for_each(|m| {
-            if let Some(p) = m {
-                *p = f(p);
-            }
-        });
-        self
-    }
-
-    fn filter_pitch<FilterT: Fn(&T) -> bool>(mut self, f: FilterT) -> Result<Self> {
-        self.contents.iter_mut().for_each(|m| {
-            if let Some(p) = m {
-                if !f(p) {
-                    *m = None;
-                }
-            }
-        });
-        Ok(self)
-    }
-
-    fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
-        self.contents
-            .iter_mut()
-            .for_each(|p| *p = p.map(|v| f(&v)).flatten());
-        Ok(self)
-    }
-
-    fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
-        self.contents.iter_mut().for_each(|m| {
-            if let Some(p) = m {
-                p.augment_pitch(n);
-            }
-        });
-        self
-    }
-
-    fn diminish_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
-        self.contents.iter_mut().for_each(|m| {
-            if let Some(p) = m {
-                p.diminish_pitch(n);
-            }
-        });
-        self
-    }
-
-    fn trim(mut self, first: T, second: T) -> Self {
-        self.contents.iter_mut().for_each(|m| {
-            if let Some(p) = m {
-                p.trim(first, second);
-            }
-        });
-        self
-    }
-
-    fn bounce(mut self, first: T, second: T) -> Self {
-        self.contents.iter_mut().for_each(|m| {
-            if let Some(p) = m {
-                p.bounce(first, second);
-            }
-        });
-        self
-    }
-
-    fn is_silent(self) -> bool {
-        self.contents.iter().all(|m| m.is_none())
-    }
-}
+sequence_pitch_methods!(NoteSeq);
 
 #[cfg(test)]
 mod tests {
@@ -423,9 +325,7 @@ mod tests {
 
     #[test]
     fn set_pitches() {
-        assert!(NoteSeq::<i32>::new(vec![])
-            .set_pitches(vec![55, 66])
-            .is_err());
+        assert!(noteseq![4].set_pitches(vec![55, 66]).is_err());
         assert_eq!(
             NoteSeq::<i32>::new(vec![]).set_pitches(vec![55]).unwrap(),
             NoteSeq::<i32>::new(vec![])
