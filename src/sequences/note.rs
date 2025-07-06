@@ -83,7 +83,7 @@ macro_rules! try_from_seq {
     (for $($type:ty)*) => ($(
         impl<T> TryFrom<$type> for NoteSeq<T>
         where
-            T: Pitch<T> + Copy + Clone + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum,
+            T: Pitch<T> + Copy + Clone + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum + AddAssign,
         {
             type Error = anyhow::Error;
 
@@ -187,7 +187,7 @@ macro_rules! impl_fns_for_seq {
         fn $fn(mut self, n: $ty) -> Self {
             self.contents.iter_mut().for_each(|m| {
                 if let Some(p) = m {
-                    *p = *p.$fn(n);
+                    p.$fn(n);
                 }
             });
             self
@@ -246,7 +246,7 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pit
     fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.contents.iter_mut().for_each(|m| {
             if let Some(p) = m {
-                *p = *p.augment_pitch(n);
+                p.augment_pitch(n);
             }
         });
         self
@@ -255,7 +255,7 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pit
     fn diminish_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.contents.iter_mut().for_each(|m| {
             if let Some(p) = m {
-                *p = *p.diminish_pitch(n);
+                p.diminish_pitch(n);
             }
         });
         self
@@ -264,7 +264,7 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pit
     fn trim(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|m| {
             if let Some(p) = m {
-                *p = *p.trim(first, second);
+                p.trim(first, second);
             }
         });
         self
@@ -273,7 +273,7 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pit
     fn bounce(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|m| {
             if let Some(p) = m {
-                *p = *p.bounce(first, second);
+                p.bounce(first, second);
             }
         });
         self

@@ -9,6 +9,7 @@ use num_traits::{Bounded, FromPrimitive, Num};
 use std::convert::From;
 use std::fmt::Debug;
 use std::iter::Sum;
+use std::ops::AddAssign;
 
 #[derive(Clone, Debug)]
 pub struct Score<T>
@@ -70,9 +71,11 @@ where
         + FromPrimitive
         + PartialOrd
         + Bounded
+        + FromPrimitive
         + From<i32>
         + Num
-        + Sum,
+        + Sum
+        + AddAssign,
 {
     pub fn pitch_range(&self) -> Option<(T, T)> {
         let min = self

@@ -586,28 +586,28 @@ where
 
     fn augment_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self {
         if let Some(p) = self {
-            *p = *p.augment_pitch(n);
+            p.augment_pitch(n);
         }
         self
     }
 
     fn diminish_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self {
         if let Some(p) = self {
-            *p = *p.augment_pitch(n);
+            p.diminish_pitch(n);
         }
         self
     }
 
     fn trim(self, first: T, last: T) -> Self {
         if let Some(p) = self {
-            *p = *p.trim(first, last);
+            p.trim(first, last);
         }
         self
     }
 
     fn bounce(self, first: T, last: T) -> Self {
         if let Some(p) = self {
-            *p = *p.bounce(first, last);
+            p.bounce(first, last);
         }
         self
     }
@@ -723,28 +723,28 @@ where
 
     fn augment_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self {
         self.iter_mut().for_each(|p| {
-            *p = *p.augment_pitch(n);
+            p.augment_pitch(n);
         });
         self
     }
 
     fn diminish_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self {
         self.iter_mut().for_each(|p| {
-            *p = *p.diminish_pitch(n);
+            p.diminish_pitch(n);
         });
         self
     }
 
     fn trim(self, first: T, last: T) -> Self {
         self.iter_mut().for_each(|p| {
-            *p = *p.trim(first, last);
+            p.trim(first, last);
         });
         self
     }
 
     fn bounce(self, first: T, last: T) -> Self {
         self.iter_mut().for_each(|p| {
-            *p = *p.bounce(first, last);
+            p.bounce(first, last);
         });
         self
     }

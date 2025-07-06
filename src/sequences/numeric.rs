@@ -88,7 +88,7 @@ macro_rules! try_from_seq {
     (for $($type:ty)*) => ($(
         impl<T> TryFrom<$type> for NumericSeq<T>
         where
-            T: Pitch<T> + Copy + Clone + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum,
+            T: Pitch<T> + Copy + Clone + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum + AddAssign,
         {
             type Error = anyhow::Error;
 
@@ -103,15 +103,6 @@ macro_rules! try_from_seq {
 }
 
 try_from_seq!(for NoteSeq<T> ChordSeq<T> Melody<T>);
-
-macro_rules! impl_fns_for_seq {
-    ($ty:ident, for $($fn:ident)*) => ($(
-        fn $fn(mut self, n: $ty) -> Self {
-            self.contents.iter_mut().for_each(|p| { *p = *p.$fn(n); });
-            self
-        }
-    )*)
-}
 
 impl<T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum> Collection<T>
     for NumericSeq<T>
@@ -175,6 +166,15 @@ impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bou
     }
 }
 
+macro_rules! impl_fns_for_seq {
+    ($ty:ident, for $($fn:ident)*) => ($(
+        fn $fn(mut self, n: $ty) -> Self {
+            self.contents.iter_mut().for_each(|p| { p.$fn(n); });
+            self
+        }
+    )*)
+}
+
 impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pitch<T>
     for NumericSeq<T>
 {
@@ -203,7 +203,7 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pit
 
     fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
         self.contents.iter_mut().for_each(|p| {
-            *p = *p.map_pitch(&f);
+            p.map_pitch(&f);
         });
         self
     }
@@ -229,28 +229,28 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pit
 
     fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.contents.iter_mut().for_each(|p| {
-            *p = *p.augment_pitch(n);
+            p.augment_pitch(n);
         });
         self
     }
 
     fn diminish_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.contents.iter_mut().for_each(|p| {
-            *p = *p.diminish_pitch(n);
+            p.diminish_pitch(n);
         });
         self
     }
 
     fn trim(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|p| {
-            *p = *p.trim(first, second);
+            p.trim(first, second);
         });
         self
     }
 
     fn bounce(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|p| {
-            *p = *p.bounce(first, second);
+            p.bounce(first, second);
         });
         self
     }

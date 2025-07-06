@@ -77,7 +77,7 @@ macro_rules! try_from_seq {
     (for $($t:ty)*) => ($(
         impl<T> TryFrom<$t> for ChordSeq<T>
         where
-            T: Pitch<T> + Copy + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum,
+            T: Pitch<T> + Copy + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum + AddAssign,
         {
             type Error = anyhow::Error;
 
@@ -183,7 +183,7 @@ macro_rules! impl_fns_for_seq {
     ($ty:ident, for $($fn:ident)*) => ($(
         fn $fn(mut self, n: $ty) -> Self {
             self.contents.iter_mut().for_each(|p| {
-                p.iter_mut().for_each(|v| { *v = *v.$fn(n); });
+                p.iter_mut().for_each(|v| { v.$fn(n); });
             });
             self
         }
@@ -232,7 +232,7 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pit
     fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.contents.iter_mut().for_each(|p| {
             p.iter_mut().for_each(|v| {
-                *v = *v.augment_pitch(n);
+                v.augment_pitch(n);
             });
         });
         self
@@ -241,7 +241,7 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pit
     fn diminish_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
         self.contents.iter_mut().for_each(|p| {
             p.iter_mut().for_each(|v| {
-                *v = *v.diminish_pitch(n);
+                v.diminish_pitch(n);
             });
         });
         self
@@ -250,7 +250,7 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pit
     fn trim(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|p| {
             p.iter_mut().for_each(|v| {
-                *v = *v.trim(first, second);
+                v.trim(first, second);
             });
         });
         self
@@ -259,7 +259,7 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pit
     fn bounce(mut self, first: T, second: T) -> Self {
         self.contents.iter_mut().for_each(|p| {
             p.iter_mut().for_each(|v| {
-                *v = *v.bounce(first, second);
+                v.bounce(first, second);
             });
         });
         self

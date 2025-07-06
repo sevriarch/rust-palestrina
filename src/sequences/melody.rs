@@ -133,7 +133,7 @@ where
 macro_rules! impl_fns_for_melody_member {
     ($ty:ident, for $($fn:ident)*) => ($(
         fn $fn(self, n: $ty) -> Self {
-            self.values.iter_mut().for_each(|p| { *p = p.$fn(n); });
+            self.values.iter_mut().for_each(|p| { *p = *p.$fn(n); });
             self
         }
     )*)
@@ -141,7 +141,7 @@ macro_rules! impl_fns_for_melody_member {
 
 impl<T> Pitch<T> for &mut MelodyMember<T>
 where
-    T: Pitch<T> + Copy,
+    T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum,
 {
     impl_fns_for_melody_member!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
 
@@ -172,28 +172,28 @@ where
 
     fn augment_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self {
         self.values.iter_mut().for_each(|p| {
-            *p = p.augment_pitch(n);
+            p.augment_pitch(n);
         });
         self
     }
 
     fn diminish_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self {
         self.values.iter_mut().for_each(|p| {
-            *p = p.diminish_pitch(n);
+            p.diminish_pitch(n);
         });
         self
     }
 
     fn trim(self, first: T, last: T) -> Self {
         self.values.iter_mut().for_each(|p| {
-            *p = p.trim(first, last);
+            p.trim(first, last);
         });
         self
     }
 
     fn bounce(self, first: T, last: T) -> Self {
         self.values.iter_mut().for_each(|p| {
-            *p = p.bounce(first, last);
+            p.bounce(first, last);
         });
         self
     }
@@ -205,7 +205,7 @@ where
 
 impl<T> MelodyMember<T>
 where
-    T: Copy + Clone + Num,
+    T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum,
 {
     pub fn new(values: Vec<T>) -> Self {
         Self {
@@ -307,7 +307,7 @@ macro_rules! try_from_vec {
     (for $($t:ty)*) => ($(
         impl<T> TryFrom<$t> for Melody<T>
         where
-            T: Clone + Copy + Num + Debug + PartialOrd + Bounded,
+            T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + AddAssign,
         {
             type Error = anyhow::Error;
 
@@ -322,7 +322,16 @@ try_from_vec!(for Vec<T> Vec<Option<T>> Vec<Vec<T>>);
 
 impl<T> TryFrom<Vec<MelodyMember<T>>> for Melody<T>
 where
-    T: Clone + Copy + Num + Debug + PartialOrd + Bounded,
+    T: Pitch<T>
+        + Clone
+        + Copy
+        + Num
+        + Debug
+        + FromPrimitive
+        + PartialOrd
+        + Bounded
+        + Sum
+        + AddAssign,
 {
     type Error = anyhow::Error;
 
@@ -355,13 +364,26 @@ macro_rules! try_from_seq {
 
 try_from_seq!(for NumericSeq<T> NoteSeq<T> ChordSeq<T>);
 
-impl<T: Clone + Num + Debug + PartialOrd + Bounded> Collection<MelodyMember<T>> for Melody<T> {
+impl<T> Collection<MelodyMember<T>> for Melody<T>
+where
+    T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum,
+{
     default_collection_methods!(MelodyMember<T>);
     default_sequence_methods!(MelodyMember<T>);
 }
 
-impl<T: Pitch<T> + Clone + Copy + Num + Debug + FromPrimitive + PartialOrd + Bounded + Sum>
-    Sequence<MelodyMember<T>, T> for Melody<T>
+impl<T> Sequence<MelodyMember<T>, T> for Melody<T>
+where
+    T: Pitch<T>
+        + Clone
+        + Copy
+        + Num
+        + Debug
+        + FromPrimitive
+        + PartialOrd
+        + AddAssign
+        + Bounded
+        + Sum,
 {
     fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
         self.contents.iter_mut().for_each(|m| {
@@ -444,8 +466,9 @@ macro_rules! impl_fns_for_seq {
     )*)
 }
 
-impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pitch<T>
-    for Melody<T>
+impl<T> Pitch<T> for Melody<T>
+where
+    T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum,
 {
     impl_fns_for_seq!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
 
@@ -515,7 +538,7 @@ impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pit
 
 impl<T> Melody<T>
 where
-    T: Bounded + Clone + Copy + Num + Debug + PartialOrd,
+    T: Pitch<T> + Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum,
 {
     pub fn to_volume(&self) -> Vec<u8> {
         self.contents.iter().map(|m| m.volume).collect()
