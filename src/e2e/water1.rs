@@ -21,11 +21,17 @@ const DEBUG = process.env.WATER_DEBUG && process.env.WATER_DEBUG !== '0'
 
 */
 use crate::collections::traits::Collection;
-use crate::entities::scale::Scale;
+use crate::entities::{scale::Scale, timing::DurationalEventTiming};
 use crate::imports::rasmussen;
 use crate::metadata::Metadata;
+use crate::metadata::MetadataList;
 use crate::ops::pitch::Pitch;
-use crate::sequences::{melody::Melody, note::NoteSeq, numeric::NumericSeq, traits::Sequence};
+use crate::sequences::{
+    melody::{Melody, MelodyMember},
+    note::NoteSeq,
+    numeric::NumericSeq,
+    traits::Sequence,
+};
 use anyhow::Result;
 
 const LEN: usize = 2816;
@@ -265,21 +271,18 @@ fn melody1(n: usize) -> Result<Melody<i32>> {
     let mut s_on = vec![0];
     let mut s_off = vec![];
 
-    let (m1, m2) = build_base_sequences()?;
+    let (m1, _) = build_base_sequences()?;
 
     (barlen * first..len1).step_by(p_gap).for_each(|i| {
         s_off.push(i - 2);
         s_on.push(i);
     });
-    let sieve1 = |(i, v): (Option<usize>, &i32)| -> Option<i32> {
+    let sieve1 = |(i, v): (usize, &i32)| -> Option<i32> {
         let m = (48 + v) % 12;
         let lpad = 1024; // 128 bars
         let gap = 128; // 16 bars
 
-        let s = match i {
-            Some(ix) => (ix as i32 - lpad) / gap,
-            None => return Some(*v),
-        };
+        let s = i as i32 - lpad / gap;
 
         let rotator = match m {
             2 => 5,
@@ -304,7 +307,7 @@ fn melody1(n: usize) -> Result<Melody<i32>> {
     let mel: Melody<i32> = m1
         .keep(len1)?
         //.if(!n).then(s => s.replaceIndices(-1, null)) // Not implemented yet
-        // TODO .filter_map_pitch_enumerated(sieve1)?
+        .filter_map_pitch_enumerated(sieve1)?
         .transpose_pitch(84 - 12 * n as i32)
         .try_into()?;
 
@@ -315,15 +318,179 @@ fn melody1(n: usize) -> Result<Melody<i32>> {
     //.with_event_after(s_off, "sustain", 0)
 }
 
-/*
 #[test]
 fn test_melody1() {
     let e = melody1(0).unwrap().keep(16).unwrap();
-    let f = Melody::try_from(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]).unwrap();
+    let f = Melody {
+        contents: vec![
+            MelodyMember {
+                values: vec![],
+                timing: DurationalEventTiming {
+                    tick: Some(0),
+                    offset: 0,
+                    duration: 210,
+                },
+                volume: 15,
+                before: MetadataList { contents: vec![] },
+            },
+            MelodyMember {
+                values: vec![107],
+                timing: DurationalEventTiming {
+                    tick: None,
+                    offset: 0,
+                    duration: 210,
+                },
+                volume: 15,
+                before: MetadataList { contents: vec![] },
+            },
+            MelodyMember {
+                values: vec![105],
+                timing: DurationalEventTiming {
+                    tick: None,
+                    offset: 0,
+                    duration: 210,
+                },
+                volume: 15,
+                before: MetadataList { contents: vec![] },
+            },
+            MelodyMember {
+                values: vec![104],
+                timing: DurationalEventTiming {
+                    tick: None,
+                    offset: 0,
+                    duration: 210,
+                },
+                volume: 15,
+                before: MetadataList { contents: vec![] },
+            },
+            MelodyMember {
+                values: vec![102],
+                timing: DurationalEventTiming {
+                    tick: None,
+                    offset: 0,
+                    duration: 210,
+                },
+                volume: 15,
+                before: MetadataList { contents: vec![] },
+            },
+            MelodyMember {
+                values: vec![101],
+                timing: DurationalEventTiming {
+                    tick: None,
+                    offset: 0,
+                    duration: 210,
+                },
+                volume: 16,
+                before: MetadataList { contents: vec![] },
+            },
+            MelodyMember {
+                values: vec![102],
+                timing: DurationalEventTiming {
+                    tick: None,
+                    offset: 0,
+                    duration: 210,
+                },
+                volume: 16,
+                before: MetadataList { contents: vec![] },
+            },
+            MelodyMember {
+                values: vec![101],
+                timing: DurationalEventTiming {
+                    tick: None,
+                    offset: 0,
+                    duration: 210,
+                },
+                volume: 16,
+                before: MetadataList { contents: vec![] },
+            },
+            MelodyMember {
+                values: vec![99],
+                timing: DurationalEventTiming {
+                    tick: None,
+                    offset: 0,
+                    duration: 210,
+                },
+                volume: 16,
+                before: MetadataList { contents: vec![] },
+            },
+            MelodyMember {
+                values: vec![101],
+                timing: DurationalEventTiming {
+                    tick: None,
+                    offset: 0,
+                    duration: 210,
+                },
+                volume: 17,
+                before: MetadataList { contents: vec![] },
+            },
+            MelodyMember {
+                values: vec![98],
+                timing: DurationalEventTiming {
+                    tick: None,
+                    offset: 0,
+                    duration: 210,
+                },
+                volume: 17,
+                before: MetadataList { contents: vec![] },
+            },
+            MelodyMember {
+                values: vec![],
+                timing: DurationalEventTiming {
+                    tick: None,
+                    offset: 0,
+                    duration: 210,
+                },
+                volume: 17,
+                before: MetadataList { contents: vec![] },
+            },
+            MelodyMember {
+                values: vec![],
+                timing: DurationalEventTiming {
+                    tick: None,
+                    offset: 0,
+                    duration: 210,
+                },
+                volume: 17,
+                before: MetadataList { contents: vec![] },
+            },
+            MelodyMember {
+                values: vec![],
+                timing: DurationalEventTiming {
+                    tick: None,
+                    offset: 0,
+                    duration: 210,
+                },
+                volume: 18,
+                before: MetadataList { contents: vec![] },
+            },
+            MelodyMember {
+                values: vec![],
+                timing: DurationalEventTiming {
+                    tick: None,
+                    offset: 0,
+                    duration: 210,
+                },
+                volume: 18,
+                before: MetadataList { contents: vec![] },
+            },
+            MelodyMember {
+                values: vec![73],
+                timing: DurationalEventTiming {
+                    tick: None,
+                    offset: 0,
+                    duration: 210,
+                },
+                volume: 18,
+                before: MetadataList { contents: vec![] },
+            },
+        ],
+        metadata: MetadataList { contents: vec![] },
+    };
 
     assert_eq!(e, f);
 }
 
+/*
 function melody1(n) {
     log('entering m1', n)
 

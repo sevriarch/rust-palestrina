@@ -156,6 +156,7 @@ where
     fn bounce(self, first: T, second: T) -> Self;
 
     /// Is this pitch or pitch container silent?
+    #[allow(clippy::wrong_self_convention)]
     fn is_silent(self) -> bool;
 }
 
