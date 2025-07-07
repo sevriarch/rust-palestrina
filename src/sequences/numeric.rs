@@ -24,7 +24,7 @@ macro_rules! numseq {
 #[derive(Clone, Debug, PartialEq)]
 pub struct NumericSeq<T>
 where
-    T: Pitch<T> + Copy,
+    T: Pitch<T> + Copy + Num + Bounded,
 {
     pub contents: Vec<T>,
     pub metadata: MetadataList,

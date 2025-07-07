@@ -7,7 +7,7 @@ use thiserror::Error;
 
 pub trait AugDim<MT>
 where
-    MT: Copy,
+    MT: Copy + Bounded + Num,
 {
     fn augment_target(&self, v: &mut MT);
     fn diminish_target(&self, v: &mut MT);
@@ -75,7 +75,7 @@ pub enum PitchError {
 /// or containers for pitches.
 pub trait Pitch<T>
 where
-    T: Copy,
+    T: Copy + Bounded + Num,
 {
     /// Set a pitch or pitches.
     fn set_pitches(self, p: Vec<T>) -> Result<Self>

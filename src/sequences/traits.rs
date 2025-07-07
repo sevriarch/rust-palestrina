@@ -2,7 +2,7 @@ use crate::collections::traits::{Collection, CollectionError};
 use crate::entities::scale::Scale;
 use crate::ops::pitch::Pitch;
 use anyhow::{anyhow, Result};
-use num_traits::{FromPrimitive, Num, PrimInt};
+use num_traits::{Bounded, FromPrimitive, Num, PrimInt};
 use std::fmt::Debug;
 use std::iter::{zip, Sum};
 use std::ops::SubAssign;
@@ -147,7 +147,7 @@ macro_rules! default_sequence_methods {
 
 pub trait Sequence<
     T: Clone + Debug + PartialEq,
-    PitchType: Pitch<PitchType> + Clone + Copy + Debug + FromPrimitive + Num + PartialOrd + Sum,
+    PitchType: Pitch<PitchType> + Clone + Copy + Debug + FromPrimitive + Bounded + Num + PartialOrd + Sum,
 >: Pitch<PitchType> + Collection<T>
 {
     /// Modify all pitches in the Sequence by passing a mutable reference to them to the
