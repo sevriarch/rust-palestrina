@@ -592,6 +592,80 @@ mod tests {
     }
 
     #[test]
+    fn trim_min() {
+        assert_numseq_f64_near!(
+            numseq![4.0, 2.0, 5.0, 6.0, 3.0].trim_min(5.5),
+            numseq![5.5, 5.5, 5.5, 6.0, 5.5]
+        );
+        assert_eq!(
+            noteseq![4, None, 5, 6, 3].trim_min(5),
+            noteseq![5, None, 5, 6, 5]
+        );
+        assert_chordseq_f64_near!(
+            chordseq![[4.0], [], [5.0], [6.0, 3.0]].trim_min(5.5),
+            chordseq![[5.5], [], [5.5], [6.0, 5.5]]
+        );
+        assert_eq!(
+            melody![[4], [], [5], [6, 3]].trim_min(5),
+            melody![[5], [], [5], [6, 5]]
+        );
+    }
+
+    #[test]
+    fn trim_max() {
+        assert_numseq_f64_near!(
+            numseq![4.0, 2.0, 5.0, 6.0, 3.0].trim_max(5.5),
+            numseq![4.0, 2.0, 5.0, 5.5, 3.0]
+        );
+        assert_eq!(
+            noteseq![4, None, 5, 6, 3].trim_max(5),
+            noteseq![4, None, 5, 5, 3]
+        );
+        assert_chordseq_f64_near!(
+            chordseq![[4.0], [], [5.0], [6.0, 3.0]].trim_max(5.5),
+            chordseq![[4.0], [], [5.0], [5.5, 3.0]]
+        );
+        assert_eq!(
+            melody![[4], [], [5], [6, 3]].trim_max(5),
+            melody![[4], [], [5], [5, 3]]
+        );
+    }
+
+    #[test]
+    fn bounce_min() {
+        assert_eq!(numseq![4, 2, 5, 6, 3].bounce_min(5), numseq![6, 8, 5, 6, 7]);
+        assert_noteseq_f64_near!(
+            noteseq![4.0, None, 5.0, 6.0, 3.0].bounce_min(5.5),
+            noteseq![7.0, None, 6.0, 6.0, 8.0]
+        );
+        assert_eq!(
+            chordseq![[4], [], [5], [6, 3]].bounce_min(5),
+            chordseq![[6], [], [5], [6, 7]]
+        );
+        assert_melody_f64_near!(
+            melody![[4.0], [], [5.0], [6.0, 3.0]].bounce_min(5.5),
+            melody![[7.0], [], [6.0], [6.0, 8.0]]
+        );
+    }
+
+    #[test]
+    fn bounce_max() {
+        assert_eq!(numseq![4, 2, 5, 6, 3].bounce_max(5), numseq![4, 2, 5, 4, 3]);
+        assert_noteseq_f64_near!(
+            noteseq![4.0, None, 5.0, 6.0, 3.0].bounce_max(5.5),
+            noteseq![4.0, None, 5.0, 5.0, 3.0]
+        );
+        assert_eq!(
+            chordseq![[4], [], [5], [6, 3]].bounce_max(5),
+            chordseq![[4], [], [5], [4, 3]]
+        );
+        assert_melody_f64_near!(
+            melody![[4.0], [], [5.0], [6.0, 3.0]].bounce_max(5.5),
+            melody![[4.0], [], [5.0], [5.0, 3.0]]
+        );
+    }
+
+    #[test]
     fn min_value() {
         assert!(NumericSeq::<i64>::new(vec![]).min_value().is_none());
         assert_eq!(numseq![4, 2, 5, 6, 3].min_value(), Some(2));
