@@ -454,9 +454,142 @@ mod tests {
     use assert_float_eq::assert_f64_near;
 
     use crate::sequences::chord::ChordSeq;
+    use crate::sequences::melody::{Melody, MelodyMember};
     use crate::sequences::note::NoteSeq;
     use crate::sequences::numeric::NumericSeq;
-    use crate::{chordseq, noteseq, numseq, scale};
+    use crate::{chordseq, melody, noteseq, numseq, scale};
+
+    macro_rules! assert_numseq_f64_near {
+        ($val: expr, $exp: expr) => {
+            let val = $val.contents.clone();
+            let exp = $exp.contents.clone();
+
+            assert!(val.len() == exp.len(), "lengths are different");
+            for (a, b) in val.iter().zip(exp.iter()) {
+                assert_f64_near!(*a, *b, 40);
+            }
+        };
+    }
+
+    macro_rules! assert_noteseq_f64_near {
+        ($val: expr, $exp: expr) => {
+            let val = $val.contents.clone();
+            let exp = $exp.contents.clone();
+
+            assert!(val.len() == exp.len(), "lengths are different");
+            for (a, b) in val.iter().zip(exp.iter()) {
+                if a.is_none() {
+                    assert!(
+                        b.is_none(),
+                        "result contained a value where it was not expected"
+                    );
+                } else {
+                    assert!(
+                        b.is_some(),
+                        "result did not contain a value where it was expected"
+                    );
+
+                    assert_f64_near!(a.unwrap(), b.unwrap(), 40);
+                }
+            }
+        };
+    }
+
+    macro_rules! assert_chordseq_f64_near {
+        ($val: expr, $exp: expr) => {
+            let val = $val.contents.clone();
+            let exp = $exp.contents.clone();
+
+            assert_eq!(val.len(), exp.len(), "lengths are different");
+            for (a, b) in val.iter().zip(exp.iter()) {
+                assert_eq!(a.len(), b.len(), "chords have different lengths");
+
+                for (n1, n2) in a.iter().zip(b.iter()) {
+                    assert_f64_near!(*n1, *n2, 40);
+                }
+            }
+        };
+    }
+
+    macro_rules! assert_melody_f64_near {
+        ($val: expr, $exp: expr) => {
+            let val = $val.contents.clone();
+            let exp = $exp.contents.clone();
+
+            assert_eq!(val.len(), exp.len(), "lengths are different");
+            for (a, b) in val.iter().zip(exp.iter()) {
+                assert_eq!(
+                    a.values.len(),
+                    b.values.len(),
+                    "chords have different lengths"
+                );
+
+                for (n1, n2) in a.values.iter().zip(b.values.iter()) {
+                    assert_f64_near!(*n1, *n2, 40);
+                }
+            }
+        };
+    }
+
+    #[test]
+    fn transpose_pitch() {
+        assert_eq!(
+            numseq![4, 2, 5, 6, 3].transpose_pitch(5),
+            numseq![9, 7, 10, 11, 8]
+        );
+        assert_noteseq_f64_near!(
+            noteseq![4.0, None, 5.0, 6.0, 3.0].transpose_pitch(-5.5),
+            noteseq![-1.5, None, -0.5, 0.5, -2.5]
+        );
+        assert_eq!(
+            chordseq![[4], [], [5], [6, 3]].transpose_pitch(5),
+            chordseq![[9], [], [10], [11, 8]]
+        );
+        assert_melody_f64_near!(
+            melody![[4.0], [], [5.0], [6.0, 3.0]].transpose_pitch(-5.5),
+            melody![[-1.5], [], [-0.5], [0.5, -2.5]]
+        );
+    }
+
+    #[test]
+    fn invert_pitch() {
+        assert_numseq_f64_near!(
+            numseq![4.0, 2.0, 5.0, 6.0, 3.0].invert_pitch(5.5),
+            numseq![7.0, 9.0, 6.0, 5.0, 8.0]
+        );
+        assert_eq!(
+            noteseq![4, None, 5, 6, 3].invert_pitch(5),
+            noteseq![6, None, 5, 4, 7]
+        );
+        assert_chordseq_f64_near!(
+            chordseq![[4.0], [], [5.0], [6.0, 3.0]].invert_pitch(-5.5),
+            chordseq![[-15.0], [], [-16.0], [-17.0, -14.0]]
+        );
+        assert_eq!(
+            melody![[4], [], [5], [6, 3]].invert_pitch(5),
+            melody![[6], [], [5], [4, 7]]
+        );
+    }
+
+    #[test]
+    fn modulus() {
+        assert_numseq_f64_near!(
+            numseq![4.0, 2.0, 5.0, -6.0, -3.0].modulus(2.5),
+            numseq![1.5, 2.0, 0.0, 1.5, 2.0]
+        );
+        assert_eq!(
+            noteseq![4, None, 5, -6, -3].modulus(4),
+            noteseq![0, None, 1, 2, 1]
+        );
+        assert_chordseq_f64_near!(
+            chordseq![[4.0], [], [5.0], [-6.0, -3.0]].modulus(2.5),
+            chordseq![[1.5], [], [0.0], [1.5, 2.0]]
+        );
+        assert_eq!(
+            melody![[4], [], [5], [-6, -3]].modulus(4),
+            melody![[0], [], [1], [2, 1]]
+        );
+    }
 
     #[test]
     fn min_value() {
@@ -512,29 +645,6 @@ mod tests {
         );
     }
 
-    // TODO: This macro needs a bit more introspection into results
-    macro_rules! assert_contents_f64_near {
-        ($val: expr, $exp: expr) => {
-            let val = $val.contents.clone();
-            let exp = $exp.contents.clone();
-
-            assert!(val.len() == exp.len(), "lengths are different");
-            for (a, b) in val.iter().zip(exp.iter()) {
-                assert_f64_near!(*a, *b, 40);
-            }
-        };
-    }
-
-    #[test]
-    fn transpose_pitch() {
-        assert_eq!(numseq![1, 6, 4].transpose_pitch(2), numseq![3, 8, 6]);
-
-        assert_contents_f64_near!(
-            numseq![1.7, 3.4, 6.3].transpose_pitch(-1.8),
-            numseq![-0.1, 1.6, 4.5]
-        );
-    }
-
     #[test]
     fn transpose_to_min() {
         assert_eq!(
@@ -543,7 +653,7 @@ mod tests {
         );
         assert_eq!(chordseq![1, 6, 4].transpose_to_min(2), chordseq![2, 7, 5]);
 
-        assert_contents_f64_near!(
+        assert_numseq_f64_near!(
             numseq![1.7, 3.4, 6.3].transpose_to_min(-1.8),
             numseq![-1.8, -0.1, 2.8]
         );
@@ -557,7 +667,7 @@ mod tests {
         );
         assert_eq!(chordseq![1, 6, 4].transpose_to_max(2), chordseq![-3, 2, 0]);
 
-        assert_contents_f64_near!(
+        assert_numseq_f64_near!(
             numseq![1.7, 3.4, 6.3].transpose_to_max(-1.8),
             numseq![-6.4, -4.7, -1.8]
         );
