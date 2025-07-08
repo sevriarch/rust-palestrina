@@ -14,6 +14,34 @@ macro_rules! sequence_pitch_methods {
         impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pitch<T>
             for $ty<T>
         {
+            fn set_pitches(mut self, v: Vec<T>) -> Result<Self> {
+                for p in self.contents.iter_mut() {
+                    p.set_pitches(v.clone())?;
+                }
+                Ok(self)
+            }
+
+            fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.map_pitch(&f);
+                });
+                self
+            }
+
+            fn filter_pitch<FilterT: Fn(&T) -> bool>(mut self, f: FilterT) -> Result<Self> {
+                for p in self.contents.iter_mut() {
+                    p.filter_pitch(&f)?;
+                }
+                Ok(self)
+            }
+
+            fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
+                for p in self.contents.iter_mut() {
+                    p.filter_map_pitch(&f)?;
+                }
+                Ok(self)
+            }
+
             fn transpose_pitch(mut self, v: T) -> Self {
                 self.contents.iter_mut().for_each(|p| {
                     p.transpose_pitch(v);
@@ -75,34 +103,6 @@ macro_rules! sequence_pitch_methods {
                     p.bounce(first, second);
                 });
                 self
-            }
-
-            fn set_pitches(mut self, v: Vec<T>) -> Result<Self> {
-                for p in self.contents.iter_mut() {
-                    p.set_pitches(v.clone())?;
-                }
-                Ok(self)
-            }
-
-            fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
-                self.contents.iter_mut().for_each(|p| {
-                    p.map_pitch(&f);
-                });
-                self
-            }
-
-            fn filter_pitch<FilterT: Fn(&T) -> bool>(mut self, f: FilterT) -> Result<Self> {
-                for p in self.contents.iter_mut() {
-                    p.filter_pitch(&f)?;
-                }
-                Ok(self)
-            }
-
-            fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(mut self, f: MapT) -> Result<Self> {
-                for p in self.contents.iter_mut() {
-                    p.filter_map_pitch(&f)?;
-                }
-                Ok(self)
             }
 
             fn augment_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
@@ -529,6 +529,116 @@ mod tests {
                 }
             }
         };
+    }
+
+    #[test]
+    fn set_pitches() {
+        assert!(numseq![4, 2, 5, 6, 3].set_pitches(vec![]).is_err());
+        assert!(numseq![4, 2, 5, 6, 3].set_pitches(vec![10, 12]).is_err());
+        assert_eq!(
+            numseq![4, 2, 5, 6, 3].set_pitches(vec![10]).unwrap(),
+            numseq![10, 10, 10, 10, 10]
+        );
+        assert!(noteseq![4, 2, 5, 6, 3].set_pitches(vec![10, 12]).is_err());
+        assert_eq!(
+            noteseq![4, 2, 5, 6, 3].set_pitches(vec![]).unwrap(),
+            noteseq![None, None, None, None, None]
+        );
+        assert_eq!(
+            noteseq![4, 2, 5, 6, 3].set_pitches(vec![10]).unwrap(),
+            noteseq![10, 10, 10, 10, 10]
+        );
+        assert_eq!(
+            chordseq![4, 2, 5, 6, 3].set_pitches(vec![]).unwrap(),
+            chordseq![[], [], [], [], []]
+        );
+        assert_eq!(
+            chordseq![4, 2, 5, 6, 3].set_pitches(vec![10]).unwrap(),
+            chordseq![[10], [10], [10], [10], [10]]
+        );
+        assert_eq!(
+            chordseq![4, 2, 5, 6, 3].set_pitches(vec![10, 12]).unwrap(),
+            chordseq![[10, 12], [10, 12], [10, 12], [10, 12], [10, 12]]
+        );
+    }
+
+    #[test]
+    fn map_pitch() {
+        assert_eq!(
+            numseq![4, 2, 5, 6, 3].map_pitch(|v| v + 1),
+            numseq![5, 3, 6, 7, 4]
+        );
+        assert_eq!(
+            noteseq![4, None, 5, 6, 3].map_pitch(|v| v + 1),
+            noteseq![5, None, 6, 7, 4]
+        );
+        assert_eq!(
+            chordseq![[4], [], [5], [6, 3]].map_pitch(|v| v + 1),
+            chordseq![[5], [], [6], [7, 4]]
+        );
+        assert_eq!(
+            melody![[4], [], [5], [6, 3]].map_pitch(|v| v + 1),
+            melody![[5], [], [6], [7, 4]]
+        );
+    }
+
+    #[test]
+    fn filter_pitch() {
+        assert!(numseq![4, 2, 5, 6, 3].filter_pitch(|v| *v > 3).is_err());
+        assert_eq!(
+            numseq![4, 2, 5, 6, 3].filter_pitch(|v| *v > 1).unwrap(),
+            numseq![4, 2, 5, 6, 3]
+        );
+        assert_eq!(
+            noteseq![4, None, 5, 6, 3].filter_pitch(|v| *v > 3).unwrap(),
+            noteseq![4, None, 5, 6, None]
+        );
+        assert_eq!(
+            chordseq![[4], [], [5], [6, 3]]
+                .filter_pitch(|v| *v > 3)
+                .unwrap(),
+            chordseq![[4], [], [5], [6]]
+        );
+        assert_eq!(
+            melody![[4], [], [5], [6, 3]]
+                .filter_pitch(|v| *v > 3)
+                .unwrap(),
+            melody![[4], [], [5], [6]]
+        );
+    }
+
+    #[test]
+    fn filter_map_pitch() {
+        fn fmfunc(v: &i32) -> Option<i32> {
+            if *v > 3 {
+                Some(*v + 1)
+            } else {
+                None
+            }
+        }
+        assert!(numseq![4, 2, 5, 6, 3].filter_map_pitch(fmfunc).is_err());
+        assert_eq!(
+            numseq![4, 2, 5, 6, 3]
+                .filter_map_pitch(|v| Some(*v + 1))
+                .unwrap(),
+            numseq![5, 3, 6, 7, 4]
+        );
+        assert_eq!(
+            noteseq![4, None, 5, 6, 3].filter_map_pitch(fmfunc).unwrap(),
+            noteseq![5, None, 6, 7, None]
+        );
+        assert_eq!(
+            chordseq![[4], [], [5], [6, 3]]
+                .filter_map_pitch(fmfunc)
+                .unwrap(),
+            chordseq![[5], [], [6], [7]]
+        );
+        assert_eq!(
+            melody![[4], [], [5], [6, 3]]
+                .filter_map_pitch(fmfunc)
+                .unwrap(),
+            melody![[5], [], [6], [7]]
+        );
     }
 
     #[test]
