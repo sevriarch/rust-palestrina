@@ -49,6 +49,13 @@ macro_rules! sequence_pitch_methods {
                 self
             }
 
+            fn trim(mut self, first: T, second: T) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.trim(first, second);
+                });
+                self
+            }
+
             fn bounce_min(mut self, v: T) -> Self {
                 self.contents.iter_mut().for_each(|p| {
                     p.bounce_min(v);
@@ -59,6 +66,13 @@ macro_rules! sequence_pitch_methods {
             fn bounce_max(mut self, v: T) -> Self {
                 self.contents.iter_mut().for_each(|p| {
                     p.bounce_max(v);
+                });
+                self
+            }
+
+            fn bounce(mut self, first: T, second: T) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.bounce(first, second);
                 });
                 self
             }
@@ -101,20 +115,6 @@ macro_rules! sequence_pitch_methods {
             fn diminish_pitch<AT: AugDim<T> + Copy>(mut self, n: AT) -> Self {
                 self.contents.iter_mut().for_each(|p| {
                     p.diminish_pitch(n);
-                });
-                self
-            }
-
-            fn trim(mut self, first: T, second: T) -> Self {
-                self.contents.iter_mut().for_each(|p| {
-                    p.trim(first, second);
-                });
-                self
-            }
-
-            fn bounce(mut self, first: T, second: T) -> Self {
-                self.contents.iter_mut().for_each(|p| {
-                    p.bounce(first, second);
                 });
                 self
             }
@@ -632,6 +632,26 @@ mod tests {
     }
 
     #[test]
+    fn trim() {
+        assert_numseq_f64_near!(
+            numseq![4.0, 2.0, 5.0, 6.0, 3.0].trim(4.0, 5.5),
+            numseq![4.0, 4.0, 5.0, 5.5, 4.0]
+        );
+        assert_eq!(
+            noteseq![4, None, 5, 6, 3].trim(4, 5),
+            noteseq![4, None, 5, 5, 4]
+        );
+        assert_chordseq_f64_near!(
+            chordseq![[4.0], [], [5.0], [6.0, 3.0]].trim(4.0, 5.5),
+            chordseq![[4.0], [], [5.0], [5.5, 4.0]]
+        );
+        assert_eq!(
+            melody![[4], [], [5], [6, 3]].trim(4, 5),
+            melody![[4], [], [5], [5, 4]]
+        );
+    }
+
+    #[test]
     fn bounce_min() {
         assert_eq!(numseq![4, 2, 5, 6, 3].bounce_min(5), numseq![6, 8, 5, 6, 7]);
         assert_noteseq_f64_near!(
@@ -662,6 +682,23 @@ mod tests {
         assert_melody_f64_near!(
             melody![[4.0], [], [5.0], [6.0, 3.0]].bounce_max(5.5),
             melody![[4.0], [], [5.0], [5.0, 3.0]]
+        );
+    }
+
+    #[test]
+    fn bounce() {
+        assert_eq!(numseq![4, 2, 5, 6, 3].bounce(4, 5), numseq![4, 4, 5, 4, 5]);
+        assert_noteseq_f64_near!(
+            noteseq![4.0, None, 5.0, 6.0, 3.0].bounce(4.0, 5.5),
+            noteseq![4.0, None, 5.0, 5.0, 5.0]
+        );
+        assert_eq!(
+            chordseq![[4], [], [5], [6, 3]].bounce(4, 5),
+            chordseq![[4], [], [5], [4, 5]]
+        );
+        assert_melody_f64_near!(
+            melody![[4.0], [], [5.0], [6.0, 3.0]].bounce(4.0, 5.5),
+            melody![[4.0], [], [5.0], [5.0, 5.0]]
         );
     }
 
