@@ -2,7 +2,7 @@ use crate::algorithms;
 use crate::collections::traits::Collection;
 use crate::entities::timing::{DurationalEventTiming, Timing};
 use crate::metadata::{Metadata, MetadataList};
-use crate::ops::pitch::{AugDim, Pitch};
+use crate::ops::{arithmetic::AugDim, pitch::Pitch};
 use crate::sequences::chord::ChordSeq;
 use crate::sequences::note::NoteSeq;
 use crate::sequences::numeric::NumericSeq;

@@ -1,67 +1,10 @@
+use crate::ops::arithmetic::AugDim;
 use anyhow::{anyhow, Result};
 use num_traits::{Bounded, Num};
 use std::fmt::Debug;
 use std::iter::Sum;
 use std::ops::AddAssign;
 use thiserror::Error;
-
-pub trait AugDim<MT>
-where
-    MT: Copy + Bounded + Num,
-{
-    fn augment_target(&self, v: &mut MT);
-    fn diminish_target(&self, v: &mut MT);
-}
-
-macro_rules! single_conv_aug_dim {
-    ($type:ident for $($target:ty)*) => ($(
-        impl AugDim<$target> for $type {
-            fn augment_target(&self, v: &mut $target) {
-                *v *= (*self as $target);
-            }
-
-            fn diminish_target(&self, v: &mut $target) {
-                *v /= (*self as $target);
-            }
-        }
-    )*)
-}
-
-macro_rules! double_conv_aug_dim {
-    ($type:ident for $($target:ty)*) => ($(
-        impl AugDim<$target> for $type {
-            fn augment_target(&self, v: &mut $target) {
-                *v = ((*v as $type) * self) as $target;
-            }
-
-            fn diminish_target(&self, v: &mut $target) {
-                *v = ((*v as $type) / self) as $target;
-            }
-        }
-    )*)
-}
-
-macro_rules! make_double_conv_aug_dim {
-    (for $($ty:ident)*) => ($(
-        double_conv_aug_dim!($ty for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128);
-    )*)
-}
-
-macro_rules! make_single_conv_aug_dim_int {
-    (for $($ty:ident)*) => ($(
-        single_conv_aug_dim!($ty for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128);
-    )*)
-}
-
-macro_rules! make_single_conv_aug_dim_float {
-    (for $($ty:ident)*) => ($(
-        single_conv_aug_dim!($ty for f32 f64);
-    )*)
-}
-
-make_single_conv_aug_dim_int!(for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128);
-make_single_conv_aug_dim_float!(for usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64);
-make_double_conv_aug_dim!(for f32 f64);
 
 #[derive(Clone, Error, Debug)]
 pub enum PitchError {
@@ -227,7 +170,7 @@ where
     }
 
     fn modulus(mut self, n: T) -> Self {
-        // Can't use n.abs() as it's not implemented for unsigned ints
+        // Can't use n.abs() as it's not implemented for unsigned values
         let n = if n < T::zero() { T::zero() - n } else { n };
         let ret = self % n;
 

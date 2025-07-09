@@ -1,6 +1,9 @@
 use crate::collections::traits::Collection;
 use crate::metadata::MetadataList;
-use crate::ops::pitch::{AugDim, Pitch, PitchError};
+use crate::ops::{
+    arithmetic::AugDim,
+    pitch::{Pitch, PitchError},
+};
 use crate::sequences::chord::ChordSeq;
 use crate::sequences::melody::Melody;
 use crate::sequences::note::NoteSeq;
