@@ -457,7 +457,7 @@ mod tests {
     use crate::sequences::melody::{Melody, MelodyMember};
     use crate::sequences::note::NoteSeq;
     use crate::sequences::numeric::NumericSeq;
-    use crate::{chordseq, melody, noteseq, numseq, scale};
+    use crate::{chordseq, melody, melody_member, noteseq, numseq, scale};
 
     macro_rules! assert_numseq_f64_near {
         ($val: expr, $exp: expr) => {
@@ -810,6 +810,65 @@ mod tests {
             melody![[4.0], [], [5.0], [6.0, 3.0]].bounce(4.0, 5.5),
             melody![[4.0], [], [5.0], [5.0, 5.0]]
         );
+    }
+
+    #[test]
+    fn augment_pitch() {
+        assert_eq!(
+            numseq![4, 2, 5, 6, 3].augment_pitch(2),
+            numseq![8, 4, 10, 12, 6]
+        );
+        assert_eq!(
+            noteseq![4, None, 5, 6, 3].augment_pitch(2.5),
+            noteseq![10, None, 12, 15, 7]
+        );
+        assert_eq!(
+            chordseq![[4.0], [], [5.5], [6.0], [3.5]].augment_pitch(2),
+            chordseq![[8.0], [], [11.0], [12.0], [7.0]]
+        );
+        assert_eq!(
+            melody![[4.0], [], [5.5], [6.0], [3.5]].augment_pitch(2.5),
+            melody![[10.0], [], [13.75], [15.0], [8.75]]
+        );
+    }
+
+    #[test]
+    fn diminish_pitch() {
+        assert_eq!(
+            numseq![8, 4, 10, 12, 6].diminish_pitch(2),
+            numseq![4, 2, 5, 6, 3]
+        );
+        assert_eq!(
+            noteseq![10, None, 12, 15, 7].diminish_pitch(2.5),
+            noteseq![4, None, 4, 6, 2]
+        );
+        assert_eq!(
+            chordseq![[8.0], [], [11.0], [12.0], [7.0]].diminish_pitch(2),
+            chordseq![[4.0], [], [5.5], [6.0], [3.5]]
+        );
+        assert_eq!(
+            melody![[10.0], [], [13.75], [15.0], [8.75]].diminish_pitch(2.5),
+            melody![[4.0], [], [5.5], [6.0], [3.5]]
+        );
+    }
+
+    #[test]
+    fn is_silent() {
+        assert!(NumericSeq::<i32>::new(vec![]).is_silent());
+        assert!(NoteSeq::<i32>::new(vec![]).is_silent());
+        assert!(ChordSeq::<i32>::new(vec![]).is_silent());
+        assert!(Melody::<i32>::new(vec![]).is_silent());
+        assert!(!numseq![4].is_silent());
+        assert!(!noteseq![4, None].is_silent());
+        assert!(NoteSeq::<i32>::new(vec![None, None]).is_silent());
+        assert!(ChordSeq::<i32>::new(vec![vec![], vec![]]).is_silent());
+        assert!(!chordseq![[], [4]].is_silent());
+        assert!(
+            Melody::<i32>::new(vec![melody_member!(vec![]), melody_member!(vec![])]).is_silent()
+        );
+        assert!(!melody![[], [4]].is_silent());
+        assert!(Melody::new(vec![melody_member!([[]], 50), melody_member!([[4]], 0)]).is_silent());
+        assert!(!Melody::new(vec![melody_member!([[]], 0), melody_member!([[4]], 50)]).is_silent());
     }
 
     #[test]
