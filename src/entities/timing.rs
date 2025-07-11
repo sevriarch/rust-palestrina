@@ -56,7 +56,7 @@ macro_rules! timing_traits {
     };
 }
 
-/// A structure with timing information for a single non-durational even.
+/// A structure with timing information for a single non-durational event.
 /// tick is an optional exact tick that the event is anchored to; offset is a
 /// timing offset
 ///
@@ -124,10 +124,24 @@ impl DurationalEventTiming {
         Ok(self.tick.unwrap_or(curr) + self.duration)
     }
 
-    pub fn augment_rhythm(mut self, v: u32) -> Result<Self> {
+    pub fn augment_rhythm(&mut self, v: u32) -> Self {
+        if let Some(ref mut t) = self.tick {
+            *t *= v;
+        }
+
         self.duration *= v;
         self.offset *= v as i32;
-        Ok(self)
+        *self
+    }
+
+    pub fn diminish_rhythm(mut self, v: u32) -> Self {
+        if let Some(ref mut t) = self.tick {
+            *t /= v;
+        }
+
+        self.duration /= v;
+        self.offset /= v as i32;
+        self
     }
 }
 
@@ -274,5 +288,16 @@ mod tests {
         let t = duration_with_timing!(50, 200, -300);
         assert_eq!(t.next_tick(0).unwrap(), 250);
         assert_eq!(t.next_tick(200).unwrap(), 250);
+    }
+
+    #[test]
+    fn augment_rhythm() {
+        let mut t = duration_with_timing!(50, None, -100);
+        t.augment_rhythm(2);
+        assert_eq!(t, duration_with_timing!(100, None, -200));
+
+        let mut t = duration_with_timing!(50, 200, -100);
+        t.augment_rhythm(2);
+        assert_eq!(t, duration_with_timing!(100, 400, -200));
     }
 }
