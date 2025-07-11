@@ -13,6 +13,8 @@ pub trait Timing {
     fn mutate_exact_tick(&mut self, f: impl Fn(&mut u32)) -> Self;
     fn mutate_offset(&mut self, f: impl Fn(&mut i32)) -> Self;
     fn start_tick(&self, curr: u32) -> Result<u32>;
+    fn augment_rhythm(&mut self, v: u32) -> Self;
+    fn diminish_rhythm(&mut self, v: u32) -> Self;
 }
 
 #[inline(always)]
@@ -25,33 +27,31 @@ fn pos_or_err(tick: i32) -> Result<u32> {
 }
 
 macro_rules! timing_traits {
-    ($type:ty) => {
-        impl Timing for $type {
-            fn with_exact_tick(&mut self, tick: u32) -> Self {
-                self.tick = Some(tick);
-                *self
-            }
+    () => {
+        fn with_exact_tick(&mut self, tick: u32) -> Self {
+            self.tick = Some(tick);
+            *self
+        }
 
-            fn with_offset(&mut self, offset: i32) -> Self {
-                self.offset = offset;
-                *self
-            }
+        fn with_offset(&mut self, offset: i32) -> Self {
+            self.offset = offset;
+            *self
+        }
 
-            fn mutate_offset(&mut self, f: impl Fn(&mut i32)) -> Self {
-                f(&mut self.offset);
-                *self
-            }
+        fn mutate_offset(&mut self, f: impl Fn(&mut i32)) -> Self {
+            f(&mut self.offset);
+            *self
+        }
 
-            fn mutate_exact_tick(&mut self, f: impl Fn(&mut u32)) -> Self {
-                if let Some(tick) = self.tick.as_mut() {
-                    f(tick);
-                }
-                *self
+        fn mutate_exact_tick(&mut self, f: impl Fn(&mut u32)) -> Self {
+            if let Some(tick) = self.tick.as_mut() {
+                f(tick);
             }
+            *self
+        }
 
-            fn start_tick(&self, curr: u32) -> Result<u32> {
-                pos_or_err(self.offset + self.tick.unwrap_or(curr) as i32)
-            }
+        fn start_tick(&self, curr: u32) -> Result<u32> {
+            pos_or_err(self.offset + self.tick.unwrap_or(curr) as i32)
         }
     };
 }
@@ -67,7 +67,27 @@ pub struct EventTiming {
     pub offset: i32,
 }
 
-timing_traits!(EventTiming);
+impl Timing for EventTiming {
+    timing_traits!();
+
+    fn augment_rhythm(&mut self, v: u32) -> Self {
+        if let Some(ref mut t) = self.tick {
+            *t *= v;
+        }
+
+        self.offset *= v as i32;
+        *self
+    }
+
+    fn diminish_rhythm(&mut self, v: u32) -> Self {
+        if let Some(ref mut t) = self.tick {
+            *t /= v;
+        }
+
+        self.offset /= v as i32;
+        *self
+    }
+}
 
 impl EventTiming {
     pub fn new(tick: Option<u32>, offset: i32) -> Self {
@@ -87,7 +107,29 @@ pub struct DurationalEventTiming {
     pub duration: u32,
 }
 
-timing_traits!(DurationalEventTiming);
+impl Timing for DurationalEventTiming {
+    timing_traits!();
+
+    fn augment_rhythm(&mut self, v: u32) -> Self {
+        if let Some(ref mut t) = self.tick {
+            *t *= v;
+        }
+
+        self.duration *= v;
+        self.offset *= v as i32;
+        *self
+    }
+
+    fn diminish_rhythm(&mut self, v: u32) -> Self {
+        if let Some(ref mut t) = self.tick {
+            *t /= v;
+        }
+
+        self.duration /= v;
+        self.offset /= v as i32;
+        *self
+    }
+}
 
 impl DurationalEventTiming {
     pub fn new(duration: u32, tick: Option<u32>, offset: i32) -> Self {
@@ -122,26 +164,6 @@ impl DurationalEventTiming {
 
     pub fn next_tick(&self, curr: u32) -> Result<u32> {
         Ok(self.tick.unwrap_or(curr) + self.duration)
-    }
-
-    pub fn augment_rhythm(&mut self, v: u32) -> Self {
-        if let Some(ref mut t) = self.tick {
-            *t *= v;
-        }
-
-        self.duration *= v;
-        self.offset *= v as i32;
-        *self
-    }
-
-    pub fn diminish_rhythm(mut self, v: u32) -> Self {
-        if let Some(ref mut t) = self.tick {
-            *t /= v;
-        }
-
-        self.duration /= v;
-        self.offset /= v as i32;
-        self
     }
 }
 
@@ -292,6 +314,14 @@ mod tests {
 
     #[test]
     fn augment_rhythm() {
+        let mut t = timing!(None, -100);
+        t.augment_rhythm(2);
+        assert_eq!(t, timing!(None, -200));
+
+        let mut t = timing!(200, -100);
+        t.augment_rhythm(2);
+        assert_eq!(t, timing!(400, -200));
+
         let mut t = duration_with_timing!(50, None, -100);
         t.augment_rhythm(2);
         assert_eq!(t, duration_with_timing!(100, None, -200));
