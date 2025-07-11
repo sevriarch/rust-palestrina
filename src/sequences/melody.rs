@@ -220,6 +220,8 @@ where
         self
     }
 
+    // TODO: Does a Ok(0) make sense when this is effectively null content
+    // Additionally, should this be end_tick() for parallelism with timing?
     pub fn last_tick(&self, curr: u32) -> Result<u32> {
         let mut max = 0;
 
@@ -242,6 +244,9 @@ where
         Ok(max)
     }
 
+    // Starting here, in particular, significant overlap with the Timing
+    // trait, plus most of here is delegated to the timing entity.
+    // Should this be partly done as a trait implementation?
     pub fn with_exact_tick(&mut self, d: u32) -> &mut Self {
         self.timing.with_exact_tick(d);
         self
