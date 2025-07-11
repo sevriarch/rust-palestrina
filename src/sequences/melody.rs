@@ -1,4 +1,3 @@
-use crate::algorithms;
 use crate::collections::traits::Collection;
 use crate::entities::timing::{DurationalEventTiming, Timing};
 use crate::metadata::{Metadata, MetadataList};
@@ -278,6 +277,22 @@ where
 
     pub fn mutate_duration(&mut self, f: impl Fn(&mut u32)) -> &mut Self {
         self.timing.mutate_duration(f);
+        self
+    }
+
+    pub fn augment_rhythm(&mut self, v: u32) -> &mut Self {
+        self.before.contents.iter_mut().for_each(|m| {
+            m.timing.augment_rhythm(v);
+        });
+        self.timing.augment_rhythm(v);
+        self
+    }
+
+    pub fn diminish_rhythm(&mut self, v: u32) -> &mut Self {
+        self.before.contents.iter_mut().for_each(|m| {
+            m.timing.diminish_rhythm(v);
+        });
+        self.timing.diminish_rhythm(v);
         self
     }
 }
@@ -606,26 +621,16 @@ where
         })
     }
 
-    pub fn augment_rhythm(self, a: u32) -> Result<Self, String> {
-        let fi32 = algorithms::augment(&a);
-        let fu32 = algorithms::augment(&a);
-
-        Ok(self.mutate_each(|m| {
-            m.mutate_exact_tick(&fu32)
-                .mutate_duration(&fu32)
-                .mutate_offset(&fi32);
-        }))
+    pub fn augment_rhythm(self, a: u32) -> Self {
+        self.mutate_each(|m| {
+            m.augment_rhythm(a);
+        })
     }
 
-    pub fn diminish_rhythm(self, a: u32) -> Result<Self, String> {
-        let fi32 = algorithms::diminish(&a)?;
-        let fu32 = algorithms::diminish(&a)?;
-
-        Ok(self.mutate_each(|m| {
-            m.mutate_exact_tick(&fu32)
-                .mutate_duration(&fu32)
-                .mutate_offset(&fi32);
-        }))
+    pub fn diminish_rhythm(self, a: u32) -> Self {
+        self.mutate_each(|m| {
+            m.diminish_rhythm(a);
+        })
     }
 
     // Join consecutive chords together if the passed function is true for
@@ -971,9 +976,34 @@ mod tests {
     }
 
     #[test]
-    fn is_silent() {
+    fn mm_is_silent() {
         assert!(!MelodyMember::from(vec![10, 24, 32]).is_silent());
         assert!(MelodyMember::<i32>::from(vec![]).is_silent());
+    }
+
+    #[test]
+    fn mm_augment_rhythm() {
+        assert_eq!(
+            melody_member!([[12, 16]], 32, 128)
+                .with_offset(32)
+                .with_exact_tick(64)
+                .with_event(Metadata::try_from(("tempo", 120)).unwrap().with_offset(80))
+                .with_event(
+                    Metadata::try_from(("tempo", 120))
+                        .unwrap()
+                        .with_exact_tick(160)
+                )
+                .augment_rhythm(2),
+            melody_member!([[12, 16]], 32, 256)
+                .with_offset(64)
+                .with_exact_tick(128)
+                .with_event(Metadata::try_from(("tempo", 120)).unwrap().with_offset(160))
+                .with_event(
+                    Metadata::try_from(("tempo", 120))
+                        .unwrap()
+                        .with_exact_tick(320)
+                )
+        );
     }
 
     #[test]
@@ -1565,8 +1595,7 @@ mod tests {
                     )]),
                 },
             ])
-            .augment_rhythm(3)
-            .unwrap(),
+            .augment_rhythm(3),
             Melody::new(vec![
                 MelodyMember {
                     values: vec![12],
@@ -1594,11 +1623,6 @@ mod tests {
 
     #[test]
     fn diminish_rhythm() {
-        assert!(Melody::try_from(Vec::<i32>::new())
-            .unwrap()
-            .diminish_rhythm(0)
-            .is_err());
-
         assert_eq!(
             Melody::new(vec![
                 MelodyMember {
@@ -1622,8 +1646,7 @@ mod tests {
                     )]),
                 }
             ])
-            .diminish_rhythm(3)
-            .unwrap(),
+            .diminish_rhythm(3),
             Melody::new(vec![
                 MelodyMember {
                     values: vec![12],
