@@ -14,6 +14,13 @@ macro_rules! sequence_pitch_methods {
         impl<T: Clone + Copy + Num + Debug + PartialOrd + AddAssign + Bounded + Sum> Pitch<T>
             for $ty<T>
         {
+            fn set_pitch(mut self, v: T) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.set_pitch(v);
+                });
+                self
+            }
+
             fn set_pitches(mut self, v: Vec<T>) -> Result<Self> {
                 for p in self.contents.iter_mut() {
                     p.set_pitches(v.clone())?;
@@ -542,6 +549,29 @@ mod tests {
                 }
             }
         };
+    }
+
+    #[test]
+    fn set_pitch() {
+        assert_eq!(
+            numseq![4, 2, 5, 6, 3].set_pitch(10),
+            numseq![10, 10, 10, 10, 10]
+        );
+
+        assert_eq!(
+            noteseq![4, None, 5, 6, 3].set_pitch(10),
+            noteseq![10, 10, 10, 10, 10]
+        );
+
+        assert_eq!(
+            chordseq![[4], [], [5], [6, 3]].set_pitch(10),
+            chordseq![10, 10, 10, 10]
+        );
+
+        assert_eq!(
+            melody![[4], [], [5], [6, 3]].set_pitch(10),
+            melody![10, 10, 10, 10]
+        );
     }
 
     #[test]

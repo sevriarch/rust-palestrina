@@ -146,6 +146,11 @@ where
 {
     impl_fns_for_melody_member!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
 
+    fn set_pitch(self, p: T) -> Self {
+        self.values = vec![p];
+        self
+    }
+
     fn set_pitches(self, p: Vec<T>) -> Result<Self> {
         self.values = p;
         Ok(self)

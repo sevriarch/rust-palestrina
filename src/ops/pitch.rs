@@ -20,23 +20,27 @@ pub trait Pitch<T>
 where
     T: Copy + Bounded + Num,
 {
-    /// Set a pitch or pitches.
+    /// Set a single pitch
+    fn set_pitch(self, p: T) -> Self;
+
+    /// Set zero or more pitches.
     fn set_pitches(self, p: Vec<T>) -> Result<Self>
     where
         Self: std::marker::Sized;
 
-    /// A map operation on pitches.
+    /// A map operation on each individual pitch within the entity.
     fn map_pitch<MapT: Fn(&T) -> T>(self, f: MapT) -> Self;
 
-    /// A filter operation on pitches.
+    /// A filter operation on each individual pitches.
     ///
     /// Returns an Error if pitches are filtered out when they are required.
     fn filter_pitch<FilterT: Fn(&T) -> bool>(self, f: FilterT) -> Result<Self>
     where
         Self: std::marker::Sized;
 
-    /// A map operation on pitches that removes pitches where the map operation
-    /// returns None, but retains those where the map operation returns Some(pitch).
+    /// A map operation on individual pitches that removes pitches where the map
+    /// operation returns None, but retains those where the map operation returns
+    /// Some(pitch).
     ///
     /// Returns an Error if pitches are filtered out when they are required.
     fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(self, f: MapT) -> Result<Self>
@@ -107,6 +111,12 @@ impl<T> Pitch<T> for T
 where
     T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + AddAssign,
 {
+    #[allow(unused_assignments)]
+    fn set_pitch(mut self, p: T) -> Self {
+        self = p;
+        self
+    }
+
     #[allow(unused_assignments)]
     fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
         match p.len() {
@@ -261,6 +271,11 @@ impl<T> Pitch<T> for &mut T
 where
     T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + AddAssign,
 {
+    fn set_pitch(self, p: T) -> Self {
+        *self = p;
+        self
+    }
+
     #[allow(unused_assignments)]
     fn set_pitches(self, p: Vec<T>) -> Result<Self> {
         match p.len() {
@@ -426,6 +441,12 @@ where
     impl_fns_for_option!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
 
     #[allow(unused_assignments)]
+    fn set_pitch(mut self, p: T) -> Self {
+        self = Some(p);
+        self
+    }
+
+    #[allow(unused_assignments)]
     fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
         match p.len() {
             0 => self = None,
@@ -489,6 +510,11 @@ where
     T: Clone + Copy + Num + Debug + PartialOrd + Bounded + Sum + AddAssign,
 {
     impl_fns_for_mut_option!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
+
+    fn set_pitch(self, p: T) -> Self {
+        *self = Some(p);
+        self
+    }
 
     #[allow(unused_assignments)]
     fn set_pitches(self, p: Vec<T>) -> Result<Self> {
@@ -577,6 +603,12 @@ where
     impl_fns_for_vec!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
 
     #[allow(unused_assignments)]
+    fn set_pitch(mut self, p: T) -> Self {
+        self = vec![p];
+        self
+    }
+
+    #[allow(unused_assignments)]
     fn set_pitches(mut self, p: Vec<T>) -> Result<Self> {
         self = p;
         Ok(self)
@@ -645,6 +677,11 @@ where
 {
     impl_fns_for_mut_vec!(T, for transpose_pitch invert_pitch modulus trim_min trim_max bounce_min bounce_max);
 
+    fn set_pitch(self, p: T) -> Self {
+        *self = vec![p];
+        self
+    }
+
     fn set_pitches(self, p: Vec<T>) -> Result<Self> {
         *self = p;
         Ok(self)
@@ -701,6 +738,62 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn set_pitch() {
+        assert_eq!(5.set_pitch(3), 3);
+        assert_eq!(None.set_pitch(3), Some(3));
+        assert_eq!(Some(5).set_pitch(3), Some(3));
+        assert_eq!(vec![3, 4, 5].set_pitch(3), vec![3]);
+
+        let t = &mut 5;
+        t.set_pitch(3);
+        assert_eq!(*t, 3);
+
+        let t = &mut None;
+        t.set_pitch(3);
+        assert_eq!(*t, Some(3));
+
+        let t = &mut Some(5);
+        t.set_pitch(3);
+        assert_eq!(*t, Some(3));
+
+        let t = &mut vec![3, 4, 5];
+        t.set_pitch(3);
+        assert_eq!(*t, vec![3]);
+    }
+
+    #[test]
+    fn set_pitches() {
+        assert!(5.set_pitches(vec![]).is_err());
+        assert!(5.set_pitches(vec![2, 4]).is_err());
+        assert!(None.set_pitches(vec![2, 4]).is_err());
+
+        assert_eq!(5.set_pitches(vec![3]).unwrap(), 3);
+        assert_eq!(None.set_pitches(vec![3]).unwrap(), Some(3));
+        assert_eq!(Some(5).set_pitches(vec![3]).unwrap(), Some(3));
+        assert_eq!(vec![3, 4, 5].set_pitches(vec![3]).unwrap(), vec![3]);
+
+        let t = &mut 5;
+
+        assert!(t.set_pitches(vec![]).is_err());
+        assert!(t.set_pitches(vec![2, 4]).is_err());
+        assert!(t.set_pitches(vec![3]).is_ok());
+        assert_eq!(*t, 3);
+
+        let t = &mut None;
+        assert!(t.set_pitches(vec![2, 4]).is_err());
+        assert!(t.set_pitches(vec![3]).is_ok());
+        assert_eq!(*t, Some(3));
+
+        let t = &mut Some(5);
+        assert!(t.set_pitches(vec![]).is_ok());
+        assert_eq!(*t, None);
+
+        let t = &mut vec![3, 4, 5];
+        assert!(t.set_pitches(vec![3]).is_ok());
+        assert_eq!(*t, vec![3]);
+    }
 
     #[test]
     fn map_pitch() {
