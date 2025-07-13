@@ -170,7 +170,6 @@ fn pitch_bend_to_midi_bytes(f: &f32) -> Result<Vec<u8>> {
     if (-16384..0).contains(&v) {
         Ok(vec![0xe0, (v & 0x7f) as u8, (v >> 7 & 0x7f) as u8])
     } else {
-        println!("v is {}, f is {}", v, f);
         Err(anyhow!(MetadataError::InvalidPitchBend(*f)))
     }
 }

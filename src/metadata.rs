@@ -69,12 +69,12 @@ where
     T: TryInto<f32> + Copy + Debug,
 {
     t.try_into()
-        .map_err(|_| anyhow!(MetadataError::InvalidTempo(format!("{:?}", t))))
+        .map_err(|_| anyhow!(MetadataError::InvalidTempo(format!("{t:?}"))))
         .and_then(|v| {
             if v > 0.0 {
                 Ok(v)
             } else {
-                Err(anyhow!(MetadataError::InvalidTempo(format!("{:?}", t))))
+                Err(anyhow!(MetadataError::InvalidTempo(format!("{t:?}"))))
             }
         })
 }
@@ -105,24 +105,24 @@ impl fmt::Display for MetadataData {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let msg = match self {
             MetadataData::EndTrack => "EndTrack".to_string(),
-            MetadataData::Sustain(v) => format!("Sustain({})", v),
-            MetadataData::Tempo(v) => format!("Tempo({})", v),
-            MetadataData::KeySignature(v) => format!("KeySignature({})", v),
+            MetadataData::Sustain(v) => format!("Sustain({v})"),
+            MetadataData::Tempo(v) => format!("Tempo({v})"),
+            MetadataData::KeySignature(v) => format!("KeySignature({v})"),
             MetadataData::TimeSignature(v) => format!("TimeSignature({}/{})", v.0, v.1),
-            MetadataData::Instrument(v) => format!("Instrument({})", v),
-            MetadataData::Text(v) => format!("Text({})", v),
-            MetadataData::Lyric(v) => format!("Lyric({})", v),
-            MetadataData::Marker(v) => format!("Marker({})", v),
-            MetadataData::CuePoint(v) => format!("CuePoint({})", v),
-            MetadataData::Copyright(v) => format!("Copyright({})", v),
-            MetadataData::TrackName(v) => format!("TrackName({})", v),
-            MetadataData::Volume(v) => format!("Volume({})", v),
-            MetadataData::Pan(v) => format!("Pan({})", v),
-            MetadataData::Balance(v) => format!("Balance({})", v),
-            MetadataData::PitchBend(v) => format!("PitchBend({})", v),
+            MetadataData::Instrument(v) => format!("Instrument({v})"),
+            MetadataData::Text(v) => format!("Text({v})"),
+            MetadataData::Lyric(v) => format!("Lyric({v})"),
+            MetadataData::Marker(v) => format!("Marker({v})"),
+            MetadataData::CuePoint(v) => format!("CuePoint({v})"),
+            MetadataData::Copyright(v) => format!("Copyright({v})"),
+            MetadataData::TrackName(v) => format!("TrackName({v})"),
+            MetadataData::Volume(v) => format!("Volume({v})"),
+            MetadataData::Pan(v) => format!("Pan({v})"),
+            MetadataData::Balance(v) => format!("Balance({v})"),
+            MetadataData::PitchBend(v) => format!("PitchBend({v})"),
         };
 
-        write!(f, "MetadataData({})", msg)
+        write!(f, "MetadataData({msg})")
     }
 }
 
@@ -139,8 +139,7 @@ impl MetadataData {
             MetadataData::TimeSignature((n, d)) => {
                 if *n < 1 || *d & (*d - 1) != 0 {
                     Err(anyhow!(MetadataError::InvalidTimeSignature(format!(
-                        "{}/{}",
-                        n, d
+                        "{n}/{d}"
                     ))))
                 } else {
                     Ok(())

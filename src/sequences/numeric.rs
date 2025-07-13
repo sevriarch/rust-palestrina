@@ -173,8 +173,7 @@ impl<
     ) -> Result<Self> {
         for (i, p) in self.contents.iter_mut().enumerate() {
             *p = f((i, p)).ok_or(anyhow!(PitchError::RequiredPitchAbsent(format!(
-                "at index {}",
-                i
+                "at index {i}"
             ))))?;
         }
         Ok(self)
