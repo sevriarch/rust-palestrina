@@ -14,7 +14,7 @@ pub enum CollectionError {
     IndicesOutOfOrder(i32, i32),
     #[error("Step size must be non-zero")]
     ZeroStepSize,
-    #[error("Collection length but be non-zero")]
+    #[error("Collection length must be non-zero")]
     ZeroLength,
     #[error("Collection lengths ({0} and {1}) were different")]
     DifferentLengths(usize, usize),
@@ -141,11 +141,8 @@ pub trait Collection<T: Clone + Debug>: Sized {
         Ok(ix)
     }
 
-    fn indices_inclusive(&self, indices: Vec<i32>) -> Result<Vec<usize>> {
-        indices
-            .into_iter()
-            .map(|i| self.index_inclusive(i))
-            .collect()
+    fn indices_inclusive(&self, indices: &[i32]) -> Result<Vec<usize>> {
+        indices.iter().map(|i| self.index_inclusive(*i)).collect()
     }
 
     fn val_at(&self, index: i32) -> Result<T> {
@@ -576,7 +573,7 @@ pub trait Collection<T: Clone + Debug>: Sized {
         Ok(self)
     }
 
-    fn split_at(&self, indices: Vec<i32>) -> Result<Vec<Self>> {
+    fn split_at(&self, indices: &[i32]) -> Result<Vec<Self>> {
         let ix = self.indices_inclusive(indices)?;
 
         let cts = self.clone_contents();
@@ -1145,20 +1142,20 @@ mod tests {
     fn split_at() {
         let coll = TestColl::new(vec![0, 2, 3, 4, 5, 6]);
 
-        assert!(coll.split_at(vec![7]).is_err());
-        assert!(coll.split_at(vec![-7]).is_err());
+        assert!(coll.split_at(&[7]).is_err());
+        assert!(coll.split_at(&[-7]).is_err());
 
-        let ret = coll.split_at(vec![]).unwrap();
+        let ret = coll.split_at(&[]).unwrap();
         assert_eq!(ret.len(), 1);
         assert_eq!(ret[0].contents, vec![0, 2, 3, 4, 5, 6]);
 
-        let ret = coll.split_at(vec![-2]).unwrap();
+        let ret = coll.split_at(&[-2]).unwrap();
 
         assert_eq!(ret.len(), 2);
         assert_eq!(ret[0].contents, vec![0, 2, 3, 4]);
         assert_eq!(ret[1].contents, vec![5, 6]);
 
-        let ret = coll.split_at(vec![0, -6, -1, 6]).unwrap();
+        let ret = coll.split_at(&[0, -6, -1, 6]).unwrap();
 
         assert_eq!(ret.len(), 5);
         assert_eq!(ret[0].contents, vec![]);
