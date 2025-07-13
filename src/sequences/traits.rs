@@ -255,6 +255,8 @@ pub trait Sequence<
             .collect()
     }
 
+    /// Transpose this Sequence so that the minimum pitch is the passed value.
+    /// If there are no values in the Sequence, do nothing.
     fn transpose_to_min(self, t: PitchType) -> Self {
         match self.min_value() {
             Some(m) => self.transpose_pitch(t - m),
@@ -262,6 +264,8 @@ pub trait Sequence<
         }
     }
 
+    /// Transpose this Sequence so that the maximum pitch is the passed value.
+    /// If there are no values in the Sequence, do nothing.
     fn transpose_to_max(self, t: PitchType) -> Self {
         match self.max_value() {
             Some(m) => self.transpose_pitch(t - m),
@@ -311,18 +315,22 @@ pub trait Sequence<
         Ok(self.with_contents(ret))
     }
 
+    /// Pad this Sequence on the left with num instances of the passed value.
     fn pad(self, val: T, num: usize) -> Self {
         self.mutate_contents(|c| {
             c.splice(0..0, std::iter::repeat_n(val, num));
         })
     }
 
+    /// Pad this Sequence on the right with num instances of the passed value.
     fn pad_right(self, val: T, num: usize) -> Self {
         self.mutate_contents(|c| {
             c.extend(std::iter::repeat_n(val, num));
         })
     }
 
+    /// Pad this Sequence on the left until it is the passed length.
+    /// If it is already this length or longer, do not pad.
     fn pad_to(self, val: T, num: usize) -> Self {
         let len = self.length();
 
@@ -333,6 +341,8 @@ pub trait Sequence<
         }
     }
 
+    /// Pad this Sequence on the right until it is the passed length.
+    /// If it is already this length or longer, do not pad.
     fn pad_right_to(self, val: T, num: usize) -> Self {
         let len = self.length();
 
@@ -343,20 +353,24 @@ pub trait Sequence<
         }
     }
 
+    /// Remove any consecutive identical values from this Sequence.
     fn dedupe(self) -> Self {
         self.mutate_contents(|c| {
             c.dedup();
         })
     }
 
+    /// Append the sequence to itself.
     fn repeat(self) -> Self {
         self.mutate_contents(|c| c.extend(c.clone()))
     }
 
+    /// Replace this sequence with num copies of itself, one after the other.
     fn repeated(self, num: usize) -> Self {
         self.replace_contents(|c| std::iter::repeat_n(c.clone(), num).flatten().collect())
     }
 
+    /// Loop this sequence until it is of the passed length.
     fn looped(self, num: usize) -> Result<Self> {
         let len = self.length();
 
@@ -369,6 +383,7 @@ pub trait Sequence<
         }))
     }
 
+    /// Loop this sequence, starting at the supplied index, until it is of the passed length.
     fn looped_from(self, num: usize, start: i32) -> Result<Self> {
         let first = self.index(start)?;
         let last = num + first;
@@ -384,6 +399,7 @@ pub trait Sequence<
         }))
     }
 
+    /// Apply the passed scale to this Sequence.
     fn scale(self, scale: Scale<PitchType>, zeroval: PitchType) -> Result<Self>
     where
         PitchType: PrimInt
