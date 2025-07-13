@@ -6,7 +6,6 @@ use num_traits::{Bounded, FromPrimitive, Num, PrimInt};
 use std::fmt::Debug;
 use std::iter::{zip, Sum};
 use std::ops::SubAssign;
-use std::slice::Iter;
 
 #[macro_export]
 macro_rules! sequence_pitch_methods {
@@ -437,10 +436,10 @@ pub trait Sequence<
             }
         }
 
-        let mut iters: Vec<Iter<'_, T>> = seq.iter().map(|v| v.cts_ref().iter()).collect();
+        let mut iters: Vec<_> = seq.iter().map(|v| v.cts_ref().iter()).collect();
         iters.insert(0, self.cts_ref().iter());
 
-        let ret: Vec<T> = (0..len)
+        let ret = (0..len)
             .map(|_| f(iters.iter_mut().map(|n| n.next().unwrap()).collect()))
             .collect();
 
@@ -460,10 +459,10 @@ pub trait Sequence<
             }
         }
 
-        let mut iters: Vec<Iter<'_, T>> = seq.iter().map(|v| v.cts_ref().iter()).collect();
+        let mut iters: Vec<_> = seq.iter().map(|v| v.cts_ref().iter()).collect();
         iters.insert(0, self.cts_ref().iter());
 
-        let ret: Vec<T> = (0..len)
+        let ret = (0..len)
             .map(|i| f((i, iters.iter_mut().map(|n| n.next().unwrap()).collect())))
             .collect();
 
