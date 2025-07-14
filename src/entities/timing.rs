@@ -1,4 +1,6 @@
+use crate::ops::arithmetic::AugDim;
 use anyhow::{anyhow, Result};
+use num_traits::{Bounded, Num};
 use thiserror::Error;
 
 #[derive(Clone, Debug, Error)]
@@ -8,27 +10,27 @@ pub enum TimingError {
 }
 
 pub trait Timing {
-    fn with_exact_tick(&mut self, tick: u32) -> Self;
+    fn with_exact_tick(&mut self, tick: i32) -> Self;
     fn with_offset(&mut self, tick: i32) -> Self;
-    fn mutate_exact_tick(&mut self, f: impl Fn(&mut u32)) -> Self;
+    fn mutate_exact_tick(&mut self, f: impl Fn(&mut i32)) -> Self;
     fn mutate_offset(&mut self, f: impl Fn(&mut i32)) -> Self;
-    fn start_tick(&self, curr: u32) -> Result<u32>;
-    fn augment_rhythm(&mut self, v: u32) -> Self;
-    fn diminish_rhythm(&mut self, v: u32) -> Self;
+    fn start_tick(&self, curr: i32) -> Result<i32>;
+    fn augment_rhythm<AT: AugDim<i32> + Num + Bounded + Copy>(&mut self, v: AT) -> Self;
+    fn diminish_rhythm<AT: AugDim<i32> + Num + Bounded + Copy>(&mut self, v: AT) -> Self;
 }
 
 #[inline(always)]
-fn pos_or_err(tick: i32) -> Result<u32> {
+fn pos_or_err(tick: i32) -> Result<i32> {
     if tick < 0 {
         Err(anyhow!(TimingError::NegativeTick(tick)))
     } else {
-        Ok(tick as u32)
+        Ok(tick)
     }
 }
 
 macro_rules! timing_traits {
     () => {
-        fn with_exact_tick(&mut self, tick: u32) -> Self {
+        fn with_exact_tick(&mut self, tick: i32) -> Self {
             self.tick = Some(tick);
             *self
         }
@@ -43,15 +45,15 @@ macro_rules! timing_traits {
             *self
         }
 
-        fn mutate_exact_tick(&mut self, f: impl Fn(&mut u32)) -> Self {
+        fn mutate_exact_tick(&mut self, f: impl Fn(&mut i32)) -> Self {
             if let Some(tick) = self.tick.as_mut() {
                 f(tick);
             }
             *self
         }
 
-        fn start_tick(&self, curr: u32) -> Result<u32> {
-            pos_or_err(self.offset + self.tick.unwrap_or(curr) as i32)
+        fn start_tick(&self, curr: i32) -> Result<i32> {
+            pos_or_err(self.offset + self.tick.unwrap_or(curr))
         }
     };
 }
@@ -63,34 +65,34 @@ macro_rules! timing_traits {
 /// Both of these are measured in MIDI ticks.
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct EventTiming {
-    pub tick: Option<u32>,
+    pub tick: Option<i32>,
     pub offset: i32,
 }
 
 impl Timing for EventTiming {
     timing_traits!();
 
-    fn augment_rhythm(&mut self, v: u32) -> Self {
+    fn augment_rhythm<AT: AugDim<i32> + Num + Bounded + Copy>(&mut self, v: AT) -> Self {
         if let Some(ref mut t) = self.tick {
-            *t *= v;
+            v.augment_target(t);
         }
 
-        self.offset *= v as i32;
+        v.augment_target(&mut self.offset);
         *self
     }
 
-    fn diminish_rhythm(&mut self, v: u32) -> Self {
+    fn diminish_rhythm<AT: AugDim<i32> + Num + Bounded + Copy>(&mut self, v: AT) -> Self {
         if let Some(ref mut t) = self.tick {
-            *t /= v;
+            v.diminish_target(t);
         }
 
-        self.offset /= v as i32;
+        v.diminish_target(&mut self.offset);
         *self
     }
 }
 
 impl EventTiming {
-    pub fn new(tick: Option<u32>, offset: i32) -> Self {
+    pub fn new(tick: Option<i32>, offset: i32) -> Self {
         Self { tick, offset }
     }
 }
@@ -102,37 +104,37 @@ impl EventTiming {
 /// All of these are measured in MIDI ticks.
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct DurationalEventTiming {
-    pub tick: Option<u32>,
+    pub tick: Option<i32>,
     pub offset: i32,
-    pub duration: u32,
+    pub duration: i32,
 }
 
 impl Timing for DurationalEventTiming {
     timing_traits!();
 
-    fn augment_rhythm(&mut self, v: u32) -> Self {
+    fn augment_rhythm<AT: AugDim<i32> + Num + Bounded + Copy>(&mut self, v: AT) -> Self {
         if let Some(ref mut t) = self.tick {
-            *t *= v;
+            v.augment_target(t);
         }
 
-        self.duration *= v;
-        self.offset *= v as i32;
+        v.augment_target(&mut self.duration);
+        v.augment_target(&mut self.offset);
         *self
     }
 
-    fn diminish_rhythm(&mut self, v: u32) -> Self {
+    fn diminish_rhythm<AT: AugDim<i32> + Num + Bounded + Copy>(&mut self, v: AT) -> Self {
         if let Some(ref mut t) = self.tick {
-            *t /= v;
+            v.diminish_target(t);
         }
 
-        self.duration /= v;
-        self.offset /= v as i32;
+        v.diminish_target(&mut self.duration);
+        v.diminish_target(&mut self.offset);
         *self
     }
 }
 
 impl DurationalEventTiming {
-    pub fn new(duration: u32, tick: Option<u32>, offset: i32) -> Self {
+    pub fn new(duration: i32, tick: Option<i32>, offset: i32) -> Self {
         Self {
             duration,
             tick,
@@ -140,7 +142,7 @@ impl DurationalEventTiming {
         }
     }
 
-    pub fn from_duration(duration: u32) -> Self {
+    pub fn from_duration(duration: i32) -> Self {
         Self {
             duration,
             tick: None,
@@ -148,21 +150,21 @@ impl DurationalEventTiming {
         }
     }
 
-    pub fn with_duration(&mut self, dur: u32) -> Self {
+    pub fn with_duration(&mut self, dur: i32) -> Self {
         self.duration = dur;
         *self
     }
 
-    pub fn mutate_duration(&mut self, f: impl Fn(&mut u32)) -> Self {
+    pub fn mutate_duration(&mut self, f: impl Fn(&mut i32)) -> Self {
         f(&mut self.duration);
         *self
     }
 
-    pub fn end_tick(&self, curr: u32) -> Result<u32> {
-        pos_or_err((self.tick.unwrap_or(curr) + self.duration) as i32 + self.offset)
+    pub fn end_tick(&self, curr: i32) -> Result<i32> {
+        pos_or_err((self.tick.unwrap_or(curr) + self.duration) + self.offset)
     }
 
-    pub fn next_tick(&self, curr: u32) -> Result<u32> {
+    pub fn next_tick(&self, curr: i32) -> Result<i32> {
         Ok(self.tick.unwrap_or(curr) + self.duration)
     }
 }

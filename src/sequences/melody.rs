@@ -227,7 +227,7 @@ where
 
     // TODO: Does a Ok(0) make sense when this is effectively null content
     // Additionally, should this be end_tick() for parallelism with timing?
-    pub fn last_tick(&self, curr: u32) -> Result<u32> {
+    pub fn last_tick(&self, curr: i32) -> Result<i32> {
         let mut max = 0;
 
         if !self.values.is_empty() {
@@ -252,12 +252,12 @@ where
     // Starting here, in particular, significant overlap with the Timing
     // trait, plus most of here is delegated to the timing entity.
     // Should this be partly done as a trait implementation?
-    pub fn with_exact_tick(&mut self, d: u32) -> &mut Self {
+    pub fn with_exact_tick(&mut self, d: i32) -> &mut Self {
         self.timing.with_exact_tick(d);
         self
     }
 
-    pub fn mutate_exact_tick(&mut self, f: impl Fn(&mut u32)) -> &mut Self {
+    pub fn mutate_exact_tick(&mut self, f: impl Fn(&mut i32)) -> &mut Self {
         self.before.contents.iter_mut().for_each(|m| {
             m.mutate_exact_tick(&f);
         });
@@ -280,17 +280,17 @@ where
         self
     }
 
-    pub fn with_duration(&mut self, d: u32) -> &mut Self {
+    pub fn with_duration(&mut self, d: i32) -> &mut Self {
         self.timing.with_duration(d);
         self
     }
 
-    pub fn mutate_duration(&mut self, f: impl Fn(&mut u32)) -> &mut Self {
+    pub fn mutate_duration(&mut self, f: impl Fn(&mut i32)) -> &mut Self {
         self.timing.mutate_duration(f);
         self
     }
 
-    pub fn augment_rhythm(&mut self, v: u32) -> &mut Self {
+    pub fn augment_rhythm<AT: AugDim<i32> + Num + Bounded + Copy>(&mut self, v: AT) -> &mut Self {
         self.before.contents.iter_mut().for_each(|m| {
             m.timing.augment_rhythm(v);
         });
@@ -298,7 +298,7 @@ where
         self
     }
 
-    pub fn diminish_rhythm(&mut self, v: u32) -> &mut Self {
+    pub fn diminish_rhythm<AT: AugDim<i32> + Num + Bounded + Copy>(&mut self, v: AT) -> &mut Self {
         self.before.contents.iter_mut().for_each(|m| {
             m.timing.diminish_rhythm(v);
         });
@@ -491,11 +491,11 @@ where
         self.contents.iter().map(|m| m.volume).collect()
     }
 
-    pub fn to_duration(&self) -> Vec<u32> {
+    pub fn to_duration(&self) -> Vec<i32> {
         self.contents.iter().map(|m| m.timing.duration).collect()
     }
 
-    pub fn to_ticks(&self) -> Result<Vec<(u32, u32)>> {
+    pub fn to_ticks(&self) -> Result<Vec<(i32, i32)>> {
         let mut curr = 0;
         self.contents
             .iter()
@@ -510,7 +510,7 @@ where
             .collect()
     }
 
-    pub fn to_start_ticks(&self) -> Result<Vec<u32>> {
+    pub fn to_start_ticks(&self) -> Result<Vec<i32>> {
         let mut curr = 0;
         self.contents
             .iter()
@@ -524,7 +524,7 @@ where
             .collect()
     }
 
-    pub fn to_end_ticks(&self) -> Result<Vec<u32>> {
+    pub fn to_end_ticks(&self) -> Result<Vec<i32>> {
         let mut curr = 0;
         self.contents
             .iter()
@@ -538,7 +538,7 @@ where
             .collect()
     }
 
-    pub fn last_tick(&self) -> Result<u32> {
+    pub fn last_tick(&self) -> Result<i32> {
         let mut last = self.metadata.last_tick(0)?;
         let mut curr = 0;
 
@@ -593,11 +593,11 @@ where
         self.mutate_indices(ix, move |m| m.volume = vel)
     }
 
-    pub fn with_duration(self, dur: u32) -> Self {
+    pub fn with_duration(self, dur: i32) -> Self {
         self.mutate_each(|m| m.timing.duration = dur)
     }
 
-    pub fn with_durations(mut self, dur: Vec<u32>) -> Result<Self> {
+    pub fn with_durations(mut self, dur: Vec<i32>) -> Result<Self> {
         if dur.len() != self.contents.len() {
             return Err(anyhow!(
                 "supplied volumes are of a different length ({:?}) from Sequence ({:?})",
@@ -613,15 +613,15 @@ where
         Ok(self)
     }
 
-    pub fn with_duration_at(self, ix: &[i32], dur: u32) -> Result<Self> {
+    pub fn with_duration_at(self, ix: &[i32], dur: i32) -> Result<Self> {
         self.mutate_indices(ix, move |m| m.timing.duration = dur)
     }
 
-    pub fn with_exact_tick_at(self, ix: &[i32], tick: u32) -> Result<Self> {
+    pub fn with_exact_tick_at(self, ix: &[i32], tick: i32) -> Result<Self> {
         self.mutate_indices(ix, move |m| m.timing.tick = Some(tick))
     }
 
-    pub fn with_start_tick(self, tick: u32) -> Result<Self> {
+    pub fn with_start_tick(self, tick: i32) -> Result<Self> {
         self.with_exact_tick_at(&[0], tick)
     }
 

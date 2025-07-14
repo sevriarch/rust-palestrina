@@ -35,11 +35,11 @@ pub trait WriteMidiBytes {
 }
 
 pub trait ToTimedMidiBytes {
-    fn try_to_timed_midi_bytes(&self, curr: u32) -> Result<(u32, Vec<u8>)>;
+    fn try_to_timed_midi_bytes(&self, curr: i32) -> Result<(i32, Vec<u8>)>;
 }
 
 pub trait ToVecTimedMidiBytes {
-    fn try_to_vec_timed_midi_bytes(&self, curr: u32) -> Result<Vec<(u32, Vec<u8>)>>;
+    fn try_to_vec_timed_midi_bytes(&self, curr: i32) -> Result<Vec<(i32, Vec<u8>)>>;
 }
 
 fn try_number_to_fixed_bytes(num: u32, size: usize) -> Result<Vec<u8>> {
@@ -216,7 +216,7 @@ impl ToMidiBytes for MetadataData {
 }
 
 impl ToTimedMidiBytes for Metadata {
-    fn try_to_timed_midi_bytes(&self, curr: u32) -> Result<(u32, Vec<u8>)> {
+    fn try_to_timed_midi_bytes(&self, curr: i32) -> Result<(i32, Vec<u8>)> {
         let databytes = self.data.try_to_midi_bytes()?;
 
         Ok((self.timing.start_tick(curr)?, databytes))
@@ -224,7 +224,7 @@ impl ToTimedMidiBytes for Metadata {
 }
 
 impl ToVecTimedMidiBytes for MetadataList {
-    fn try_to_vec_timed_midi_bytes(&self, curr: u32) -> Result<Vec<(u32, Vec<u8>)>> {
+    fn try_to_vec_timed_midi_bytes(&self, curr: i32) -> Result<Vec<(i32, Vec<u8>)>> {
         self.contents
             .iter()
             .map(|m| m.try_to_timed_midi_bytes(curr))
@@ -237,8 +237,8 @@ macro_rules! impl_int_melody_member_to_vec_timed_midi_bytes {
         impl ToVecTimedMidiBytes for MelodyMember<$t> {
             fn try_to_vec_timed_midi_bytes(
                 &self,
-                curr: u32,
-            ) -> Result<Vec<(u32, Vec<u8>)>> {
+                curr: i32,
+            ) -> Result<Vec<(i32, Vec<u8>)>> {
                 let start = self.timing.start_tick(curr)?;
                 let end = self.timing.end_tick(curr)?;
 
@@ -268,8 +268,8 @@ macro_rules! impl_float_melody_member_to_vec_timed_midi_bytes {
         impl ToVecTimedMidiBytes for MelodyMember<$t> {
             fn try_to_vec_timed_midi_bytes(
                 &self,
-                curr: u32,
-            ) -> Result<Vec<(u32, Vec<u8>)>> {
+                curr: i32,
+            ) -> Result<Vec<(i32, Vec<u8>)>> {
                 let start = self.timing.start_tick(curr)?;
                 let end = self.timing.end_tick(curr)?;
 
@@ -306,7 +306,7 @@ impl_float_melody_member_to_vec_timed_midi_bytes!(for f32 f64);
 macro_rules! impl_melody_to_vec_timed_midi_bytes {
     (for $($t:ty)*) => ($(
         impl ToVecTimedMidiBytes for Melody<$t> {
-            fn try_to_vec_timed_midi_bytes(&self, curr: u32) -> Result<Vec<(u32, Vec<u8>)>> {
+            fn try_to_vec_timed_midi_bytes(&self, curr: i32) -> Result<Vec<(i32, Vec<u8>)>> {
                 let mut curr = curr;
                 let mut ret = self.metadata.try_to_vec_timed_midi_bytes(curr)?;
 
@@ -335,7 +335,7 @@ impl ToMidiBytes for Melody<$t> {
         list.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
 
         for mut val in list {
-            ret.append(&mut try_number_to_variable_bytes(val.0 - curr)?);
+            ret.append(&mut try_number_to_variable_bytes((val.0 - curr) as u32)?);
             ret.append(&mut val.1);
 
             curr = val.0;

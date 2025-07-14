@@ -107,7 +107,7 @@ where
         Some((min, max))
     }
 
-    pub fn last_tick(&self) -> u32 {
+    pub fn last_tick(&self) -> i32 {
         let metalast = self.metadata.last_tick(0).unwrap_or(0);
 
         self.contents.iter().fold(metalast, |max, m| {

@@ -35,7 +35,7 @@ use crate::sequences::{
 use anyhow::Result;
 
 const LEN: usize = 2816;
-const TICKS: u32 = 840;
+const TICKS: i32 = 840;
 
 //const MAXGAP: i8 = 15;
 
@@ -221,7 +221,7 @@ function logTrack(n, section, s) {
 }
 
 */
-pub fn rhythm(n: u32) -> u32 {
+pub fn rhythm(n: i32) -> i32 {
     TICKS * 2 / (8 - n)
 }
 
@@ -313,7 +313,7 @@ fn melody1(n: usize) -> Result<Melody<i32>> {
 
     mel.with_duration(rhy1)
         .with_volumes(vol1.contents)?
-        .with_start_tick(14 * TICKS * n as u32)
+        .with_start_tick(14 * TICKS * n as i32)
     //.with_event_at(s_on, "sustain", 1)
     //.with_event_after(s_off, "sustain", 0)
 }

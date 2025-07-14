@@ -349,7 +349,7 @@ macro_rules! metadata_vec {
     (($data:expr, $tick:expr, $offset:expr)) => (
         vec![Metadata {
             data: $data,
-            timing: EventTiming{ tick: Option::<u32>::from($tick), offset: $offset }
+            timing: EventTiming{ tick: Option::<i32>::from($tick), offset: $offset }
         }]
     );
 
@@ -364,7 +364,7 @@ macro_rules! metadata_vec {
         {
             let mut ret = vec![Metadata {
                 data: $data,
-                timing: EventTiming{ tick: Option::<u32>::from($tick), offset: $offset }
+                timing: EventTiming{ tick: Option::<i32>::from($tick), offset: $offset }
             }];
 
             ret.append(&mut metadata_vec!($($tail)*));
@@ -398,7 +398,7 @@ macro_rules! metadata {
         Metadata {
             data: $data,
             timing: EventTiming {
-                tick: Option::<u32>::from($tick),
+                tick: Option::<i32>::from($tick),
                 offset: $offset,
             },
         }
@@ -458,10 +458,10 @@ impl TryFrom<(&str, f32)> for Metadata {
     }
 }
 
-impl TryFrom<(&str, &str, Option<u32>, i32)> for Metadata {
+impl TryFrom<(&str, &str, Option<i32>, i32)> for Metadata {
     type Error = anyhow::Error;
 
-    fn try_from((event, value, tick, offset): (&str, &str, Option<u32>, i32)) -> Result<Self> {
+    fn try_from((event, value, tick, offset): (&str, &str, Option<i32>, i32)) -> Result<Self> {
         Ok(Metadata {
             data: get_meta_event_string_data(event, value.to_string())?,
             timing: EventTiming::new(tick, offset),
@@ -469,10 +469,10 @@ impl TryFrom<(&str, &str, Option<u32>, i32)> for Metadata {
     }
 }
 
-impl TryFrom<(&str, i16, Option<u32>, i32)> for Metadata {
+impl TryFrom<(&str, i16, Option<i32>, i32)> for Metadata {
     type Error = anyhow::Error;
 
-    fn try_from((event, value, tick, offset): (&str, i16, Option<u32>, i32)) -> Result<Self> {
+    fn try_from((event, value, tick, offset): (&str, i16, Option<i32>, i32)) -> Result<Self> {
         Ok(Metadata {
             data: get_meta_event_int_data(event, value)?,
             timing: EventTiming::new(tick, offset),
@@ -480,10 +480,10 @@ impl TryFrom<(&str, i16, Option<u32>, i32)> for Metadata {
     }
 }
 
-impl TryFrom<(&str, bool, Option<u32>, i32)> for Metadata {
+impl TryFrom<(&str, bool, Option<i32>, i32)> for Metadata {
     type Error = anyhow::Error;
 
-    fn try_from((event, value, tick, offset): (&str, bool, Option<u32>, i32)) -> Result<Self> {
+    fn try_from((event, value, tick, offset): (&str, bool, Option<i32>, i32)) -> Result<Self> {
         Ok(Metadata {
             data: get_meta_event_bool_data(event, value)?,
             timing: EventTiming::new(tick, offset),
@@ -491,10 +491,10 @@ impl TryFrom<(&str, bool, Option<u32>, i32)> for Metadata {
     }
 }
 
-impl TryFrom<(&str, f32, Option<u32>, i32)> for Metadata {
+impl TryFrom<(&str, f32, Option<i32>, i32)> for Metadata {
     type Error = anyhow::Error;
 
-    fn try_from((event, value, tick, offset): (&str, f32, Option<u32>, i32)) -> Result<Self> {
+    fn try_from((event, value, tick, offset): (&str, f32, Option<i32>, i32)) -> Result<Self> {
         Ok(Metadata {
             data: get_meta_event_float_data(event, value)?,
             timing: EventTiming::new(tick, offset),
@@ -504,7 +504,7 @@ impl TryFrom<(&str, f32, Option<u32>, i32)> for Metadata {
 
 impl Metadata {
     /// Create a piece of timed metadata.
-    pub fn new(data: MetadataData, tick: Option<u32>, offset: i32) -> Self {
+    pub fn new(data: MetadataData, tick: Option<i32>, offset: i32) -> Self {
         Self {
             data,
             timing: EventTiming { tick, offset },
@@ -512,14 +512,14 @@ impl Metadata {
     }
 
     /// Set the exact tick on this piece of timed metadata.
-    pub fn with_exact_tick(&mut self, tick: u32) -> &mut Self {
+    pub fn with_exact_tick(&mut self, tick: i32) -> &mut Self {
         self.timing.with_exact_tick(tick);
         self
     }
 
     /// Mutate the exact tick on this piece of timed metadata by passing
     /// a reference to the current exact tick to the supplied closure.
-    pub fn mutate_exact_tick(&mut self, f: impl Fn(&mut u32)) -> &mut Self {
+    pub fn mutate_exact_tick(&mut self, f: impl Fn(&mut i32)) -> &mut Self {
         self.timing.mutate_exact_tick(&f);
         self
     }
@@ -570,7 +570,7 @@ impl MetadataList {
     /// with this metadata (for metadata associated with a Sequence, this will
     /// be zero, for metadata associated with the start of a note, this will be
     /// the start tick of the note).
-    pub fn last_tick(&self, curr: u32) -> Result<u32> {
+    pub fn last_tick(&self, curr: i32) -> Result<i32> {
         if self.contents.is_empty() {
             return Ok(curr);
         }
@@ -589,7 +589,7 @@ impl MetadataList {
 
     /// Mutate all exact ticks within this list of metadata by passing each of
     /// them to the supplied closure.
-    pub fn mutate_exact_tick(&mut self, f: impl Fn(&mut u32)) -> &Self {
+    pub fn mutate_exact_tick(&mut self, f: impl Fn(&mut i32)) -> &Self {
         for m in self.contents.iter_mut() {
             m.timing.mutate_exact_tick(&f);
         }
@@ -616,7 +616,7 @@ pub trait PushMetadata<T> {
         Self: Sized;
 
     /// Add a metadata object with the supplied timing (exact tick, offset).
-    fn with_timed_metadata(self, tuple: (&str, T, Option<u32>, i32)) -> Result<Self>
+    fn with_timed_metadata(self, tuple: (&str, T, Option<i32>, i32)) -> Result<Self>
     where
         Self: Sized;
 }
@@ -632,7 +632,7 @@ impl PushMetadata<$type> for MetadataList {
         Ok(self)
     }
 
-    fn with_timed_metadata(mut self, tuple: (&str, $type, Option<u32>, i32)) -> Result<Self>
+    fn with_timed_metadata(mut self, tuple: (&str, $type, Option<i32>, i32)) -> Result<Self>
     where
     Self: Sized,
     {

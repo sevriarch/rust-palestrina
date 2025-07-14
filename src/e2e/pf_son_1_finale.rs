@@ -8,7 +8,7 @@ use crate::sequences::{melody::Melody, note::NoteSeq, numeric::NumericSeq, trait
 use anyhow::Result;
 
 const LEN: usize = 1280;
-const TICKS: u32 = 64;
+const TICKS: i32 = 64;
 const GAP: usize = 5;
 const MOD: i32 = 25;
 const BAR: i32 = 16;
@@ -179,7 +179,7 @@ fn make_score() -> Result<Score<i32>> {
 
     // Create score from combining these parts with the overlay, then set metadata and generate
     Score::new(vec![melodify(zag.0)?, melodify(zag.1)?])
-        .with_ticks_per_quarter(TICKS)
+        .with_ticks_per_quarter(TICKS as u32)
         .with_time_signature("4/4")?
         .with_tempo(100.0)
 }
