@@ -426,6 +426,7 @@ where
     }
 }
 
+/*
 macro_rules! impl_fns_for_option {
     ($ty:ident, for $($fn:ident)*) => ($(
         fn $fn(self, n: $ty) -> Self {
@@ -493,6 +494,7 @@ where
         self.is_none()
     }
 }
+*/
 
 macro_rules! impl_fns_for_mut_option {
     ($ty:ident, for $($fn:ident)*) => ($(
@@ -587,8 +589,8 @@ where
     }
 }
 
-/// Probably does not need to be implemented for Vec<T>
 /*
+/// Probably does not need to be implemented for Vec<T>
 macro_rules! impl_fns_for_vec {
     ($ty:ident, for $($fn:ident)*) => ($(
         fn $fn(mut self, n: $ty) -> Self {
@@ -745,8 +747,8 @@ mod tests {
     #[test]
     fn set_pitch() {
         assert_eq!(5.set_pitch(3), 3);
-        assert_eq!(None.set_pitch(3), Some(3));
-        assert_eq!(Some(5).set_pitch(3), Some(3));
+        assert_eq!(None.set_pitch(3), &Some(3));
+        assert_eq!(Some(5).set_pitch(3), &Some(3));
         assert_eq!(vec![3, 4, 5].set_pitch(3), &vec![3]);
 
         let t = &mut 5;
@@ -773,8 +775,8 @@ mod tests {
         assert!(None.set_pitches(vec![2, 4]).is_err());
 
         assert_eq!(5.set_pitches(vec![3]).unwrap(), 3);
-        assert_eq!(None.set_pitches(vec![3]).unwrap(), Some(3));
-        assert_eq!(Some(5).set_pitches(vec![3]).unwrap(), Some(3));
+        assert_eq!(None.set_pitches(vec![3]).unwrap(), &Some(3));
+        assert_eq!(Some(5).set_pitches(vec![3]).unwrap(), &Some(3));
         assert_eq!(vec![3, 4, 5].set_pitches(vec![3]).unwrap(), &vec![3]);
 
         let t = &mut 5;
@@ -807,8 +809,8 @@ mod tests {
         }
 
         map_pitch_test!(3, |v| v + 1, 4);
-        map_pitch_test!(None, |v| v + 1, None);
-        map_pitch_test!(Some(3), |v| v + 1, Some(4));
+        map_pitch_test!(None, |v| v + 1, &None);
+        map_pitch_test!(Some(3), |v| v + 1, &Some(4));
         map_pitch_test!(vec![3, 4, 5], |v| v + 1, &vec![4, 5, 6]);
     }
 
@@ -822,9 +824,9 @@ mod tests {
 
         assert!(5.filter_pitch(|v| v % 2 == 0).is_err());
         filter_pitch_test!(6, |v| v % 2 == 0, 6);
-        filter_pitch_test!(None, |v| v % 2 == 0, None);
-        filter_pitch_test!(Some(5), |v| v % 2 == 0, None);
-        filter_pitch_test!(Some(6), |v| v % 2 == 0, Some(6));
+        filter_pitch_test!(None, |v| v % 2 == 0, &None);
+        filter_pitch_test!(Some(5), |v| v % 2 == 0, &None);
+        filter_pitch_test!(Some(6), |v| v % 2 == 0, &Some(6));
         filter_pitch_test!(vec![5, 6, 7], |v| v % 2 == 0, &vec![6]);
     }
 
@@ -838,16 +840,16 @@ mod tests {
 
         assert!(6.filter_map_pitch(|_| None).is_err());
         filter_map_pitch_test!(6, |v| if v % 2 == 0 { Some(v / 2) } else { None }, 3);
-        filter_map_pitch_test!(None, |v| if v % 2 == 0 { Some(v / 2) } else { None }, None);
+        filter_map_pitch_test!(None, |v| if v % 2 == 0 { Some(v / 2) } else { None }, &None);
         filter_map_pitch_test!(
             Some(5),
             |v| if v % 2 == 0 { Some(v / 2) } else { None },
-            None
+            &None
         );
         filter_map_pitch_test!(
             Some(6),
             |v| if v % 2 == 0 { Some(v / 2) } else { None },
-            Some(3)
+            &Some(3)
         );
         filter_map_pitch_test!(
             vec![5, 6, 7],
@@ -866,8 +868,8 @@ mod tests {
 
         transpose_pitch_test!(5, 6, 11);
         transpose_pitch_test!(5.5, 6.0, 11.5);
-        transpose_pitch_test!(None::<i32>, 6, None);
-        transpose_pitch_test!(Some(5), 6, Some(11));
+        transpose_pitch_test!(None::<i32>, 6, &None);
+        transpose_pitch_test!(Some(5), 6, &Some(11));
         transpose_pitch_test!(vec![4, 5, 6], 6, &vec![10, 11, 12]);
     }
 
@@ -881,8 +883,8 @@ mod tests {
 
         invert_pitch_test!(5, 6, 7);
         invert_pitch_test!(5.5, 6.0, 6.5);
-        invert_pitch_test!(None, 6, None);
-        invert_pitch_test!(Some(5), 6, Some(7));
+        invert_pitch_test!(None, 6, &None);
+        invert_pitch_test!(Some(5), 6, &Some(7));
         invert_pitch_test!(vec![4, 5, 6], 6, &vec![8, 7, 6]);
     }
 
@@ -898,14 +900,14 @@ mod tests {
         augment_pitch_test!(4, 2.5, 10);
         augment_pitch_test!(2.5, 3, 7.5);
         augment_pitch_test!(2.5, 3.0, 7.5);
-        augment_pitch_test!(None::<i32>, 2, None);
-        augment_pitch_test!(None::<i32>, 2.5, None);
-        augment_pitch_test!(None::<f32>, 2, None);
-        augment_pitch_test!(None::<f32>, 2.5, None);
-        augment_pitch_test!(Some(4), 2, Some(8));
-        augment_pitch_test!(Some(4), 2.5, Some(10));
-        augment_pitch_test!(Some(2.5), 3, Some(7.5));
-        augment_pitch_test!(Some(2.5), 3.0, Some(7.5));
+        augment_pitch_test!(None::<i32>, 2, &None);
+        augment_pitch_test!(None::<i32>, 2.5, &None);
+        augment_pitch_test!(None::<f32>, 2, &None);
+        augment_pitch_test!(None::<f32>, 2.5, &None);
+        augment_pitch_test!(Some(4), 2, &Some(8));
+        augment_pitch_test!(Some(4), 2.5, &Some(10));
+        augment_pitch_test!(Some(2.5), 3, &Some(7.5));
+        augment_pitch_test!(Some(2.5), 3.0, &Some(7.5));
         augment_pitch_test!(vec![4, 5, 7], 2, &vec![8, 10, 14]);
         augment_pitch_test!(vec![4, 5, 7], 2.5, &vec![10, 12, 17]);
         augment_pitch_test!(vec![4.0, 5.5, 6.5], 3, &vec![12.0, 16.5, 19.5]);
@@ -924,14 +926,14 @@ mod tests {
         diminish_pitch_test!(10, 2.5, 4);
         diminish_pitch_test!(7.5, 3, 2.5);
         diminish_pitch_test!(7.5, 3.0, 2.5);
-        diminish_pitch_test!(None::<i32>, 2, None);
-        diminish_pitch_test!(None::<i32>, 2.5, None);
-        diminish_pitch_test!(None::<f32>, 2, None);
-        diminish_pitch_test!(None::<f32>, 2.5, None);
-        diminish_pitch_test!(Some(8), 2, Some(4));
-        diminish_pitch_test!(Some(10), 2.5, Some(4));
-        diminish_pitch_test!(Some(7.5), 3, Some(2.5));
-        diminish_pitch_test!(Some(7.5), 3.0, Some(2.5));
+        diminish_pitch_test!(None::<i32>, 2, &None);
+        diminish_pitch_test!(None::<i32>, 2.5, &None);
+        diminish_pitch_test!(None::<f32>, 2, &None);
+        diminish_pitch_test!(None::<f32>, 2.5, &None);
+        diminish_pitch_test!(Some(8), 2, &Some(4));
+        diminish_pitch_test!(Some(10), 2.5, &Some(4));
+        diminish_pitch_test!(Some(7.5), 3, &Some(2.5));
+        diminish_pitch_test!(Some(7.5), 3.0, &Some(2.5));
         diminish_pitch_test!(vec![8, 10, 14], 2, &vec![4, 5, 7]);
         diminish_pitch_test!(vec![10, 12, 17], 2.5, &vec![4, 4, 6]);
         diminish_pitch_test!(vec![12.0, 16.5, 19.5], 3, &vec![4.0, 5.5, 6.5]);
@@ -952,9 +954,9 @@ mod tests {
         modulus_test!(-5, -3, 1);
         modulus_test!(6, 3, 0);
         modulus_test!(-6, 3, 0);
-        modulus_test!(None, 3, None);
-        modulus_test!(Some(5), 3, Some(2));
-        modulus_test!(Some(-5), 3, Some(1));
+        modulus_test!(None, 3, &None);
+        modulus_test!(Some(5), 3, &Some(2));
+        modulus_test!(Some(-5), 3, &Some(1));
         modulus_test!(vec![5.0, -5.0, 6.0], 1.5, &vec![0.5, 1.0, 0.0]);
     }
 
@@ -968,9 +970,9 @@ mod tests {
 
         trim_min_test!(5, 3, 5);
         trim_min_test!(3, 5, 5);
-        trim_min_test!(None, 5, None);
-        trim_min_test!(Some(5), 3, Some(5));
-        trim_min_test!(Some(3), 5, Some(5));
+        trim_min_test!(None, 5, &None);
+        trim_min_test!(Some(5), 3, &Some(5));
+        trim_min_test!(Some(3), 5, &Some(5));
         trim_min_test!(vec![5.0, 3.0], 4.0, &vec![5.0, 4.0]);
     }
 
@@ -984,9 +986,9 @@ mod tests {
 
         trim_max_test!(5, 3, 3);
         trim_max_test!(3, 5, 3);
-        trim_max_test!(None, 5, None);
-        trim_max_test!(Some(5), 3, Some(3));
-        trim_max_test!(Some(3), 5, Some(3));
+        trim_max_test!(None, 5, &None);
+        trim_max_test!(Some(5), 3, &Some(3));
+        trim_max_test!(Some(3), 5, &Some(3));
         trim_max_test!(vec![5.0, 3.0], 4.0, &vec![4.0, 3.0]);
     }
 
@@ -1001,10 +1003,10 @@ mod tests {
         trim_test!(2, 3, 5, 3);
         trim_test!(4, 3, 5, 4);
         trim_test!(6, 3, 5, 5);
-        trim_test!(None, 3, 5, None);
-        trim_test!(Some(2), 3, 5, Some(3));
-        trim_test!(Some(4), 3, 5, Some(4));
-        trim_test!(Some(6), 3, 5, Some(5));
+        trim_test!(None, 3, 5, &None);
+        trim_test!(Some(2), 3, 5, &Some(3));
+        trim_test!(Some(4), 3, 5, &Some(4));
+        trim_test!(Some(6), 3, 5, &Some(5));
         trim_test!(vec![2, 4, 6], 3, 5, &vec![3, 4, 5]);
     }
 
@@ -1018,9 +1020,9 @@ mod tests {
 
         bounce_min_test!(5, 3, 5);
         bounce_min_test!(3, 5, 7);
-        bounce_min_test!(None, 5, None);
-        bounce_min_test!(Some(5), 3, Some(5));
-        bounce_min_test!(Some(3), 5, Some(7));
+        bounce_min_test!(None, 5, &None);
+        bounce_min_test!(Some(5), 3, &Some(5));
+        bounce_min_test!(Some(3), 5, &Some(7));
         bounce_min_test!(vec![5.0, 3.0], 4.0, &vec![5.0, 5.0]);
     }
 
@@ -1034,9 +1036,9 @@ mod tests {
 
         bounce_max_test!(5, 3, 1);
         bounce_max_test!(3, 5, 3);
-        bounce_max_test!(None, 5, None);
-        bounce_max_test!(Some(5), 3, Some(1));
-        bounce_max_test!(Some(3), 5, Some(3));
+        bounce_max_test!(None, 5, &None);
+        bounce_max_test!(Some(5), 3, &Some(1));
+        bounce_max_test!(Some(3), 5, &Some(3));
         bounce_max_test!(vec![5.0, 3.0], 4.0, &vec![3.0, 3.0]);
     }
 
@@ -1054,11 +1056,11 @@ mod tests {
         bounce_test!(-1, 3, 6, 5);
         bounce_test!(11, 3, 6, 5);
         bounce_test!(11, 6, 6, 6);
-        bounce_test!(None, 6, 3, None);
-        bounce_test!(Some(2), 6, 3, Some(4));
-        bounce_test!(Some(4), 6, 3, Some(4));
-        bounce_test!(Some(8), 6, 3, Some(4));
-        bounce_test!(Some(8), 6, 6, Some(6));
+        bounce_test!(None, 6, 3, &None);
+        bounce_test!(Some(2), 6, 3, &Some(4));
+        bounce_test!(Some(4), 6, 3, &Some(4));
+        bounce_test!(Some(8), 6, 3, &Some(4));
+        bounce_test!(Some(8), 6, 6, &Some(6));
         bounce_test!(vec![2, 4, 8, -1, 11], 3, 6, &vec![4, 4, 4, 5, 5]);
         bounce_test!(vec![2, 4, 8, -1, 11], 6, 6, &vec![6, 6, 6, 6, 6]);
     }
