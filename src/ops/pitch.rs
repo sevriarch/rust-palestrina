@@ -587,6 +587,8 @@ where
     }
 }
 
+/// Probably does not need to be implemented for Vec<T>
+/*
 macro_rules! impl_fns_for_vec {
     ($ty:ident, for $($fn:ident)*) => ($(
         fn $fn(mut self, n: $ty) -> Self {
@@ -661,6 +663,7 @@ where
         self.is_empty()
     }
 }
+*/
 
 macro_rules! impl_fns_for_mut_vec {
     ($ty:ident, for $($fn:ident)*) => ($(
@@ -744,7 +747,7 @@ mod tests {
         assert_eq!(5.set_pitch(3), 3);
         assert_eq!(None.set_pitch(3), Some(3));
         assert_eq!(Some(5).set_pitch(3), Some(3));
-        assert_eq!(vec![3, 4, 5].set_pitch(3), vec![3]);
+        assert_eq!(vec![3, 4, 5].set_pitch(3), &vec![3]);
 
         let t = &mut 5;
         t.set_pitch(3);
@@ -772,7 +775,7 @@ mod tests {
         assert_eq!(5.set_pitches(vec![3]).unwrap(), 3);
         assert_eq!(None.set_pitches(vec![3]).unwrap(), Some(3));
         assert_eq!(Some(5).set_pitches(vec![3]).unwrap(), Some(3));
-        assert_eq!(vec![3, 4, 5].set_pitches(vec![3]).unwrap(), vec![3]);
+        assert_eq!(vec![3, 4, 5].set_pitches(vec![3]).unwrap(), &vec![3]);
 
         let t = &mut 5;
 
@@ -806,7 +809,7 @@ mod tests {
         map_pitch_test!(3, |v| v + 1, 4);
         map_pitch_test!(None, |v| v + 1, None);
         map_pitch_test!(Some(3), |v| v + 1, Some(4));
-        map_pitch_test!(vec![3, 4, 5], |v| v + 1, vec![4, 5, 6]);
+        map_pitch_test!(vec![3, 4, 5], |v| v + 1, &vec![4, 5, 6]);
     }
 
     #[test]
@@ -822,7 +825,7 @@ mod tests {
         filter_pitch_test!(None, |v| v % 2 == 0, None);
         filter_pitch_test!(Some(5), |v| v % 2 == 0, None);
         filter_pitch_test!(Some(6), |v| v % 2 == 0, Some(6));
-        filter_pitch_test!(vec![5, 6, 7], |v| v % 2 == 0, vec![6]);
+        filter_pitch_test!(vec![5, 6, 7], |v| v % 2 == 0, &vec![6]);
     }
 
     #[test]
@@ -849,7 +852,7 @@ mod tests {
         filter_map_pitch_test!(
             vec![5, 6, 7],
             |v| if v % 2 == 0 { Some(v / 2) } else { None },
-            vec![3]
+            &vec![3]
         );
     }
 
@@ -865,7 +868,7 @@ mod tests {
         transpose_pitch_test!(5.5, 6.0, 11.5);
         transpose_pitch_test!(None::<i32>, 6, None);
         transpose_pitch_test!(Some(5), 6, Some(11));
-        transpose_pitch_test!(vec![4, 5, 6], 6, vec![10, 11, 12]);
+        transpose_pitch_test!(vec![4, 5, 6], 6, &vec![10, 11, 12]);
     }
 
     #[test]
@@ -880,7 +883,7 @@ mod tests {
         invert_pitch_test!(5.5, 6.0, 6.5);
         invert_pitch_test!(None, 6, None);
         invert_pitch_test!(Some(5), 6, Some(7));
-        invert_pitch_test!(vec![4, 5, 6], 6, vec![8, 7, 6]);
+        invert_pitch_test!(vec![4, 5, 6], 6, &vec![8, 7, 6]);
     }
 
     #[test]
@@ -903,10 +906,10 @@ mod tests {
         augment_pitch_test!(Some(4), 2.5, Some(10));
         augment_pitch_test!(Some(2.5), 3, Some(7.5));
         augment_pitch_test!(Some(2.5), 3.0, Some(7.5));
-        augment_pitch_test!(vec![4, 5, 7], 2, vec![8, 10, 14]);
-        augment_pitch_test!(vec![4, 5, 7], 2.5, vec![10, 12, 17]);
-        augment_pitch_test!(vec![4.0, 5.5, 6.5], 3, vec![12.0, 16.5, 19.5]);
-        augment_pitch_test!(vec![4.0, 5.5, 6.5], 3.0, vec![12.0, 16.5, 19.5]);
+        augment_pitch_test!(vec![4, 5, 7], 2, &vec![8, 10, 14]);
+        augment_pitch_test!(vec![4, 5, 7], 2.5, &vec![10, 12, 17]);
+        augment_pitch_test!(vec![4.0, 5.5, 6.5], 3, &vec![12.0, 16.5, 19.5]);
+        augment_pitch_test!(vec![4.0, 5.5, 6.5], 3.0, &vec![12.0, 16.5, 19.5]);
     }
 
     #[test]
@@ -929,10 +932,10 @@ mod tests {
         diminish_pitch_test!(Some(10), 2.5, Some(4));
         diminish_pitch_test!(Some(7.5), 3, Some(2.5));
         diminish_pitch_test!(Some(7.5), 3.0, Some(2.5));
-        diminish_pitch_test!(vec![8, 10, 14], 2, vec![4, 5, 7]);
-        diminish_pitch_test!(vec![10, 12, 17], 2.5, vec![4, 4, 6]);
-        diminish_pitch_test!(vec![12.0, 16.5, 19.5], 3, vec![4.0, 5.5, 6.5]);
-        diminish_pitch_test!(vec![12.0, 16.5, 19.5], 3.0, vec![4.0, 5.5, 6.5]);
+        diminish_pitch_test!(vec![8, 10, 14], 2, &vec![4, 5, 7]);
+        diminish_pitch_test!(vec![10, 12, 17], 2.5, &vec![4, 4, 6]);
+        diminish_pitch_test!(vec![12.0, 16.5, 19.5], 3, &vec![4.0, 5.5, 6.5]);
+        diminish_pitch_test!(vec![12.0, 16.5, 19.5], 3.0, &vec![4.0, 5.5, 6.5]);
     }
 
     #[test]
@@ -952,7 +955,7 @@ mod tests {
         modulus_test!(None, 3, None);
         modulus_test!(Some(5), 3, Some(2));
         modulus_test!(Some(-5), 3, Some(1));
-        modulus_test!(vec![5.0, -5.0, 6.0], 1.5, vec![0.5, 1.0, 0.0]);
+        modulus_test!(vec![5.0, -5.0, 6.0], 1.5, &vec![0.5, 1.0, 0.0]);
     }
 
     #[test]
@@ -968,7 +971,7 @@ mod tests {
         trim_min_test!(None, 5, None);
         trim_min_test!(Some(5), 3, Some(5));
         trim_min_test!(Some(3), 5, Some(5));
-        trim_min_test!(vec![5.0, 3.0], 4.0, vec![5.0, 4.0]);
+        trim_min_test!(vec![5.0, 3.0], 4.0, &vec![5.0, 4.0]);
     }
 
     #[test]
@@ -984,7 +987,7 @@ mod tests {
         trim_max_test!(None, 5, None);
         trim_max_test!(Some(5), 3, Some(3));
         trim_max_test!(Some(3), 5, Some(3));
-        trim_max_test!(vec![5.0, 3.0], 4.0, vec![4.0, 3.0]);
+        trim_max_test!(vec![5.0, 3.0], 4.0, &vec![4.0, 3.0]);
     }
 
     #[test]
@@ -1002,7 +1005,7 @@ mod tests {
         trim_test!(Some(2), 3, 5, Some(3));
         trim_test!(Some(4), 3, 5, Some(4));
         trim_test!(Some(6), 3, 5, Some(5));
-        trim_test!(vec![2, 4, 6], 3, 5, vec![3, 4, 5]);
+        trim_test!(vec![2, 4, 6], 3, 5, &vec![3, 4, 5]);
     }
 
     #[test]
@@ -1018,7 +1021,7 @@ mod tests {
         bounce_min_test!(None, 5, None);
         bounce_min_test!(Some(5), 3, Some(5));
         bounce_min_test!(Some(3), 5, Some(7));
-        bounce_min_test!(vec![5.0, 3.0], 4.0, vec![5.0, 5.0]);
+        bounce_min_test!(vec![5.0, 3.0], 4.0, &vec![5.0, 5.0]);
     }
 
     #[test]
@@ -1034,7 +1037,7 @@ mod tests {
         bounce_max_test!(None, 5, None);
         bounce_max_test!(Some(5), 3, Some(1));
         bounce_max_test!(Some(3), 5, Some(3));
-        bounce_max_test!(vec![5.0, 3.0], 4.0, vec![3.0, 3.0]);
+        bounce_max_test!(vec![5.0, 3.0], 4.0, &vec![3.0, 3.0]);
     }
 
     #[test]
@@ -1056,8 +1059,8 @@ mod tests {
         bounce_test!(Some(4), 6, 3, Some(4));
         bounce_test!(Some(8), 6, 3, Some(4));
         bounce_test!(Some(8), 6, 6, Some(6));
-        bounce_test!(vec![2, 4, 8, -1, 11], 3, 6, vec![4, 4, 4, 5, 5]);
-        bounce_test!(vec![2, 4, 8, -1, 11], 6, 6, vec![6, 6, 6, 6, 6]);
+        bounce_test!(vec![2, 4, 8, -1, 11], 3, 6, &vec![4, 4, 4, 5, 5]);
+        bounce_test!(vec![2, 4, 8, -1, 11], 6, 6, &vec![6, 6, 6, 6, 6]);
     }
 
     #[test]
