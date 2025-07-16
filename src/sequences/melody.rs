@@ -132,9 +132,7 @@ where
 macro_rules! impl_fns_for_melody_member {
     ($ty:ident, for $($fn:ident)*) => ($(
         fn $fn(self, n: $ty) -> Self {
-            self.values.iter_mut().for_each(|p| {
-                p.$fn(n);
-            });
+            self.values.$fn(n);
             self
         }
     )*)
@@ -157,50 +155,37 @@ where
     }
 
     fn map_pitch<MapT: Fn(&T) -> T>(self, f: MapT) -> Self {
-        self.values.iter_mut().for_each(|p| *p = f(p));
+        self.values.map_pitch(&f);
         self
     }
 
     fn filter_pitch<FilterT: Fn(&T) -> bool>(self, f: FilterT) -> Result<Self> {
-        self.values.retain(&f);
+        self.values.filter_pitch(&f)?;
         Ok(self)
     }
 
     fn filter_map_pitch<MapT: Fn(&T) -> Option<T>>(self, f: MapT) -> Result<Self> {
-        self.values = self
-            .values
-            .clone()
-            .into_iter()
-            .filter_map(|v| f(&v))
-            .collect();
+        self.values.filter_map_pitch(&f)?;
         Ok(self)
     }
 
     fn augment_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self {
-        self.values.iter_mut().for_each(|p| {
-            p.augment_pitch(n);
-        });
+        self.values.augment_pitch(n);
         self
     }
 
     fn diminish_pitch<AT: AugDim<T> + Copy>(self, n: AT) -> Self {
-        self.values.iter_mut().for_each(|p| {
-            p.diminish_pitch(n);
-        });
+        self.values.diminish_pitch(n);
         self
     }
 
     fn trim(self, first: T, last: T) -> Self {
-        self.values.iter_mut().for_each(|p| {
-            p.trim(first, last);
-        });
+        self.values.trim(first, last);
         self
     }
 
     fn bounce(self, first: T, last: T) -> Self {
-        self.values.iter_mut().for_each(|p| {
-            p.bounce(first, last);
-        });
+        self.values.bounce(first, last);
         self
     }
 
