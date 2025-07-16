@@ -162,7 +162,7 @@ where
     }
 
     fn filter_pitch<FilterT: Fn(&T) -> bool>(self, f: FilterT) -> Result<Self> {
-        self.values.retain(f);
+        self.values.retain(&f);
         Ok(self)
     }
 
@@ -262,7 +262,7 @@ where
             m.mutate_exact_tick(&f);
         });
 
-        self.timing.mutate_exact_tick(f);
+        self.timing.mutate_exact_tick(&f);
         self
     }
 
@@ -273,7 +273,7 @@ where
 
     pub fn mutate_offset(&mut self, f: impl Fn(&mut i32)) -> &mut Self {
         self.before.contents.iter_mut().for_each(|m| {
-            m.mutate_offset(&f);
+            m.timing.mutate_offset(&f);
         });
 
         self.timing.mutate_offset(&f);
@@ -286,7 +286,7 @@ where
     }
 
     pub fn mutate_duration(&mut self, f: impl Fn(&mut i32)) -> &mut Self {
-        self.timing.mutate_duration(f);
+        self.timing.mutate_duration(&f);
         self
     }
 
@@ -415,9 +415,7 @@ where
 {
     fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
         self.contents.iter_mut().for_each(|m| {
-            for p in m.values.iter_mut() {
-                f(p)
-            }
+            m.values.iter_mut().for_each(&f);
         });
         self
     }
