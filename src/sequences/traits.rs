@@ -34,6 +34,13 @@ macro_rules! sequence_pitch_methods {
                 self
             }
 
+            fn mutate_pitch<MutateT: Fn(&mut T)>(mut self, f: MutateT) -> Self {
+                self.contents.iter_mut().for_each(|p| {
+                    p.mutate_pitch(&f);
+                });
+                self
+            }
+
             fn filter_pitch<FilterT: Fn(&T) -> bool>(mut self, f: FilterT) -> Result<Self> {
                 for p in self.contents.iter_mut() {
                     p.filter_pitch(&f)?;
@@ -411,7 +418,9 @@ pub trait Sequence<
             + SubAssign
             + num_traits::Euclid,
     {
-        Ok(self.mutate_pitches(scale.fit_to_scale(&zeroval)?))
+        let f = scale.fit_to_scale(&zeroval)?;
+
+        Ok(self.mutate_pitch(&f))
     }
 
     fn combine(self, f: impl Fn((&T, &T)) -> T, seq: Self) -> Result<Self> {

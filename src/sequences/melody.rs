@@ -159,6 +159,11 @@ where
         self
     }
 
+    fn mutate_pitch<MutateT: Fn(&mut T)>(self, f: MutateT) -> Self {
+        self.values.mutate_pitch(&f);
+        self
+    }
+
     fn filter_pitch<FilterT: Fn(&T) -> bool>(self, f: FilterT) -> Result<Self> {
         self.values.filter_pitch(&f)?;
         Ok(self)

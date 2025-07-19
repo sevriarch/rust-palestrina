@@ -28,6 +28,9 @@ where
     where
         Self: std::marker::Sized;
 
+    /// Mutate each individual pitch within the entity.
+    fn mutate_pitch<MutateT: Fn(&mut T)>(self, f: MutateT) -> Self;
+
     /// A map operation on each individual pitch within the entity.
     fn map_pitch<MapT: Fn(&T) -> T>(self, f: MapT) -> Self;
 
@@ -131,6 +134,11 @@ where
                 "set_pitches()".to_string()
             ))),
         }
+    }
+
+    fn mutate_pitch<MutateT: Fn(&mut T)>(mut self, f: MutateT) -> Self {
+        f(&mut self);
+        self
     }
 
     fn map_pitch<MapT: Fn(&T) -> T>(mut self, f: MapT) -> Self {
@@ -294,6 +302,11 @@ where
 
     fn map_pitch<MapT: Fn(&T) -> T>(self, f: MapT) -> Self {
         *self = f(self);
+        self
+    }
+
+    fn mutate_pitch<MutateT: Fn(&mut T)>(self, f: MutateT) -> Self {
+        f(self);
         self
     }
 
@@ -540,6 +553,13 @@ where
         self
     }
 
+    fn mutate_pitch<MutateT: Fn(&mut T)>(self, f: MutateT) -> Self {
+        if let Some(p) = self {
+            f(p);
+        }
+        self
+    }
+
     fn filter_pitch<FilterT: Fn(&T) -> bool>(self, f: FilterT) -> Result<Self> {
         if let Some(p) = self {
             if !f(p) {
@@ -694,6 +714,11 @@ where
 
     fn map_pitch<MapT: Fn(&T) -> T>(self, f: MapT) -> Self {
         self.iter_mut().for_each(|p| *p = f(p));
+        self
+    }
+
+    fn mutate_pitch<MutateT: Fn(&mut T)>(self, f: MutateT) -> Self {
+        self.iter_mut().for_each(f);
         self
     }
 
