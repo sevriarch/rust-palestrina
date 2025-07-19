@@ -163,10 +163,6 @@ pub trait Sequence<
     PitchType: Pitch<PitchType> + Clone + Copy + Debug + FromPrimitive + Bounded + Num + PartialOrd + Sum,
 >: Pitch<PitchType> + Collection<T>
 {
-    /// Modify all pitches in the Sequence by passing a mutable reference to them to the
-    /// function passed in the argument.
-    fn mutate_pitches<F: Fn(&mut PitchType)>(self, f: F) -> Self;
-
     /// Return a Vec of pitches in the order they appear in the Sequence.
     fn to_flat_pitches(&self) -> Vec<PitchType>;
 

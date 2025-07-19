@@ -129,11 +129,6 @@ impl<
             + AddAssign,
     > Sequence<T, T> for NumericSeq<T>
 {
-    fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
-        self.contents.iter_mut().for_each(f);
-        self
-    }
-
     fn to_flat_pitches(&self) -> Vec<T> {
         self.contents.clone()
     }

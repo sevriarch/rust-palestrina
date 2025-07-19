@@ -119,15 +119,6 @@ impl<
             + AddAssign,
     > Sequence<Option<T>, T> for NoteSeq<T>
 {
-    fn mutate_pitches<F: Fn(&mut T)>(mut self, f: F) -> Self {
-        self.contents.iter_mut().for_each(|m| {
-            if let Some(p) = m {
-                f(p);
-            }
-        });
-        self
-    }
-
     fn to_flat_pitches(&self) -> Vec<T> {
         self.contents.clone().into_iter().flatten().collect()
     }
