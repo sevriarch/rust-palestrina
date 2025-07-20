@@ -548,7 +548,7 @@ where
 
     fn map_pitch<MapT: Fn(&T) -> T>(self, f: MapT) -> Self {
         if let Some(p) = self {
-            *p = f(p);
+            p.map_pitch(f);
         }
         self
     }
@@ -713,7 +713,9 @@ where
     }
 
     fn map_pitch<MapT: Fn(&T) -> T>(self, f: MapT) -> Self {
-        self.iter_mut().for_each(|p| *p = f(p));
+        self.iter_mut().for_each(|p| {
+            p.map_pitch(&f);
+        });
         self
     }
 
